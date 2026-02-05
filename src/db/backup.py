@@ -132,12 +132,14 @@ class BackupManager:
             parsed = self._parse_backup_filename(f.name)
             if parsed:
                 timestamp, label = parsed
-                backups.append(BackupInfo(
-                    path=f,
-                    label=label,
-                    timestamp=timestamp,
-                    size_bytes=f.stat().st_size,
-                ))
+                backups.append(
+                    BackupInfo(
+                        path=f,
+                        label=label,
+                        timestamp=timestamp,
+                        size_bytes=f.stat().st_size,
+                    )
+                )
 
         # Sort newest first
         backups.sort(key=lambda b: b.timestamp, reverse=True)

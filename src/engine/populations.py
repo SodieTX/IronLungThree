@@ -142,9 +142,7 @@ def transition_prospect(
 
     # Validate transition
     if not can_transition(from_pop, to_population):
-        raise PipelineError(
-            f"Invalid transition: {from_pop.value} -> {to_population.value}"
-        )
+        raise PipelineError(f"Invalid transition: {from_pop.value} -> {to_population.value}")
 
     # Build update fields
     old_stage = prospect.engagement_stage
@@ -165,6 +163,7 @@ def transition_prospect(
     # Set metadata for terminal states
     if to_population == Population.DEAD_DNC:
         from datetime import date as date_type
+
         from src.db.models import DeadReason
 
         prospect.dead_reason = DeadReason.DNC
@@ -252,9 +251,7 @@ def transition_stage(
         return True
 
     if not can_transition_stage(old_stage, to_stage):
-        raise PipelineError(
-            f"Invalid stage transition: {old_stage.value} -> {to_stage.value}"
-        )
+        raise PipelineError(f"Invalid stage transition: {old_stage.value} -> {to_stage.value}")
 
     # Update the prospect
     prospect.engagement_stage = to_stage

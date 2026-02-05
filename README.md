@@ -2,9 +2,9 @@
 
 **ADHD-Optimized Sales Pipeline Management**
 
-> The ADHD brain goes dead in a silent room clicking buttons.  
-> It comes alive when there's another intelligence in the room  
-> saying "okay, what about this one?"  
+> The ADHD brain goes dead in a silent room clicking buttons.
+> It comes alive when there's another intelligence in the room
+> saying "okay, what about this one?"
 > That's not a feature. That's the entire reason this software exists.
 
 ---

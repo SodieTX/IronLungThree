@@ -12,6 +12,7 @@ pytest-cov>=4.1.0         # Coverage reporting
 mypy>=1.8.0               # Static type checking
 black>=24.0.0             # Code formatting
 isort>=5.13.0             # Import sorting
+pre-commit>=3.6.0         # Git hooks (run: pre-commit install)
 
 # Development utilities
 pip-tools>=7.3.0          # Dependency management

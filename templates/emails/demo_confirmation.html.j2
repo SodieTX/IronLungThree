@@ -1,5 +1,5 @@
 {# IronLung 3 - Demo Confirmation Email Template
-   
+
    Variables available:
    - prospect.first_name
    - prospect.last_name
@@ -19,13 +19,13 @@
 </head>
 <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
     <p>Hi {{ prospect.first_name }},</p>
-    
-    <p>Great talking with you! I'm looking forward to our demo on 
+
+    <p>Great talking with you! I'm looking forward to our demo on
     <strong>{{ demo.date.strftime('%A, %B %d at %I:%M %p') }}</strong>.</p>
-    
+
     <p>Here's the meeting link:<br>
     <a href="{{ demo.teams_link }}">{{ demo.teams_link }}</a></p>
-    
+
     <p>I'll plan to show you:
     <ul>
         <li>How our platform handles loan origination</li>
@@ -33,10 +33,10 @@
         <li>Reporting and analytics</li>
     </ul>
     </p>
-    
-    <p>If anything changes or you have questions beforehand, feel free to 
+
+    <p>If anything changes or you have questions beforehand, feel free to
     reach me at {{ sender.phone }}.</p>
-    
+
     <p>Talk soon,<br>
     {{ sender.name }}<br>
     {{ sender.title }}</p>

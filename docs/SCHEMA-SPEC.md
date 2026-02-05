@@ -2,8 +2,8 @@
 
 **Database Schema with Complete Field Definitions**
 
-Version: 3.3  
-Date: February 5, 2026  
+Version: 3.3
+Date: February 5, 2026
 Parent: Architecture Overview
 
 ---
@@ -62,52 +62,52 @@ CREATE INDEX idx_companies_domain ON companies(domain);
 CREATE TABLE prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER NOT NULL,
-    
+
     -- BASIC FIELDS (PREVIOUSLY MISSING)
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     title TEXT,
-    
+
     -- POPULATION & STAGE
     population TEXT NOT NULL DEFAULT 'broken',
     engagement_stage TEXT,  -- Only populated if population='engaged'
-    
+
     -- SCHEDULING
     follow_up_date DATETIME,  -- DATETIME not DATE - supports hour-specific scheduling
     last_contact_date DATE,
     parked_month TEXT,  -- YYYY-MM format
-    
+
     -- SCORING
     attempt_count INTEGER DEFAULT 0,
     prospect_score INTEGER DEFAULT 0,
     data_confidence INTEGER DEFAULT 0,
-    
+
     -- CONTACT PREFERENCES (NEW)
     preferred_contact_method TEXT,  -- 'email', 'phone', 'either'
-    
+
     -- SOURCE & TRACKING
     source TEXT,
     referred_by_prospect_id INTEGER,  -- NEW - referral tracking
-    
+
     -- DEAD/LOST TRACKING
     dead_reason TEXT,
     dead_date DATE,
     lost_reason TEXT,
     lost_competitor TEXT,
     lost_date DATE,
-    
+
     -- CLOSED WON
     deal_value DECIMAL(10,2),
     close_date DATE,
     close_notes TEXT,
-    
+
     -- NOTES & CUSTOM
     notes TEXT,  -- Static context only (e.g., "CEO, hates cold calls")
     custom_fields TEXT,  -- JSON blob for user-defined variables
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (company_id) REFERENCES companies(id),
     FOREIGN KEY (referred_by_prospect_id) REFERENCES prospects(id)
 );
@@ -145,7 +145,7 @@ CREATE TABLE contact_methods (
     is_suspect BOOLEAN DEFAULT 0,  -- Flagged as potentially wrong
     source TEXT,  -- Where it was found
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
 );
 
@@ -164,32 +164,32 @@ CREATE TABLE activities (
     prospect_id INTEGER NOT NULL,
     activity_type TEXT NOT NULL,
     outcome TEXT,
-    
+
     -- CALL TRACKING (NEW)
     call_duration_seconds INTEGER,  -- Duration in seconds
-    
+
     -- POPULATION & STAGE TRACKING
     population_before TEXT,
     population_after TEXT,
     stage_before TEXT,
     stage_after TEXT,
-    
+
     -- EMAIL TRACKING
     email_subject TEXT,
     email_body TEXT,
-    
+
     -- FOLLOW-UP
     follow_up_set DATETIME,
-    
+
     -- ATTEMPT TRACKING
     attempt_type TEXT,  -- 'personal' or 'automated'
-    
+
     -- NOTES
     notes TEXT,  -- The running log - the enduring memory
-    
+
     created_by TEXT,  -- 'user' or 'system'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
 );
 
@@ -214,7 +214,7 @@ CREATE TABLE data_freshness (
     verification_method TEXT,
     confidence INTEGER,
     previous_value TEXT,
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
 );
 
@@ -255,7 +255,7 @@ CREATE TABLE research_queue (
     attempts INTEGER DEFAULT 0,
     last_attempt_date TIMESTAMP,
     findings TEXT,  -- JSON
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
 );
 
@@ -275,7 +275,7 @@ CREATE TABLE intel_nuggets (
     content TEXT NOT NULL,
     source_activity_id INTEGER,
     extracted_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE,
     FOREIGN KEY (source_activity_id) REFERENCES activities(id)
 );
@@ -294,7 +294,7 @@ CREATE TABLE prospect_tags (
     prospect_id INTEGER NOT NULL,
     tag_name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE,
     UNIQUE(prospect_id, tag_name)
 );

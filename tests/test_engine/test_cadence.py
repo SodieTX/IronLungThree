@@ -15,14 +15,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from src.db.database import Database
-from src.db.models import (
-    Activity,
-    ActivityType,
-    Company,
-    EngagementStage,
-    Population,
-    Prospect,
-)
+from src.db.models import Activity, ActivityType, Company, EngagementStage, Population, Prospect
 from src.engine.cadence import (
     DEFAULT_INTERVALS,
     add_business_days,
@@ -34,7 +27,6 @@ from src.engine.cadence import (
     get_todays_queue,
     set_follow_up,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -549,3 +541,77 @@ class TestQueueBuilder:
 
         assert len(queue) == 20
         assert elapsed < 0.5
+
+
+# =============================================================================
+# TODAY'S FOLLOW-UPS (Step 2.4)
+# =============================================================================
+
+
+class TestTodaysFollowUps:
+    """Test today's follow-up retrieval."""
+
+    def test_returns_todays_follow_ups(self, db, tx_company_id):
+        """Prospects with follow-up today are returned."""
+        today = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        pid = db.create_prospect(
+            Prospect(
+                company_id=tx_company_id,
+                first_name="Today",
+                last_name="Test",
+                population=Population.ENGAGED,
+                follow_up_date=today,
+            )
+        )
+        result = get_todays_follow_ups(db)
+        assert any(p.id == pid for p in result)
+
+    def test_excludes_future_follow_ups(self, db, tx_company_id):
+        """Future follow-ups are not returned."""
+        future = datetime.now() + timedelta(days=5)
+        pid = db.create_prospect(
+            Prospect(
+                company_id=tx_company_id,
+                first_name="Future",
+                last_name="Test",
+                population=Population.ENGAGED,
+                follow_up_date=future,
+            )
+        )
+        result = get_todays_follow_ups(db)
+        assert not any(p.id == pid for p in result)
+
+    def test_excludes_dnc(self, db, tx_company_id):
+        """DNC prospects excluded even with today's follow-up."""
+        today = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        pid = db.create_prospect(
+            Prospect(
+                company_id=tx_company_id,
+                first_name="DNC",
+                last_name="Test",
+                population=Population.DEAD_DNC,
+                follow_up_date=today,
+            )
+        )
+        result = get_todays_follow_ups(db)
+        assert not any(p.id == pid for p in result)
+
+    def test_excludes_closed_won(self, db, tx_company_id):
+        """Closed Won prospects excluded even with today's follow-up."""
+        today = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        pid = db.create_prospect(
+            Prospect(
+                company_id=tx_company_id,
+                first_name="Won",
+                last_name="Test",
+                population=Population.CLOSED_WON,
+                follow_up_date=today,
+            )
+        )
+        result = get_todays_follow_ups(db)
+        assert not any(p.id == pid for p in result)
+
+    def test_empty_db_returns_empty(self, db):
+        """Empty database returns empty list."""
+        result = get_todays_follow_ups(db)
+        assert result == []

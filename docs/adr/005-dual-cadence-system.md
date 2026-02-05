@@ -29,7 +29,7 @@ We will implement **two completely separate cadence systems**:
 
 1. **Different control**: For unengaged prospects, Jeff decides cadence. For engaged prospects, the prospect already told us when.
 
-2. **Different goals**: 
+2. **Different goals**:
    - Unengaged: Stay on radar without being a stalker
    - Engaged: Honor commitments exactly (build trust)
 

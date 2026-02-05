@@ -90,7 +90,7 @@ Test individual functions/classes in isolation:
 class TestNameSimilarity:
     def test_exact_match(self):
         assert IntakeFunnel.name_similarity("John", "John") >= 0.9
-    
+
     def test_different_names(self):
         assert IntakeFunnel.name_similarity("John", "Jane") < 0.5
 ```

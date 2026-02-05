@@ -343,12 +343,12 @@ from typing import Optional, Dict, Any
 
 class IntegrationBase(ABC):
     """Abstract base class for all external integrations."""
-    
+
     @abstractmethod
     def health_check(self) -> bool:
         """Return True if integration is healthy and available."""
         pass
-    
+
     @abstractmethod
     def is_configured(self) -> bool:
         """Return True if required credentials are present."""
@@ -380,7 +380,7 @@ def can_transition(from_pop: Population, to_pop: Population) -> bool:
     """Check if a population transition is valid."""
     raise NotImplementedError("Phase 2")
 
-def transition_prospect(prospect_id: int, to_population: Population, 
+def transition_prospect(prospect_id: int, to_population: Population,
                        reason: str = None) -> bool:
     """Execute a population transition with full logging."""
     raise NotImplementedError("Phase 2")
@@ -403,12 +403,12 @@ import tkinter as tk
 
 class TabBase(ABC):
     """Abstract base class for all tabs."""
-    
+
     @abstractmethod
     def refresh(self) -> None:
         """Reload tab data from database."""
         pass
-    
+
     @abstractmethod
     def on_activate(self) -> None:
         """Called when this tab becomes visible."""

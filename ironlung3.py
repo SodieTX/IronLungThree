@@ -72,10 +72,15 @@ def main() -> int:
         logger.error(f"Failed to initialize database: {e}")
         return 1
 
-    # Check for backup (Phase 1, Step 1.11 - will be wired when backup is implemented)
-    # from src.db.backup import BackupManager
-    # backup = BackupManager()
-    # backup.create_backup(label="startup")
+    # Startup backup (Phase 1, Step 1.11)
+    from src.db.backup import BackupManager
+
+    try:
+        backup = BackupManager()
+        backup.create_backup(label="startup")
+        logger.info("Startup backup created")
+    except Exception as e:
+        logger.warning(f"Startup backup failed (non-fatal): {e}")
 
     if args.nightly:
         logger.info("Running nightly cycle...")

@@ -88,16 +88,14 @@ def get_cockpit_data(db: Database) -> CockpitData:
     demos_today = demos_row["cnt"] if demos_row else 0
 
     # Queue total and remaining
-    queue_total = engaged_today + overdue_count + pop_counts.get(
-        Population.UNENGAGED, 0
-    )
+    queue_total = engaged_today + overdue_count + pop_counts.get(Population.UNENGAGED, 0)
 
     # Cards already worked today
     from datetime import datetime
 
-    start_of_day = datetime(
-        int(today[:4]), int(today[5:7]), int(today[8:10]), 0, 0, 0
-    ).strftime("%Y-%m-%d %H:%M:%S")
+    start_of_day = datetime(int(today[:4]), int(today[5:7]), int(today[8:10]), 0, 0, 0).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
     worked_row = conn.execute(
         """SELECT COUNT(DISTINCT prospect_id) as cnt
            FROM activities

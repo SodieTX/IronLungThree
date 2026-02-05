@@ -2,8 +2,8 @@
 
 **External Integrations**
 
-Version: 1.0  
-Date: February 5, 2026  
+Version: 1.0
+Date: February 5, 2026
 Parent: Blueprint v3.2
 
 ---
@@ -34,11 +34,11 @@ class IntegrationBase(ABC):
     @abstractmethod
     def health_check(self) -> bool:
         """Return True if integration is healthy."""
-    
+
     @abstractmethod
     def is_configured(self) -> bool:
         """Return True if required credentials are present."""
-    
+
     def with_retry(self, func: Callable, max_retries: int = 3) -> Any:
         """Execute function with exponential backoff retry."""
 ```

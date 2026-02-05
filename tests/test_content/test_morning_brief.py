@@ -15,12 +15,7 @@ import pytest
 
 from src.content.morning_brief import MorningBrief, generate_morning_brief
 from src.db.database import Database
-from src.db.models import (
-    Company,
-    EngagementStage,
-    Population,
-    Prospect,
-)
+from src.db.models import Company, EngagementStage, Population, Prospect
 
 
 @pytest.fixture
