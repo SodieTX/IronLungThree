@@ -16,7 +16,7 @@ from typing import Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
-from src.db.models import Population, Prospect
+from src.db.models import Activity, ActivityType, Population, Prospect
 
 logger = get_logger(__name__)
 
@@ -73,6 +73,7 @@ def calculate_next_contact(
     """Calculate next contact date for unengaged prospect.
 
     Uses configurable intervals based on attempt number.
+    Uses the minimum days from the interval (conservative scheduling).
 
     Args:
         prospect_id: Prospect ID (for future personalization)
@@ -82,7 +83,8 @@ def calculate_next_contact(
     Returns:
         Suggested next contact date
     """
-    raise NotImplementedError("Phase 2, Step 2.3")
+    interval = get_interval(attempt_number)
+    return add_business_days(last_attempt_date, interval.min_days)
 
 
 def add_business_days(start_date: date, business_days: int) -> date:
@@ -132,7 +134,34 @@ def set_follow_up(
     Returns:
         True if updated
     """
-    raise NotImplementedError("Phase 2, Step 2.3")
+    prospect = db.get_prospect(prospect_id)
+    if prospect is None:
+        return False
+
+    prospect.follow_up_date = follow_up_date
+    db.update_prospect(prospect)
+
+    # Log the follow-up activity
+    activity = Activity(
+        prospect_id=prospect_id,
+        activity_type=ActivityType.REMINDER,
+        follow_up_set=follow_up_date,
+        notes=reason or f"Follow-up set for {follow_up_date}",
+        created_by="user",
+    )
+    db.create_activity(activity)
+
+    logger.info(
+        "Follow-up set",
+        extra={
+            "context": {
+                "prospect_id": prospect_id,
+                "follow_up_date": str(follow_up_date),
+            }
+        },
+    )
+
+    return True
 
 
 def get_orphaned_engaged(db: Database) -> list[int]:
@@ -144,7 +173,14 @@ def get_orphaned_engaged(db: Database) -> list[int]:
     Returns:
         List of prospect IDs
     """
-    raise NotImplementedError("Phase 2, Step 2.3")
+    conn = db._get_connection()
+    rows = conn.execute(
+        """SELECT id FROM prospects
+           WHERE population = ?
+           AND (follow_up_date IS NULL OR follow_up_date = '')""",
+        (Population.ENGAGED.value,),
+    ).fetchall()
+    return [row["id"] for row in rows]
 
 
 def get_overdue(db: Database) -> list[Prospect]:
@@ -153,9 +189,49 @@ def get_overdue(db: Database) -> list[Prospect]:
     These are missed follow-ups that need attention.
 
     Returns:
-        List of overdue prospects
+        List of overdue prospects, most overdue first
     """
-    raise NotImplementedError("Phase 2, Step 2.3")
+    conn = db._get_connection()
+    today = date.today().isoformat()
+    rows = conn.execute(
+        """SELECT * FROM prospects
+           WHERE follow_up_date IS NOT NULL
+           AND follow_up_date < ?
+           AND population NOT IN (?, ?, ?)
+           ORDER BY follow_up_date ASC""",
+        (
+            today,
+            Population.DEAD_DNC.value,
+            Population.CLOSED_WON.value,
+            Population.LOST.value,
+        ),
+    ).fetchall()
+    return [db._row_to_prospect(row) for row in rows]
+
+
+def get_todays_follow_ups(db: Database) -> list[Prospect]:
+    """Get prospects with follow_up_date = today.
+
+    Returns:
+        List of prospects due for follow-up today
+    """
+    conn = db._get_connection()
+    today = date.today().isoformat()
+    # Match follow-ups where the date portion matches today
+    rows = conn.execute(
+        """SELECT * FROM prospects
+           WHERE follow_up_date IS NOT NULL
+           AND DATE(follow_up_date) = DATE(?)
+           AND population NOT IN (?, ?, ?)
+           ORDER BY follow_up_date ASC""",
+        (
+            today,
+            Population.DEAD_DNC.value,
+            Population.CLOSED_WON.value,
+            Population.LOST.value,
+        ),
+    ).fetchall()
+    return [db._row_to_prospect(row) for row in rows]
 
 
 def get_todays_queue(db: Database) -> list[Prospect]:
@@ -174,4 +250,71 @@ def get_todays_queue(db: Database) -> list[Prospect]:
     Returns:
         Ordered list of prospects for today
     """
-    raise NotImplementedError("Phase 2, Step 2.4")
+    conn = db._get_connection()
+    today = date.today().isoformat()
+
+    # Stage priority for sorting (higher = more urgent)
+    stage_priority = {
+        "closing": 4,
+        "post_demo": 3,
+        "demo_scheduled": 2,
+        "pre_demo": 1,
+    }
+
+    # Timezone call order (East Coast first in morning)
+    tz_priority = {
+        "eastern": 1,
+        "central": 2,
+        "mountain": 3,
+        "pacific": 4,
+        "alaska": 5,
+        "hawaii": 6,
+    }
+
+    queue: list[tuple[int, int, int, Prospect]] = []
+
+    # Group 1: Engaged follow-ups due today or overdue
+    engaged_rows = conn.execute(
+        """SELECT p.*, c.timezone as company_tz FROM prospects p
+           LEFT JOIN companies c ON p.company_id = c.id
+           WHERE p.population = ?
+           AND p.follow_up_date IS NOT NULL
+           AND DATE(p.follow_up_date) <= DATE(?)
+           ORDER BY p.follow_up_date ASC""",
+        (Population.ENGAGED.value, today),
+    ).fetchall()
+
+    for row in engaged_rows:
+        prospect = db._row_to_prospect(row)
+        stage = row["engagement_stage"] or "pre_demo"
+        s_priority = stage_priority.get(stage, 0)
+        tz = row["company_tz"] or "central"
+        t_priority = tz_priority.get(tz, 2)
+        # Sort key: group=0 (engaged first), then stage priority (desc), then tz
+        queue.append((0, -s_priority, t_priority, prospect))
+
+    # Group 2: Unengaged prospects due for contact
+    unengaged_rows = conn.execute(
+        """SELECT p.*, c.timezone as company_tz FROM prospects p
+           LEFT JOIN companies c ON p.company_id = c.id
+           WHERE p.population = ?
+           AND (
+               p.follow_up_date IS NULL
+               OR DATE(p.follow_up_date) <= DATE(?)
+           )
+           ORDER BY p.prospect_score DESC""",
+        (Population.UNENGAGED.value, today),
+    ).fetchall()
+
+    for row in unengaged_rows:
+        prospect = db._row_to_prospect(row)
+        tz = row["company_tz"] or "central"
+        t_priority = tz_priority.get(tz, 2)
+        score = -(prospect.prospect_score or 0)  # Negate for ascending sort
+        # Sort key: group=1 (after engaged), then score (desc), then tz
+        queue.append((1, score, t_priority, prospect))
+
+    # Sort by the tuple keys
+    queue.sort(key=lambda x: (x[0], x[1], x[2]))
+
+    return [item[3] for item in queue]

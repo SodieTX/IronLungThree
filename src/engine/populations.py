@@ -122,7 +122,94 @@ def transition_prospect(
         DNCViolationError: If trying to transition FROM DNC
         PipelineError: If transition is invalid
     """
-    raise NotImplementedError("Phase 2, Step 2.1")
+    from src.db.models import Activity, ActivityType
+
+    prospect = db.get_prospect(prospect_id)
+    if prospect is None:
+        raise PipelineError(f"Prospect {prospect_id} not found")
+
+    from_pop = prospect.population
+
+    # DNC is terminal - absolute, no exceptions
+    if from_pop == Population.DEAD_DNC:
+        raise DNCViolationError(
+            f"Cannot transition prospect {prospect_id} from DNC - DNC is permanent"
+        )
+
+    # No-op if already there
+    if from_pop == to_population and to_stage is None:
+        return True
+
+    # Validate transition
+    if not can_transition(from_pop, to_population):
+        raise PipelineError(
+            f"Invalid transition: {from_pop.value} -> {to_population.value}"
+        )
+
+    # Build update fields
+    old_stage = prospect.engagement_stage
+    new_stage = to_stage
+
+    # If moving to ENGAGED and no stage specified, default to PRE_DEMO
+    if to_population == Population.ENGAGED and new_stage is None:
+        new_stage = EngagementStage.PRE_DEMO
+
+    # If leaving ENGAGED, clear engagement stage
+    if to_population != Population.ENGAGED:
+        new_stage = None
+
+    # Update the prospect
+    prospect.population = to_population
+    prospect.engagement_stage = new_stage
+
+    # Set metadata for terminal states
+    if to_population == Population.DEAD_DNC:
+        from datetime import date as date_type
+        from src.db.models import DeadReason
+
+        prospect.dead_reason = DeadReason.DNC
+        prospect.dead_date = date_type.today()
+
+    if to_population == Population.PARKED and prospect.parked_month is None:
+        # Default to next month if not set
+        from datetime import date as date_type
+
+        today = date_type.today()
+        month = today.month + 1
+        year = today.year
+        if month > 12:
+            month = 1
+            year += 1
+        prospect.parked_month = f"{year}-{month:02d}"
+
+    db.update_prospect(prospect)
+
+    # Log the transition activity
+    activity = Activity(
+        prospect_id=prospect_id,
+        activity_type=ActivityType.STATUS_CHANGE,
+        population_before=from_pop,
+        population_after=to_population,
+        stage_before=old_stage,
+        stage_after=new_stage,
+        notes=reason or f"Transition: {from_pop.value} -> {to_population.value}",
+        created_by="user",
+    )
+    db.create_activity(activity)
+
+    logger.info(
+        "Prospect transitioned",
+        extra={
+            "context": {
+                "prospect_id": prospect_id,
+                "from": from_pop.value,
+                "to": to_population.value,
+                "reason": reason,
+            }
+        },
+    )
+
+    return True
 
 
 def transition_stage(
@@ -145,7 +232,59 @@ def transition_stage(
     Raises:
         PipelineError: If prospect not engaged or invalid transition
     """
-    raise NotImplementedError("Phase 2, Step 2.1")
+    from src.db.models import Activity, ActivityType
+
+    prospect = db.get_prospect(prospect_id)
+    if prospect is None:
+        raise PipelineError(f"Prospect {prospect_id} not found")
+
+    if prospect.population != Population.ENGAGED:
+        raise PipelineError(
+            f"Prospect {prospect_id} is not engaged (population={prospect.population.value})"
+        )
+
+    old_stage = prospect.engagement_stage
+    if old_stage is None:
+        old_stage = EngagementStage.PRE_DEMO
+
+    # No-op if already at target stage
+    if old_stage == to_stage:
+        return True
+
+    if not can_transition_stage(old_stage, to_stage):
+        raise PipelineError(
+            f"Invalid stage transition: {old_stage.value} -> {to_stage.value}"
+        )
+
+    # Update the prospect
+    prospect.engagement_stage = to_stage
+    db.update_prospect(prospect)
+
+    # Log the stage transition
+    activity = Activity(
+        prospect_id=prospect_id,
+        activity_type=ActivityType.STATUS_CHANGE,
+        population_before=Population.ENGAGED,
+        population_after=Population.ENGAGED,
+        stage_before=old_stage,
+        stage_after=to_stage,
+        notes=reason or f"Stage: {old_stage.value} -> {to_stage.value}",
+        created_by="user",
+    )
+    db.create_activity(activity)
+
+    logger.info(
+        "Engagement stage changed",
+        extra={
+            "context": {
+                "prospect_id": prospect_id,
+                "from_stage": old_stage.value,
+                "to_stage": to_stage.value,
+            }
+        },
+    )
+
+    return True
 
 
 def get_available_transitions(population: Population) -> list[Population]:
