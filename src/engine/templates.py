@@ -50,7 +50,7 @@ _env: object | None = None
 def _get_env():
     """Get or create the Jinja2 environment."""
     if jinja2 is None:
-        raise RuntimeError("jinja2 package not installed. " "Install with: pip install jinja2")
+        raise RuntimeError("jinja2 package not installed. Install with: pip install jinja2")
     global _env
     if _env is None:
         _env = jinja2.Environment(
