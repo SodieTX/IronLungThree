@@ -1,11 +1,21 @@
 """Tests for Outlook integration.
 
 Tests use mocked MSAL and requests to avoid real API calls.
+Skipped automatically when msal package is not installed.
 """
 
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+try:
+    import msal  # noqa: F401
+
+    HAS_MSAL = True
+except ImportError:
+    HAS_MSAL = False
+
+pytestmark = pytest.mark.skipif(not HAS_MSAL, reason="msal not installed")
 
 from src.core.config import Config, reset_config
 from src.core.exceptions import OutlookError
@@ -238,7 +248,9 @@ class TestOutlookSendEmail:
 
             payload = mock_requests.request.call_args.kwargs["json"]
             assert len(payload["message"]["ccRecipients"]) == 1
-            assert payload["message"]["ccRecipients"][0]["emailAddress"]["address"] == "cc@example.com"
+            assert (
+                payload["message"]["ccRecipients"][0]["emailAddress"]["address"] == "cc@example.com"
+            )
             assert len(payload["message"]["bccRecipients"]) == 1
 
     def test_send_email_failure_raises(self, mock_msal):
@@ -402,9 +414,7 @@ class TestOutlookGetInbox:
                 {
                     "id": "msg-1",
                     "from": {"emailAddress": {"address": "sender@test.com"}},
-                    "toRecipients": [
-                        {"emailAddress": {"address": "jeff@nexys.com"}}
-                    ],
+                    "toRecipients": [{"emailAddress": {"address": "jeff@nexys.com"}}],
                     "subject": "Re: Intro",
                     "bodyPreview": "Sounds great, let's talk",
                     "body": {"content": "<p>Sounds great, let's talk</p>"},
@@ -527,8 +537,7 @@ class TestClassifyReply:
         """OOO classification takes priority when both signals present."""
         client = OutlookClient.__new__(OutlookClient)
         msg = self._make_msg(
-            subject="Automatic Reply",
-            body="I'm interested but I am currently out of the office"
+            subject="Automatic Reply", body="I'm interested but I am currently out of the office"
         )
         assert client.classify_reply(msg) == ReplyClassification.OOO
 
@@ -626,9 +635,7 @@ class TestOutlookCalendar:
                     "start": {"dateTime": "2026-02-10T14:00:00"},
                     "end": {"dateTime": "2026-02-10T14:30:00"},
                     "location": {"displayName": "Teams"},
-                    "attendees": [
-                        {"emailAddress": {"address": "p@acme.com"}}
-                    ],
+                    "attendees": [{"emailAddress": {"address": "p@acme.com"}}],
                     "onlineMeeting": {"joinUrl": "https://teams.link/123"},
                     "body": {"content": "Demo description"},
                 }

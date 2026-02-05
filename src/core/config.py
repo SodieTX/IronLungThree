@@ -36,6 +36,8 @@ class Config:
         claude_api_key: Anthropic Claude API key (Phase 4)
         activecampaign_api_key: ActiveCampaign API key (Phase 5)
         activecampaign_url: ActiveCampaign API URL (Phase 5)
+        google_api_key: Google Custom Search API key (Phase 5)
+        google_cx: Google Custom Search Engine ID (Phase 5)
         debug: Enable debug mode
         dry_run: Log but don't send emails
     """
@@ -59,6 +61,10 @@ class Config:
     # Phase 5: ActiveCampaign
     activecampaign_api_key: Optional[str] = None
     activecampaign_url: Optional[str] = None
+
+    # Phase 5: Google Custom Search
+    google_api_key: Optional[str] = None
+    google_cx: Optional[str] = None
 
     # Feature flags
     debug: bool = False
@@ -180,6 +186,8 @@ def load_config(env_file: Optional[Path] = None) -> Config:
         claude_api_key=_get_str("CLAUDE_API_KEY", env_vars),
         activecampaign_api_key=_get_str("ACTIVECAMPAIGN_API_KEY", env_vars),
         activecampaign_url=_get_str("ACTIVECAMPAIGN_URL", env_vars),
+        google_api_key=_get_str("GOOGLE_API_KEY", env_vars),
+        google_cx=_get_str("GOOGLE_CX", env_vars),
         debug=_get_bool("IRONLUNG_DEBUG", False, env_vars),
         dry_run=_get_bool("IRONLUNG_DRY_RUN", False, env_vars),
     )
@@ -233,18 +241,52 @@ def validate_config(config: Config) -> list[str]:
         )
 
     # Check Outlook credentials (Phase 3 - all or none)
-    outlook_creds = [
-        config.outlook_client_id,
-        config.outlook_client_secret,
-        config.outlook_tenant_id,
-    ]
-    if any(outlook_creds) and not all(outlook_creds):
+    outlook_creds = {
+        "OUTLOOK_CLIENT_ID": config.outlook_client_id,
+        "OUTLOOK_CLIENT_SECRET": config.outlook_client_secret,
+        "OUTLOOK_TENANT_ID": config.outlook_tenant_id,
+    }
+    present = [k for k, v in outlook_creds.items() if v]
+    missing = [k for k, v in outlook_creds.items() if not v]
+
+    if present and missing:
         issues.append(
-            "Outlook credentials incomplete - need CLIENT_ID, CLIENT_SECRET, and TENANT_ID"
+            f"CRITICAL: Partial Outlook credentials will cause auth failures. "
+            f"Have: {', '.join(present)}. Missing: {', '.join(missing)}. "
+            f"Provide all four Outlook variables or remove them entirely."
         )
-    if all(outlook_creds) and not config.outlook_user_email:
+    if all(outlook_creds.values()) and not config.outlook_user_email:
         issues.append(
-            "Outlook credentials present but OUTLOOK_USER_EMAIL is missing"
+            "CRITICAL: Outlook credentials present but OUTLOOK_USER_EMAIL is missing. "
+            "Email send/receive will fail."
+        )
+
+    # Check ActiveCampaign credentials (Phase 5 - all or none)
+    ac_creds = {
+        "ACTIVECAMPAIGN_API_KEY": config.activecampaign_api_key,
+        "ACTIVECAMPAIGN_URL": config.activecampaign_url,
+    }
+    ac_present = [k for k, v in ac_creds.items() if v]
+    ac_missing = [k for k, v in ac_creds.items() if not v]
+
+    if ac_present and ac_missing:
+        issues.append(
+            f"Partial ActiveCampaign credentials. "
+            f"Have: {', '.join(ac_present)}. Missing: {', '.join(ac_missing)}."
+        )
+
+    # Check Google Search credentials (Phase 5 - all or none)
+    google_creds = {
+        "GOOGLE_API_KEY": config.google_api_key,
+        "GOOGLE_CX": config.google_cx,
+    }
+    google_present = [k for k, v in google_creds.items() if v]
+    google_missing = [k for k, v in google_creds.items() if not v]
+
+    if google_present and google_missing:
+        issues.append(
+            f"Partial Google Search credentials. "
+            f"Have: {', '.join(google_present)}. Missing: {', '.join(google_missing)}."
         )
 
     return issues

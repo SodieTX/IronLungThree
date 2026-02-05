@@ -311,9 +311,7 @@ class TestGenerateMonthlySummary:
 
     def test_custom_commission_rate(self, populated_db):
         """Custom commission rate is applied."""
-        summary = generate_monthly_summary(
-            populated_db, "2026-02", commission_rate=Decimal("0.10")
-        )
+        summary = generate_monthly_summary(populated_db, "2026-02", commission_rate=Decimal("0.10"))
         expected = Decimal("80000") * Decimal("0.10")
         assert summary.commission_earned == expected
         assert summary.commission_rate == Decimal("0.10")

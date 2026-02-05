@@ -84,15 +84,15 @@ class TestBuildPrompt:
 
     def test_prompt_includes_instruction(self, gen, prospect, company):
         """Prompt includes Jeff's instruction."""
-        prompt = gen._build_prompt(
-            prospect, company, "mention fix-and-flip", None
-        )
+        prompt = gen._build_prompt(prospect, company, "mention fix-and-flip", None)
         assert "mention fix-and-flip" in prompt
 
     def test_prompt_includes_context(self, gen, prospect, company):
         """Prompt includes additional context."""
         prompt = gen._build_prompt(
-            prospect, company, "follow up",
+            prospect,
+            company,
+            "follow up",
             context="They asked about API integrations in last demo",
         )
         assert "API integrations" in prompt
@@ -144,9 +144,7 @@ class TestStyleGuidance:
             log_path=tmp_path / "logs",
         )
         monkeypatch.setattr("src.engine.email_gen.get_config", lambda: config)
-        gen = EmailGenerator(
-            style_examples=[f"Example {i}" for i in range(10)]
-        )
+        gen = EmailGenerator(style_examples=[f"Example {i}" for i in range(10)])
         guidance = gen._get_style_guidance()
         assert "Example 0" in guidance
         assert "Example 2" in guidance

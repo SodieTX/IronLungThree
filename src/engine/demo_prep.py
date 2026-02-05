@@ -117,11 +117,7 @@ def generate_prep(db: Database, prospect_id: int) -> DemoPrep:
             break
 
     # Extract key facts from nuggets
-    key_facts = [
-        nugget.content
-        for nugget in nuggets
-        if nugget.category == IntelCategory.KEY_FACT
-    ]
+    key_facts = [nugget.content for nugget in nuggets if nugget.category == IntelCategory.KEY_FACT]
 
     # Build the prep document
     prep = DemoPrep(
@@ -169,11 +165,7 @@ def _extract_pain_points(nuggets: list[IntelNugget]) -> list[str]:
     Returns:
         List of pain point strings
     """
-    return [
-        nugget.content
-        for nugget in nuggets
-        if nugget.category == IntelCategory.PAIN_POINT
-    ]
+    return [nugget.content for nugget in nuggets if nugget.category == IntelCategory.PAIN_POINT]
 
 
 def _extract_competitors(nuggets: list[IntelNugget]) -> list[str]:

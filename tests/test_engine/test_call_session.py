@@ -36,20 +36,24 @@ def setup_call_db(memory_db):
     prospect_id = memory_db.create_prospect(prospect)
 
     # Add phone
-    memory_db.create_contact_method(ContactMethod(
-        prospect_id=prospect_id,
-        type=ContactMethodType.PHONE,
-        value="713-555-1234",
-        label="work",
-        is_verified=True,
-    ))
+    memory_db.create_contact_method(
+        ContactMethod(
+            prospect_id=prospect_id,
+            type=ContactMethodType.PHONE,
+            value="713-555-1234",
+            label="work",
+            is_verified=True,
+        )
+    )
 
     # Add activity history
-    memory_db.create_activity(Activity(
-        prospect_id=prospect_id,
-        activity_type=ActivityType.CALL,
-        notes="Left voicemail about Q1 priorities",
-    ))
+    memory_db.create_activity(
+        Activity(
+            prospect_id=prospect_id,
+            activity_type=ActivityType.CALL,
+            notes="Left voicemail about Q1 priorities",
+        )
+    )
 
     return memory_db, prospect_id, company_id
 
@@ -112,9 +116,13 @@ class TestPrepareCall:
         """Handles prospect with no phone number."""
         company = Company(name="No Phone Co", name_normalized="no phone")
         cid = memory_db.create_company(company)
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Jane", last_name="Smith",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Jane",
+                last_name="Smith",
+            )
+        )
         session = CallSession(memory_db)
         prep = session.prepare_call(pid)
         assert prep.phone_number == ""
@@ -123,10 +131,14 @@ class TestPrepareCall:
         """Handles prospect with no activity history."""
         company = Company(name="New Co", name_normalized="new")
         cid = memory_db.create_company(company)
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Bob", last_name="Jones",
-            attempt_count=0,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Bob",
+                last_name="Jones",
+                attempt_count=0,
+            )
+        )
         session = CallSession(memory_db)
         prep = session.prepare_call(pid)
         assert prep.last_contact_summary == "No prior contact"
@@ -141,17 +153,31 @@ class TestPhoneSelection:
         """Verified phone is preferred over unverified."""
         company = Company(name="Test", name_normalized="test")
         cid = memory_db.create_company(company)
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="111-111-1111", label="work", is_verified=False,
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="222-222-2222", label="cell", is_verified=True,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="111-111-1111",
+                label="work",
+                is_verified=False,
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="222-222-2222",
+                label="cell",
+                is_verified=True,
+            )
+        )
 
         session = CallSession(memory_db)
         prep = session.prepare_call(pid)
@@ -161,17 +187,31 @@ class TestPhoneSelection:
         """Cell/mobile preferred over work when both verified."""
         company = Company(name="Test", name_normalized="test")
         cid = memory_db.create_company(company)
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="111-111-1111", label="work", is_verified=True,
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="222-222-2222", label="cell", is_verified=True,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="111-111-1111",
+                label="work",
+                is_verified=True,
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="222-222-2222",
+                label="cell",
+                is_verified=True,
+            )
+        )
 
         session = CallSession(memory_db)
         prep = session.prepare_call(pid)

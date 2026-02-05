@@ -47,11 +47,14 @@ class GoogleSearchClient(IntegrationBase):
         """Initialize Google Search client.
 
         Args:
-            api_key: Google API key (optional, uses env var if not provided)
-            cx: Custom Search Engine ID
+            api_key: Google API key (optional, uses config if not provided)
+            cx: Custom Search Engine ID (optional, uses config if not provided)
         """
-        self._api_key = api_key
-        self._cx = cx
+        from src.core.config import get_config
+
+        config = get_config()
+        self._api_key = api_key or config.google_api_key
+        self._cx = cx or config.google_cx
         self._queries_today = 0
         self._query_date: Optional[date] = None
 

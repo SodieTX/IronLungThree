@@ -78,13 +78,10 @@ class EmailGenerator:
             try:
                 import anthropic
 
-                self._client = anthropic.Anthropic(
-                    api_key=self._config.claude_api_key
-                )
+                self._client = anthropic.Anthropic(api_key=self._config.claude_api_key)
             except ImportError:
                 raise ImportError(
-                    "anthropic package not installed. "
-                    "Install with: pip install anthropic"
+                    "anthropic package not installed. " "Install with: pip install anthropic"
                 )
         return self._client
 
@@ -142,15 +139,15 @@ class EmailGenerator:
         """
         client = self._get_client()
 
-        response = client.messages.create(  # type: ignore[union-attr]
+        response = client.messages.create(  # type: ignore[attr-defined]
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        text = response.content[0].text  # type: ignore[union-attr]
+        text = response.content[0].text  # type: ignore[attr-defined]
         tokens_used = (
-            response.usage.input_tokens + response.usage.output_tokens  # type: ignore[union-attr]
+            response.usage.input_tokens + response.usage.output_tokens  # type: ignore[attr-defined]
         )
 
         return self._parse_response(text, tokens_used)
@@ -169,9 +166,9 @@ class EmailGenerator:
         lines = text.strip().split("\n")
         for i, line in enumerate(lines):
             if line.startswith("SUBJECT:"):
-                subject = line[len("SUBJECT:"):].strip()
+                subject = line[len("SUBJECT:") :].strip()
             elif line.startswith("BODY:"):
-                body = "\n".join(lines[i + 1:]).strip()
+                body = "\n".join(lines[i + 1 :]).strip()
                 break
 
         return GeneratedEmail(
@@ -213,16 +210,18 @@ class EmailGenerator:
         if style_guidance:
             parts.append(f"\n{style_guidance}")
 
-        parts.extend([
-            "",
-            "Write the email in this format:",
-            "SUBJECT: <subject line>",
-            "BODY:",
-            "<email body>",
-            "",
-            "Keep it concise, professional, and conversational. "
-            "No fluff or buzzwords. Sound like a real person.",
-        ])
+        parts.extend(
+            [
+                "",
+                "Write the email in this format:",
+                "SUBJECT: <subject line>",
+                "BODY:",
+                "<email body>",
+                "",
+                "Keep it concise, professional, and conversational. "
+                "No fluff or buzzwords. Sound like a real person.",
+            ]
+        )
 
         return "\n".join(parts)
 

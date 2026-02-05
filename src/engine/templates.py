@@ -17,7 +17,10 @@ Usage:
 from pathlib import Path
 from typing import Any
 
-import jinja2
+try:
+    import jinja2
+except ImportError:
+    jinja2 = None  # type: ignore[assignment]
 
 from src.core.logging import get_logger
 from src.db.models import Company, Prospect
@@ -41,11 +44,13 @@ _DEFAULT_SUBJECTS: dict[str, str] = {
 }
 
 # Jinja2 environment (created once, reused)
-_env: jinja2.Environment | None = None
+_env: object | None = None
 
 
-def _get_env() -> jinja2.Environment:
+def _get_env():
     """Get or create the Jinja2 environment."""
+    if jinja2 is None:
+        raise RuntimeError("jinja2 package not installed. " "Install with: pip install jinja2")
     global _env
     if _env is None:
         _env = jinja2.Environment(
@@ -74,6 +79,7 @@ def render_template(
         Rendered HTML email body
 
     Raises:
+        RuntimeError: If jinja2 is not installed
         jinja2.TemplateNotFound: If template does not exist
     """
     env = _get_env()
@@ -85,7 +91,7 @@ def render_template(
         **kwargs,
     }
 
-    rendered = template.render(**context)
+    rendered: str = template.render(**context)
     logger.info(
         f"Rendered template: {template_name}",
         extra={"context": {"template": template_name}},
@@ -122,7 +128,11 @@ def get_template_subject(
         "first_name": prospect.first_name or "",
         "last_name": prospect.last_name or "",
         "company_name": company.name if company else "",
-        "sender_company": sender.get("company", "") if isinstance(sender, dict) else getattr(sender, "company", ""),
+        "sender_company": (
+            sender.get("company", "")
+            if isinstance(sender, dict)
+            else getattr(sender, "company", "")
+        ),
         "demo_date": "",
     }
 
@@ -146,10 +156,7 @@ def list_templates() -> list[str]:
     if not TEMPLATE_DIR.exists():
         return []
 
-    templates = [
-        p.name.replace(".html.j2", "")
-        for p in TEMPLATE_DIR.glob("*.html.j2")
-    ]
+    templates = [p.name.replace(".html.j2", "") for p in TEMPLATE_DIR.glob("*.html.j2")]
     return sorted(templates)
 
 

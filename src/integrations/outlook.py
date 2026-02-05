@@ -27,8 +27,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
-import msal
-import requests
+try:
+    import msal
+except ImportError:
+    msal = None  # type: ignore[assignment]
+
+import requests  # type: ignore[import-untyped]
 
 from src.core.config import get_config
 from src.core.exceptions import OutlookError
@@ -116,7 +120,7 @@ class OutlookClient(IntegrationBase):
         self._config = get_config()
         self._access_token: Optional[str] = None
         self._token_expiry: Optional[datetime] = None
-        self._msal_app: Optional[msal.ConfidentialClientApplication] = None
+        self._msal_app: Optional[object] = None
 
     @property
     def _user_email(self) -> str:
@@ -144,7 +148,7 @@ class OutlookClient(IntegrationBase):
         try:
             self._ensure_authenticated()
             response = self._graph_request("GET", f"/users/{self._user_email}")
-            return response.status_code == 200
+            return bool(response.status_code == 200)
         except (OutlookError, requests.RequestException):
             return False
 
@@ -181,9 +185,7 @@ class OutlookClient(IntegrationBase):
             if "access_token" in result:
                 self._access_token = result["access_token"]
                 expires_in = result.get("expires_in", 3600)
-                self._token_expiry = datetime.now(timezone.utc) + timedelta(
-                    seconds=expires_in
-                )
+                self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
                 self._save_token_cache()
                 logger.info(
                     "Outlook authentication successful",
@@ -275,9 +277,7 @@ class OutlookClient(IntegrationBase):
                 )
                 return f"sent-{datetime.now(timezone.utc).isoformat()}"
             else:
-                raise OutlookError(
-                    f"Send failed ({response.status_code}): {response.text}"
-                )
+                raise OutlookError(f"Send failed ({response.status_code}): {response.text}")
 
         except OutlookError:
             raise
@@ -327,7 +327,7 @@ class OutlookClient(IntegrationBase):
 
             if response.status_code == 201:
                 data = response.json()
-                draft_id = data.get("id", "")
+                draft_id: str = data.get("id", "")
                 logger.info(
                     f"Draft created for {to}",
                     extra={"context": {"to": to, "subject": subject}},
@@ -365,10 +365,7 @@ class OutlookClient(IntegrationBase):
         params: dict[str, str] = {
             "$top": str(limit),
             "$orderby": "receivedDateTime desc",
-            "$select": (
-                "id,from,toRecipients,subject,body,bodyPreview,"
-                "receivedDateTime,isRead"
-            ),
+            "$select": ("id,from,toRecipients,subject,body,bodyPreview," "receivedDateTime,isRead"),
         }
 
         if since:
@@ -383,9 +380,7 @@ class OutlookClient(IntegrationBase):
             )
 
             if response.status_code != 200:
-                raise OutlookError(
-                    f"Inbox read failed ({response.status_code}): {response.text}"
-                )
+                raise OutlookError(f"Inbox read failed ({response.status_code}): {response.text}")
 
             data = response.json()
             messages: list[EmailMessage] = []
@@ -603,7 +598,7 @@ class OutlookClient(IntegrationBase):
 
             if response.status_code == 201:
                 data = response.json()
-                event_id = data.get("id", "")
+                event_id: str = data.get("id", "")
                 logger.info(
                     f"Calendar event created: {subject}",
                     extra={
@@ -648,10 +643,7 @@ class OutlookClient(IntegrationBase):
             "startDateTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "endDateTime": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "$orderby": "start/dateTime",
-            "$select": (
-                "id,subject,start,end,location,attendees,"
-                "onlineMeeting,body"
-            ),
+            "$select": ("id,subject,start,end,location,attendees," "onlineMeeting,body"),
         }
 
         try:
@@ -670,12 +662,8 @@ class OutlookClient(IntegrationBase):
             events: list[CalendarEvent] = []
 
             for evt in data.get("value", []):
-                evt_start = datetime.fromisoformat(
-                    evt["start"]["dateTime"].replace("Z", "+00:00")
-                )
-                evt_end = datetime.fromisoformat(
-                    evt["end"]["dateTime"].replace("Z", "+00:00")
-                )
+                evt_start = datetime.fromisoformat(evt["start"]["dateTime"].replace("Z", "+00:00"))
+                evt_end = datetime.fromisoformat(evt["end"]["dateTime"].replace("Z", "+00:00"))
 
                 attendee_emails = [
                     a["emailAddress"]["address"]
@@ -756,9 +744,7 @@ class OutlookClient(IntegrationBase):
                 logger.info(f"Event updated: {event_id}")
                 return True
             else:
-                raise OutlookError(
-                    f"Event update failed ({response.status_code}): {response.text}"
-                )
+                raise OutlookError(f"Event update failed ({response.status_code}): {response.text}")
         except OutlookError:
             raise
         except Exception as e:
@@ -799,8 +785,10 @@ class OutlookClient(IntegrationBase):
     # Internal helpers
     # -------------------------------------------------------------------------
 
-    def _get_msal_app(self) -> msal.ConfidentialClientApplication:
+    def _get_msal_app(self):
         """Get or create the MSAL application instance."""
+        if msal is None:
+            raise OutlookError("msal package not installed. " "Install with: pip install msal")
         if self._msal_app is None:
             cache = msal.SerializableTokenCache()
             if self._token_cache_path.exists():
@@ -810,8 +798,7 @@ class OutlookClient(IntegrationBase):
                 client_id=self._config.outlook_client_id,
                 client_credential=self._config.outlook_client_secret,
                 authority=(
-                    f"https://login.microsoftonline.com/"
-                    f"{self._config.outlook_tenant_id}"
+                    f"https://login.microsoftonline.com/" f"{self._config.outlook_tenant_id}"
                 ),
                 token_cache=cache,
             )
