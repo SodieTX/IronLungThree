@@ -9,6 +9,7 @@ Usage:
     gen = EmailGenerator()
     draft = gen.generate_email(
         prospect=p,
+        company=c,
         instruction="Short intro, mention we work with fix-and-flip shops"
     )
 """
@@ -47,7 +48,7 @@ class EmailGenerator:
     contextually appropriate emails.
     """
 
-    def __init__(self, style_examples: Optional[list[str]] = None):
+    def __init__(self, style_examples: Optional[list[str]] = None) -> None:
         """Initialize email generator.
 
         Args:
@@ -55,10 +56,37 @@ class EmailGenerator:
         """
         self._config = get_config()
         self._style_examples = style_examples or []
+        self._client: Optional[object] = None
 
     def is_available(self) -> bool:
         """Check if Claude API is available."""
         return bool(self._config.claude_api_key)
+
+    def _get_client(self) -> object:
+        """Get or create the Anthropic client.
+
+        Returns:
+            Anthropic client instance
+
+        Raises:
+            ImportError: If anthropic package not installed
+            RuntimeError: If API key not configured
+        """
+        if self._client is None:
+            if not self._config.claude_api_key:
+                raise RuntimeError("CLAUDE_API_KEY not configured")
+            try:
+                import anthropic
+
+                self._client = anthropic.Anthropic(
+                    api_key=self._config.claude_api_key
+                )
+            except ImportError:
+                raise ImportError(
+                    "anthropic package not installed. "
+                    "Install with: pip install anthropic"
+                )
+        return self._client
 
     def generate_email(
         self,
@@ -76,9 +104,10 @@ class EmailGenerator:
             context: Additional context (recent notes, etc.)
 
         Returns:
-            Generated email
+            Generated email with subject, body, and token usage
         """
-        raise NotImplementedError("Phase 3, Step 3.6")
+        prompt = self._build_prompt(prospect, company, instruction, context)
+        return self._call_api(prompt)
 
     def refine_email(
         self,
@@ -94,7 +123,62 @@ class EmailGenerator:
         Returns:
             Refined email
         """
-        raise NotImplementedError("Phase 3, Step 3.6")
+        prompt = (
+            f"Here is an email draft I wrote:\n\n{draft}\n\n"
+            f"Please revise it with this feedback: {feedback}\n\n"
+            "Return the revised email in the same format:\n"
+            "SUBJECT: ...\nBODY:\n..."
+        )
+        return self._call_api(prompt)
+
+    def _call_api(self, prompt: str) -> GeneratedEmail:
+        """Call Claude API and parse the response.
+
+        Args:
+            prompt: Full prompt to send
+
+        Returns:
+            Parsed GeneratedEmail
+        """
+        client = self._get_client()
+
+        response = client.messages.create(  # type: ignore[union-attr]
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        text = response.content[0].text  # type: ignore[union-attr]
+        tokens_used = (
+            response.usage.input_tokens + response.usage.output_tokens  # type: ignore[union-attr]
+        )
+
+        return self._parse_response(text, tokens_used)
+
+    def _parse_response(self, text: str, tokens_used: int) -> GeneratedEmail:
+        """Parse Claude's response into subject and body.
+
+        Expected format:
+            SUBJECT: <subject line>
+            BODY:
+            <email body>
+        """
+        subject = ""
+        body = text
+
+        lines = text.strip().split("\n")
+        for i, line in enumerate(lines):
+            if line.startswith("SUBJECT:"):
+                subject = line[len("SUBJECT:"):].strip()
+            elif line.startswith("BODY:"):
+                body = "\n".join(lines[i + 1:]).strip()
+                break
+
+        return GeneratedEmail(
+            subject=subject,
+            body=body,
+            tokens_used=tokens_used,
+        )
 
     def _build_prompt(
         self,
@@ -103,9 +187,52 @@ class EmailGenerator:
         instruction: str,
         context: Optional[str],
     ) -> str:
-        """Build prompt for Claude."""
-        raise NotImplementedError("Phase 3, Step 3.6")
+        """Build prompt for Claude with prospect context."""
+        style_guidance = self._get_style_guidance()
+
+        parts = [
+            "You are an email ghostwriter for a sales professional "
+            "in the private lending / loan origination software space.",
+            "",
+            f"Prospect: {prospect.first_name} {prospect.last_name}",
+            f"Title: {prospect.title or 'Unknown'}",
+            f"Company: {company.name}",
+        ]
+
+        if company.state:
+            parts.append(f"Location: {company.state}")
+        if company.size:
+            parts.append(f"Company Size: {company.size}")
+
+        parts.append("")
+        parts.append(f"Instruction: {instruction}")
+
+        if context:
+            parts.append(f"\nAdditional context:\n{context}")
+
+        if style_guidance:
+            parts.append(f"\n{style_guidance}")
+
+        parts.extend([
+            "",
+            "Write the email in this format:",
+            "SUBJECT: <subject line>",
+            "BODY:",
+            "<email body>",
+            "",
+            "Keep it concise, professional, and conversational. "
+            "No fluff or buzzwords. Sound like a real person.",
+        ])
+
+        return "\n".join(parts)
 
     def _get_style_guidance(self) -> str:
-        """Generate style guidance from examples."""
-        raise NotImplementedError("Phase 3, Step 3.6")
+        """Generate style guidance from Jeff's example emails."""
+        if not self._style_examples:
+            return ""
+
+        examples_text = "\n---\n".join(self._style_examples[:3])
+        return (
+            f"Here are example emails that show the writer's voice "
+            f"and style. Match this tone:\n\n{examples_text}"
+        )
