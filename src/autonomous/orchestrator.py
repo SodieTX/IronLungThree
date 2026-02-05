@@ -11,6 +11,7 @@ CRITICAL: Starts with GUI AND runs headless via Task Scheduler.
 
 from datetime import timedelta
 from typing import Callable, Optional
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

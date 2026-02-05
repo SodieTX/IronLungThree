@@ -1,8 +1,9 @@
 """Import preview dialog."""
 
 import tkinter as tk
-from src.db.intake import ImportPreview
+
 from src.core.logging import get_logger
+from src.db.intake import ImportPreview
 
 logger = get_logger(__name__)
 

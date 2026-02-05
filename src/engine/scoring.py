@@ -20,14 +20,14 @@ Usage:
 from dataclasses import dataclass
 from typing import Optional
 
+from src.core.logging import get_logger
 from src.db.models import (
-    Prospect,
     Company,
     ContactMethod,
-    Population,
     EngagementStage,
+    Population,
+    Prospect,
 )
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

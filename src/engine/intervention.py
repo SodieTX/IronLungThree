@@ -17,9 +17,9 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Optional
 
+from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import Prospect
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,7 @@
 """Glanceable dashboard - One-second progress read."""
 
 from dataclasses import dataclass
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

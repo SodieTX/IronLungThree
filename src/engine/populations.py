@@ -11,12 +11,12 @@ Usage:
         transition_prospect(prospect_id, Population.ENGAGED, "Showed interest")
 """
 
-from typing import Set, Tuple, Optional
+from typing import Optional, Set, Tuple
 
-from src.db.models import Population, EngagementStage
-from src.db.database import Database
 from src.core.exceptions import DNCViolationError, PipelineError
 from src.core.logging import get_logger
+from src.db.database import Database
+from src.db.models import EngagementStage, Population
 
 logger = get_logger(__name__)
 

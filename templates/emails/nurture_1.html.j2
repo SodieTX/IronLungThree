@@ -1,0 +1,36 @@
+{# IronLung 3 - Nurture Sequence Email 1 (Warm Touch)
+   
+   First email in the 3-part nurture sequence.
+   Sent 7 days after last contact with no response.
+   
+   Variables available:
+   - prospect.first_name
+   - prospect.last_name
+   - company.name
+   - company.loan_types
+   - sender.name
+   - sender.title
+#}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+    <p>Hi {{ prospect.first_name }},</p>
+    
+    <p>I wanted to share a quick thought that might be relevant to 
+    {{ company.name }}.</p>
+    
+    <p>We've been seeing a lot of lenders struggle with manual processes 
+    eating up their team's time. The ones who've automated their borrower 
+    intake are seeing 30-40% faster close times.</p>
+    
+    <p>If that's something you're thinking about, I'd be happy to show you 
+    what's working for other shops in your space.</p>
+    
+    <p>No pressure either way — just wanted to plant the seed.</p>
+    
+    <p>{{ sender.name }}</p>
+</body>
+</html>

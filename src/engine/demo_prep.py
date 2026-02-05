@@ -16,9 +16,9 @@ Usage:
 from dataclasses import dataclass
 from typing import Optional
 
-from src.db.database import Database
-from src.db.models import Prospect, Company, IntelNugget
 from src.core.logging import get_logger
+from src.db.database import Database
+from src.db.models import Company, IntelNugget, Prospect
 
 logger = get_logger(__name__)
 

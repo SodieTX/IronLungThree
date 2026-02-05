@@ -65,7 +65,11 @@ token.json
 *.sqlite3
 
 # IronLung data directories
-data/backups/
+# Note: .gitkeep files ARE tracked to preserve directory structure
+data/backups/*
+!data/backups/.gitkeep
+data/style_examples/*
+!data/style_examples/.gitkeep
 ~/.ironlung/
 
 # Logs

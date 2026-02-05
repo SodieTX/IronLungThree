@@ -1,8 +1,9 @@
 """Edit prospect dialog."""
 
 import tkinter as tk
-from src.db.models import Prospect
+
 from src.core.logging import get_logger
+from src.db.models import Prospect
 
 logger = get_logger(__name__)
 

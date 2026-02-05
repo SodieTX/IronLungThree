@@ -8,8 +8,9 @@ When Jeff is having a bad day:
 """
 
 from dataclasses import dataclass
-from src.db.database import Database
+
 from src.core.logging import get_logger
+from src.db.database import Database
 
 logger = get_logger(__name__)
 

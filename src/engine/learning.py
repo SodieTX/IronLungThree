@@ -16,12 +16,12 @@ Usage:
     suggestions = engine.get_suggestions_for_prospect(prospect_id)
 """
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Optional
-from collections import Counter
 
-from src.db.database import Database
 from src.core.logging import get_logger
+from src.db.database import Database
 
 logger = get_logger(__name__)
 

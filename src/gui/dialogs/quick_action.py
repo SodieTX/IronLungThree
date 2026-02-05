@@ -1,6 +1,7 @@
 """Quick action dialog for fast status changes."""
 
 import tkinter as tk
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

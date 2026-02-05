@@ -17,12 +17,12 @@ Usage:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Any, Optional
 
-from src.db.database import Database
-from src.db.models import Prospect, Company
 from src.core.config import get_config
 from src.core.logging import get_logger
+from src.db.database import Database
+from src.db.models import Company, Prospect
 
 logger = get_logger(__name__)
 

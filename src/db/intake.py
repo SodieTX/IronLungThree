@@ -16,20 +16,20 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 from difflib import SequenceMatcher
+from typing import Optional
 
+from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import (
-    Population,
-    Prospect,
     ContactMethod,
     ContactMethodType,
     ImportSource,
-    normalize_company_name,
+    Population,
+    Prospect,
     assess_completeness,
+    normalize_company_name,
 )
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

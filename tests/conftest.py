@@ -9,31 +9,33 @@ Fixtures:
     - mock_outlook: Mocked Outlook client
 """
 
-import pytest
-from datetime import datetime, date
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Generator
-from decimal import Decimal
+
+import pytest
+
+from src.core.config import Config
+from src.db.database import Database
 
 # Import models
 from src.db.models import (
-    Company,
-    Prospect,
     Activity,
-    ContactMethod,
-    Population,
-    EngagementStage,
     ActivityType,
+    Company,
+    ContactMethod,
     ContactMethodType,
+    EngagementStage,
+    Population,
+    Prospect,
 )
-from src.db.database import Database
-from src.core.config import Config
 
 
 @pytest.fixture
 def temp_db(tmp_path: Path) -> Generator[Database, None, None]:
     """Create a temporary database for testing.
-    
+
     Yields:
         Database connected to temp file, cleaned up after test
     """
@@ -47,7 +49,7 @@ def temp_db(tmp_path: Path) -> Generator[Database, None, None]:
 @pytest.fixture
 def memory_db() -> Generator[Database, None, None]:
     """Create an in-memory database for fast tests.
-    
+
     Yields:
         Database using :memory:, no cleanup needed
     """
@@ -157,7 +159,7 @@ def populated_db(
     sample_activity: Activity,
 ) -> Database:
     """Database pre-populated with sample data.
-    
+
     Contains:
         - 1 company
         - 2 prospects (1 unengaged, 1 engaged)
@@ -175,9 +177,5 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests requiring external services"
-    )
-    config.addinivalue_line(
-        "markers", "database: marks tests requiring database"
-    )
+    config.addinivalue_line("markers", "integration: marks tests requiring external services")
+    config.addinivalue_line("markers", "database: marks tests requiring database")

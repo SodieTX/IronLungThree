@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from src.integrations.base import IntegrationBase, RateLimiter
 from src.core.config import get_config
 from src.core.logging import get_logger
+from src.integrations.base import IntegrationBase, RateLimiter
 
 logger = get_logger(__name__)
 

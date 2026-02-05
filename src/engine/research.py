@@ -20,13 +20,13 @@ Usage:
 """
 
 from dataclasses import dataclass
-from typing import Optional, List
 from enum import Enum
+from typing import List, Optional
 
+from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import ResearchStatus
 from src.integrations.google_search import GoogleSearchClient
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

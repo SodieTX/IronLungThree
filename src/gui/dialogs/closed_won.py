@@ -1,8 +1,9 @@
 """Closed won dialog for deal capture."""
 
 import tkinter as tk
-from typing import Optional
 from decimal import Decimal
+from typing import Optional
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

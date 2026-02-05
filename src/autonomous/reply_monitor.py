@@ -13,9 +13,10 @@ NO auto-promotion: interested replies are flagged for Jeff's review.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
+from src.core.logging import get_logger
 from src.db.database import Database
 from src.integrations.outlook import OutlookClient, ReplyClassification
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

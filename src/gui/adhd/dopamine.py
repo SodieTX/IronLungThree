@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

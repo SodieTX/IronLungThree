@@ -6,9 +6,9 @@ All tabs inherit from TabBase and implement:
     - on_deactivate(): Called when leaving tab
 """
 
+import tkinter as tk
 from abc import ABC, abstractmethod
 from typing import Optional
-import tkinter as tk
 
 
 class TabBase(ABC):

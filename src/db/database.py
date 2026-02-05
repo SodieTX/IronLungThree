@@ -17,24 +17,24 @@ Usage:
 """
 
 import sqlite3
+from datetime import date, datetime
 from pathlib import Path
-from typing import Optional, Any
-from datetime import datetime, date
+from typing import Any, Optional
 
 from src.core.config import get_config
 from src.core.exceptions import DatabaseError
 from src.core.logging import get_logger
 from src.db.models import (
-    Population,
-    EngagementStage,
-    Company,
-    Prospect,
-    ContactMethod,
     Activity,
+    Company,
+    ContactMethod,
+    EngagementStage,
     ImportSource,
-    ResearchTask,
     IntelNugget,
+    Population,
+    Prospect,
     ProspectTag,
+    ResearchTask,
     normalize_company_name,
     timezone_from_state,
 )

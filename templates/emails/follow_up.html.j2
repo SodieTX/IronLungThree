@@ -1,0 +1,32 @@
+{# IronLung 3 - Follow-up Email Template
+   
+   Variables available:
+   - prospect.first_name
+   - prospect.last_name
+   - prospect.title
+   - company.name
+   - last_contact_date
+   - attempt_count
+   - sender.name
+   - sender.title
+#}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+    <p>Hi {{ prospect.first_name }},</p>
+    
+    <p>I wanted to follow up on my previous message. I know things get busy, 
+    so I wanted to make sure this didn't slip through the cracks.</p>
+    
+    <p>I'd love to show you how we're helping lenders like {{ company.name }} 
+    save time on their origination process.</p>
+    
+    <p>Do you have a few minutes this week?</p>
+    
+    <p>Best,<br>
+    {{ sender.name }}</p>
+</body>
+</html>

@@ -14,23 +14,23 @@ Modules:
 """
 
 from src.db.models import (
-    Population,
-    EngagementStage,
-    ActivityType,
-    ActivityOutcome,
-    LostReason,
-    ContactMethodType,
-    AttemptType,
-    ResearchStatus,
-    IntelCategory,
-    Company,
-    Prospect,
-    ContactMethod,
     Activity,
+    ActivityOutcome,
+    ActivityType,
+    AttemptType,
+    Company,
+    ContactMethod,
+    ContactMethodType,
+    EngagementStage,
     ImportSource,
-    ResearchTask,
+    IntelCategory,
     IntelNugget,
+    LostReason,
+    Population,
+    Prospect,
     ProspectTag,
+    ResearchStatus,
+    ResearchTask,
 )
 
 __all__ = [

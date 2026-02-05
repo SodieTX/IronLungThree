@@ -6,6 +6,7 @@ generate emails in his voice.
 
 from pathlib import Path
 from typing import Optional
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)

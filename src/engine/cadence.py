@@ -10,13 +10,13 @@ Usage:
     next_date = calculate_next_contact(prospect_id, last_attempt, attempt_num)
 """
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
-from dataclasses import dataclass
 
-from src.db.database import Database
-from src.db.models import Prospect, Population
 from src.core.logging import get_logger
+from src.db.database import Database
+from src.db.models import Population, Prospect
 
 logger = get_logger(__name__)
 

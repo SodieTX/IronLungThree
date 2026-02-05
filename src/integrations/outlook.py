@@ -18,12 +18,12 @@ Usage:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from enum import Enum
+from typing import Optional
 
-from src.integrations.base import IntegrationBase
 from src.core.config import get_config
 from src.core.logging import get_logger
+from src.integrations.base import IntegrationBase
 
 logger = get_logger(__name__)
 

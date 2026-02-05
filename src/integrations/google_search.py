@@ -11,11 +11,11 @@ Usage:
 """
 
 from dataclasses import dataclass
-from typing import Optional
 from datetime import date
+from typing import Optional
 
-from src.integrations.base import IntegrationBase
 from src.core.logging import get_logger
+from src.integrations.base import IntegrationBase
 
 logger = get_logger(__name__)
 

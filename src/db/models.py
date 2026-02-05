@@ -11,10 +11,10 @@ This module defines:
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Any
+from typing import Any, Optional
 
 # =============================================================================
 # ENUMERATIONS

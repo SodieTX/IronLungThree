@@ -2,9 +2,10 @@
 
 from datetime import datetime
 from typing import Optional
+
+from src.core.logging import get_logger
 from src.db.database import Database
 from src.integrations.outlook import OutlookClient
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

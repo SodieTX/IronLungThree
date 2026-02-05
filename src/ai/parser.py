@@ -10,11 +10,11 @@ Understands:
 """
 
 from dataclasses import dataclass
-from datetime import datetime, date
-from typing import Optional, Any
+from datetime import date, datetime
+from typing import Any, Optional
 
-from src.db.models import Population, EngagementStage
 from src.core.logging import get_logger
+from src.db.models import EngagementStage, Population
 
 logger = get_logger(__name__)
 

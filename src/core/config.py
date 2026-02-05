@@ -13,10 +13,10 @@ Usage:
             print(f"Config issue: {issue}")
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
-import os
 
 from src.core.exceptions import ConfigurationError
 
@@ -139,6 +139,13 @@ def _get_bool(key: str, default: bool, env_vars: dict[str, str]) -> bool:
     return value.lower() in ("true", "1", "yes", "on")
 
 
+# Default paths (defined once, used by both Config and load_config)
+DEFAULT_DB_PATH = Path.home() / ".ironlung" / "ironlung3.db"
+DEFAULT_LOG_PATH = Path.home() / ".ironlung" / "logs"
+DEFAULT_BACKUP_PATH = Path.home() / ".ironlung" / "backups"
+DEFAULT_CLOUD_SYNC_PATH = Path.home() / "OneDrive" / "IronLung"
+
+
 def load_config(env_file: Optional[Path] = None) -> Config:
     """Load configuration from environment and .env file.
 
@@ -159,11 +166,11 @@ def load_config(env_file: Optional[Path] = None) -> Config:
     env_vars = load_env_file(env_file)
 
     return Config(
-        db_path=_get_path("IRONLUNG_DB_PATH", Config.db_path, env_vars),
-        log_path=_get_path("IRONLUNG_LOG_PATH", Config.log_path, env_vars),
-        backup_path=_get_path("IRONLUNG_BACKUP_PATH", Config.backup_path, env_vars),
+        db_path=_get_path("IRONLUNG_DB_PATH", DEFAULT_DB_PATH, env_vars),
+        log_path=_get_path("IRONLUNG_LOG_PATH", DEFAULT_LOG_PATH, env_vars),
+        backup_path=_get_path("IRONLUNG_BACKUP_PATH", DEFAULT_BACKUP_PATH, env_vars),
         cloud_sync_path=_get_optional_path(
-            "IRONLUNG_CLOUD_SYNC_PATH", Config.cloud_sync_path, env_vars
+            "IRONLUNG_CLOUD_SYNC_PATH", DEFAULT_CLOUD_SYNC_PATH, env_vars
         ),
         outlook_client_id=_get_str("OUTLOOK_CLIENT_ID", env_vars),
         outlook_client_secret=_get_str("OUTLOOK_CLIENT_SECRET", env_vars),

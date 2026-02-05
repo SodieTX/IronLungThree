@@ -8,9 +8,9 @@ All integrations inherit from IntegrationBase, which provides:
     - Logging patterns
 """
 
-from abc import ABC, abstractmethod
-from typing import Callable, Any, Optional, TypeVar
 import time
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Optional, TypeVar
 
 from src.core.exceptions import IntegrationError
 from src.core.logging import get_logger

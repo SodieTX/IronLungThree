@@ -1,0 +1,42 @@
+{# IronLung 3 - Demo Invite Email Template
+   
+   This template is used when scheduling a demo via voice command.
+   
+   Variables available:
+   - prospect.first_name
+   - prospect.last_name
+   - prospect.title
+   - company.name
+   - demo.date (datetime)
+   - demo.duration_minutes
+   - demo.teams_link
+   - sender.name
+   - sender.title
+   - sender.company
+   - sender.phone
+#}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+    <p>Hi {{ prospect.first_name }},</p>
+    
+    <p>I'm sending over a calendar invite for our demo on 
+    <strong>{{ demo.date.strftime('%A, %B %d at %I:%M %p') }}</strong> 
+    ({{ demo.duration_minutes }} minutes).</p>
+    
+    <p>Join link:<br>
+    <a href="{{ demo.teams_link }}">{{ demo.teams_link }}</a></p>
+    
+    <p>I'll give you a quick tour of the platform and we can discuss how it 
+    might fit {{ company.name }}'s workflow.</p>
+    
+    <p>Looking forward to it!</p>
+    
+    <p>{{ sender.name }}<br>
+    {{ sender.title }}, {{ sender.company }}<br>
+    {{ sender.phone }}</p>
+</body>
+</html>

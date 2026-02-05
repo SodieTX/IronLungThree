@@ -1,18 +1,20 @@
 """Tests for configuration management."""
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from src.core.config import Config, load_config, validate_config
 
 
 class TestConfig:
     """Test Config dataclass."""
-    
+
     def test_config_default_values(self):
         """Config has sensible defaults."""
         config = Config()
         assert config.debug is False
-    
+
     def test_config_with_custom_paths(self, tmp_path: Path):
         """Config accepts custom paths."""
         config = Config(
@@ -24,7 +26,7 @@ class TestConfig:
 
 class TestLoadConfig:
     """Test config loading."""
-    
+
     @pytest.mark.skip(reason="Stub not implemented")
     def test_load_from_env_file(self, tmp_path: Path):
         """Should load from .env file."""
@@ -36,7 +38,7 @@ class TestLoadConfig:
 
 class TestValidateConfig:
     """Test config validation."""
-    
+
     @pytest.mark.skip(reason="Stub not implemented")
     def test_validate_missing_path(self, mock_config: Config):
         """Should raise for non-existent paths."""

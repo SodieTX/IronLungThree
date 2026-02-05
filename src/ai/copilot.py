@@ -6,8 +6,8 @@ Deeper conversational mode for questions like:
     - "I've got a demo tomorrow, what should I know?"
 """
 
-from src.db.database import Database
 from src.core.logging import get_logger
+from src.db.database import Database
 
 logger = get_logger(__name__)
 

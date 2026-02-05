@@ -1,8 +1,9 @@
 """Command palette - Quick fuzzy search with Ctrl+K."""
 
+import tkinter as tk
 from dataclasses import dataclass
 from typing import Callable
-import tkinter as tk
+
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
