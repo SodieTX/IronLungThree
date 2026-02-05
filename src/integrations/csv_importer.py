@@ -66,6 +66,24 @@ PRESETS = {
 }
 
 
+_STATE_NAMES = {
+    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR",
+    "CALIFORNIA": "CA", "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE",
+    "FLORIDA": "FL", "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID",
+    "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS",
+    "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS",
+    "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM", "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK",
+    "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI",
+    "SOUTH CAROLINA": "SC", "SOUTH DAKOTA": "SD", "TENNESSEE": "TN",
+    "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT", "VIRGINIA": "VA",
+    "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
+    "DISTRICT OF COLUMBIA": "DC",
+}
+
+
 class CSVImporter:
     """CSV and XLSX file importer.
 
@@ -171,8 +189,10 @@ class CSVImporter:
 
         if suffix in (".xlsx", ".xls"):
             headers, all_rows = self._parse_xlsx(path)
-        else:
+        elif suffix == ".csv":
             headers, all_rows, _ = self._parse_csv(path)
+        else:
+            raise ImportError_(f"Unsupported file type: {suffix}")
 
         # If preset specified and no mapping, build mapping from preset
         if preset and preset in PRESETS and not mapping:
@@ -185,8 +205,11 @@ class CSVImporter:
                         mapping[field] = headers_lower[col_name.lower()]
                         break
 
-        # Build header index
-        header_idx = {h: i for i, h in enumerate(headers)}
+        # Build header index (first occurrence wins for duplicate headers)
+        header_idx: dict[str, int] = {}
+        for i, h in enumerate(headers):
+            if h not in header_idx:
+                header_idx[h] = i
 
         records: list[ImportRecord] = []
         for row in all_rows:
@@ -225,7 +248,7 @@ class CSVImporter:
                 elif field == "title":
                     record.title = value
                 elif field == "state":
-                    record.state = value.upper().strip()[:2]
+                    record.state = self.normalize_state(value)
                 elif field == "source":
                     record.source = value
                 elif field == "notes":
@@ -275,7 +298,12 @@ class CSVImporter:
                     headers = [str(h).strip() for h in rows[0]]
                     data_rows = []
                     for row in rows[1:]:
-                        data_rows.append([str(cell).strip() if cell else "" for cell in row])
+                        cells = [str(cell).strip() if cell else "" for cell in row]
+                        # Filter empty rows at the source so total_rows
+                        # and apply_mapping counts stay consistent.
+                        if all(not c for c in cells):
+                            continue
+                        data_rows.append(cells)
 
                     return headers, data_rows, encoding
 
@@ -315,7 +343,10 @@ class CSVImporter:
 
             data_rows = []
             for row in rows_iter:
-                data_rows.append([str(cell).strip() if cell is not None else "" for cell in row])
+                cells = [str(cell).strip() if cell is not None else "" for cell in row]
+                if all(not c for c in cells):
+                    continue
+                data_rows.append(cells)
 
             wb.close()
             return headers, data_rows
@@ -358,3 +389,16 @@ class CSVImporter:
         "JOHN@ABC.COM" -> "john@abc.com"
         """
         return email.lower().strip()
+
+    @staticmethod
+    def normalize_state(value: str) -> str:
+        """Normalize state to 2-letter code.
+
+        Handles full state names ("Texas" -> "TX") and already-abbreviated
+        codes ("TX" -> "TX").  Unknown values are uppercased and truncated
+        to 2 characters as a fallback.
+        """
+        cleaned = value.upper().strip()
+        if len(cleaned) <= 2:
+            return cleaned
+        return _STATE_NAMES.get(cleaned, cleaned[:2])

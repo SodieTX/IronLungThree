@@ -55,8 +55,8 @@ class TestBOM:
 class TestDuplicateHeaders:
     """What happens when two columns share a name."""
 
-    def test_duplicate_header_uses_last_column(self, tmp_path: Path):
-        """With duplicate headers, the LAST column wins in header_idx."""
+    def test_duplicate_header_uses_first_column(self, tmp_path: Path):
+        """With duplicate headers, the FIRST column wins in header_idx."""
         csv_file = tmp_path / "dup.csv"
         # Two "Name" columns -- first has the real name, second is empty
         csv_file.write_text("Name,Email,Name\nJohn,j@test.com,\n")
@@ -64,13 +64,9 @@ class TestDuplicateHeaders:
         importer = CSVImporter()
         mapping = {"first_name": "Name", "email": "Email"}
         records = importer.apply_mapping(csv_file, mapping)
-        # The second "Name" column (index 2) is empty, so first_name will be
-        # empty and the record gets dropped by the "at least a name" filter.
-        # This is arguably a bug -- the user probably wanted column 0.
-        # Document the current behavior so it doesn't silently change.
-        assert len(records) == 0, (
-            "Duplicate-header shadowing changed -- review whether first or last column wins"
-        )
+        # First "Name" column (index 0) has "John" and wins.
+        assert len(records) == 1
+        assert records[0].first_name == "John"
 
 
 # =========================================================================
@@ -273,9 +269,8 @@ class TestPartialRows:
 class TestTotalRowsConsistency:
     """parse_file.total_rows vs apply_mapping record count."""
 
-    def test_total_rows_counts_empty_rows(self, tmp_path: Path):
-        """parse_file total_rows includes empty rows; apply_mapping doesn't.
-        Document this divergence so it's a conscious decision."""
+    def test_total_rows_excludes_empty_rows(self, tmp_path: Path):
+        """parse_file total_rows and apply_mapping both exclude empties."""
         csv_file = tmp_path / "mixed.csv"
         csv_file.write_text("Name,Email\nJohn,j@t.com\n,,\nJane,jane@t.com\n")
 
@@ -284,9 +279,8 @@ class TestTotalRowsConsistency:
         mapping = {"first_name": "Name", "email": "Email"}
         records = importer.apply_mapping(csv_file, mapping)
 
-        # total_rows counts ALL data rows (including the empty one)
-        assert result.total_rows == 3
-        # apply_mapping only returns valid records
+        # Empty rows are filtered at the parse level -- counts are consistent.
+        assert result.total_rows == 2
         assert len(records) == 2
 
 
@@ -356,17 +350,15 @@ class TestStateEdgeCases:
         # works for California but NOT for most states.
         assert records[0].state == "CA"
 
-    def test_state_texas_becomes_TE(self, tmp_path: Path):
-        """'texas' becomes 'TE' not 'TX' -- this is a silent data corruption."""
+    def test_state_texas_becomes_TX(self, tmp_path: Path):
+        """'texas' is resolved to 'TX' via state name lookup."""
         csv_file = tmp_path / "state.csv"
         csv_file.write_text("Name,State\nJohn,texas\n")
 
         importer = CSVImporter()
         mapping = {"first_name": "Name", "state": "State"}
         records = importer.apply_mapping(csv_file, mapping)
-        # The current code just truncates -- it does NOT do state name lookup.
-        # "texas".upper()[:2] == "TE" which is wrong. TX is the correct code.
-        assert records[0].state == "TE"
+        assert records[0].state == "TX"
 
     def test_single_char_state(self, tmp_path: Path):
         """A single character state like 'T' survives truncation."""
@@ -479,7 +471,7 @@ class TestLargerFiles:
 
 
 class TestExtensionConsistency:
-    """parse_file rejects .txt but apply_mapping treats it as CSV."""
+    """Both parse_file and apply_mapping reject unsupported extensions."""
 
     def test_parse_file_rejects_txt(self, tmp_path: Path):
         """parse_file raises on .txt extension."""
@@ -492,17 +484,17 @@ class TestExtensionConsistency:
         with pytest.raises(ImportError_, match="Unsupported file type"):
             importer.parse_file(txt_file)
 
-    def test_apply_mapping_accepts_txt_silently(self, tmp_path: Path):
-        """apply_mapping will happily parse a .txt file as CSV.
-        This inconsistency is documented here so it's a conscious choice."""
+    def test_apply_mapping_rejects_txt(self, tmp_path: Path):
+        """apply_mapping also raises on .txt extension."""
+        from src.core.exceptions import ImportError_
+
         txt_file = tmp_path / "data.txt"
         txt_file.write_text("Name,Email\nJohn,j@t.com\n")
 
         importer = CSVImporter()
         mapping = {"first_name": "Name", "email": "Email"}
-        # This should NOT crash -- it falls through to the else branch
-        records = importer.apply_mapping(txt_file, mapping)
-        assert len(records) == 1
+        with pytest.raises(ImportError_, match="Unsupported file type"):
+            importer.apply_mapping(txt_file, mapping)
 
 
 # =========================================================================
