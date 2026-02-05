@@ -409,7 +409,46 @@ def rescore_all(db) -> int:
 
     Called during nightly cycle.
 
+    Iterates all prospects in active populations (UNENGAGED, ENGAGED, BROKEN),
+    recalculates their prospect_score and data_confidence, and persists updates.
+
     Returns:
         Number of prospects re-scored
     """
-    raise NotImplementedError("Phase 5, Step 5.8")
+    active_populations = [
+        Population.UNENGAGED,
+        Population.ENGAGED,
+        Population.BROKEN,
+    ]
+
+    count = 0
+
+    for pop in active_populations:
+        prospects = db.get_prospects(population=pop, limit=10000)
+
+        for prospect in prospects:
+            # Fetch related data
+            company = db.get_company(prospect.company_id) if prospect.company_id else None
+            contact_methods = db.get_contact_methods(prospect.id)
+
+            if company is None:
+                # Create a minimal Company so scoring doesn't break
+                company = Company()
+
+            # Calculate new scores
+            new_score = calculate_score(prospect, company)
+            new_confidence = calculate_confidence(prospect, contact_methods)
+
+            # Update if changed
+            if prospect.prospect_score != new_score or prospect.data_confidence != new_confidence:
+                prospect.prospect_score = new_score
+                prospect.data_confidence = new_confidence
+                db.update_prospect(prospect)
+
+            count += 1
+
+    logger.info(
+        "Rescore complete",
+        extra={"context": {"rescored": count}},
+    )
+    return count
