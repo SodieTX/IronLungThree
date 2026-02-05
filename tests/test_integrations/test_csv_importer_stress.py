@@ -10,7 +10,6 @@ import pytest
 
 from src.integrations.csv_importer import CSVImporter
 
-
 # =========================================================================
 # UTF-8 BOM -- extremely common in files exported from Excel on Windows.
 # The BOM bytes (\xef\xbb\xbf) will silently corrupt the first header
@@ -30,9 +29,7 @@ class TestBOM:
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
         # The header must be clean "Name", not "\ufeffName"
-        assert result.headers[0] == "Name", (
-            f"BOM leaked into first header: {result.headers[0]!r}"
-        )
+        assert result.headers[0] == "Name", f"BOM leaked into first header: {result.headers[0]!r}"
 
     def test_utf8_bom_mapping_still_works(self, tmp_path: Path):
         """Column mapping must work even when the file has a BOM."""
@@ -302,9 +299,9 @@ class TestAlternateDelimiters:
         result = importer.parse_file(csv_file)
         # The sniffer should detect tab; if it fails, default reader
         # uses comma and this will be 1 column with tab-joined text.
-        assert len(result.headers) == 2, (
-            f"Tab-delimited file parsed as {len(result.headers)} column(s): {result.headers}"
-        )
+        assert (
+            len(result.headers) == 2
+        ), f"Tab-delimited file parsed as {len(result.headers)} column(s): {result.headers}"
         assert result.total_rows == 2
 
     def test_semicolon_delimited(self, tmp_path: Path):
@@ -314,9 +311,9 @@ class TestAlternateDelimiters:
 
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
-        assert len(result.headers) == 2, (
-            f"Semicolon-delimited file parsed as {len(result.headers)} column(s): {result.headers}"
-        )
+        assert (
+            len(result.headers) == 2
+        ), f"Semicolon-delimited file parsed as {len(result.headers)} column(s): {result.headers}"
 
     def test_tab_delimited_apply_mapping(self, tmp_path: Path):
         """apply_mapping should work on tab-delimited files."""
