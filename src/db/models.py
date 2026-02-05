@@ -98,6 +98,15 @@ class ActivityOutcome(str, Enum):
     REFERRAL = "referral"
 
 
+class DeadReason(str, Enum):
+    """Reason a prospect was marked dead.
+
+    Currently only DNC - permanent, absolute, no exceptions.
+    """
+
+    DNC = "dnc"
+
+
 class LostReason(str, Enum):
     """Reason a prospect was lost."""
 
@@ -353,7 +362,7 @@ class Prospect:
     preferred_contact_method: Optional[str] = None
     source: Optional[str] = None
     referred_by_prospect_id: Optional[int] = None
-    dead_reason: Optional[str] = None
+    dead_reason: Optional[DeadReason] = None
     dead_date: Optional[date] = None
     lost_reason: Optional[LostReason] = None
     lost_competitor: Optional[str] = None
@@ -537,6 +546,28 @@ class ProspectTag:
     prospect_id: int = 0
     tag_name: str = ""
     created_at: Optional[datetime] = None
+
+
+@dataclass
+class ProspectFull:
+    """Prospect with all related data for display.
+
+    Returned by get_prospect_full() — single object with everything
+    needed to render a prospect card or deep dive.
+
+    Attributes:
+        prospect: The prospect record
+        company: The prospect's company
+        contact_methods: All contact methods
+        activities: Activity history (most recent first)
+        tags: Tag names
+    """
+
+    prospect: Prospect = field(default_factory=Prospect)
+    company: Optional[Company] = None
+    contact_methods: list[ContactMethod] = field(default_factory=list)
+    activities: list[Activity] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 # =============================================================================

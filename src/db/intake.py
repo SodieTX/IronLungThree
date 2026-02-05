@@ -179,7 +179,75 @@ class IntakeFunnel:
         Returns:
             ImportPreview with categorized records
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        preview = ImportPreview(source_name=source_name, filename=filename)
+
+        for record in records:
+            result = AnalysisResult(record=record)
+
+            # Check for incomplete data (need at least first OR last name)
+            if not record.first_name and not record.last_name:
+                result.status = "incomplete"
+                preview.incomplete.append(result)
+                continue
+
+            # DNC check FIRST - before anything else
+            if self._check_dnc(record):
+                result.status = "blocked_dnc"
+                preview.blocked_dnc.append(result)
+                continue
+
+            # Pass 1: Exact email match
+            if record.email:
+                matched_id = self._check_email_match(record.email)
+                if matched_id is not None:
+                    result.status = "merge"
+                    result.matched_prospect_id = matched_id
+                    result.match_reason = "email"
+                    result.match_confidence = 1.0
+                    preview.merge_records.append(result)
+                    continue
+
+            # Pass 2: Fuzzy name + company match
+            if record.first_name and record.last_name and record.company_name:
+                fuzzy_result = self._check_fuzzy_match(
+                    record.first_name, record.last_name, record.company_name
+                )
+                if fuzzy_result is not None:
+                    matched_id, confidence = fuzzy_result
+                    result.status = "merge"
+                    result.matched_prospect_id = matched_id
+                    result.match_reason = "fuzzy_name"
+                    result.match_confidence = confidence
+                    preview.merge_records.append(result)
+                    continue
+
+            # Pass 3: Phone match -> needs manual review
+            if record.phone:
+                phone_matched_id = self._check_phone_match(record.phone)
+                if phone_matched_id is not None:
+                    result.status = "needs_review"
+                    result.matched_prospect_id = phone_matched_id
+                    result.match_reason = "phone"
+                    preview.needs_review.append(result)
+                    continue
+
+            # No match -> new record
+            result.status = "new"
+            preview.new_records.append(result)
+
+        logger.info(
+            "Import analysis complete",
+            extra={"context": {
+                "total": preview.total_records,
+                "new": len(preview.new_records),
+                "merge": len(preview.merge_records),
+                "review": len(preview.needs_review),
+                "dnc_blocked": len(preview.blocked_dnc),
+                "incomplete": len(preview.incomplete),
+            }},
+        )
+
+        return preview
 
     def commit(self, preview: ImportPreview) -> ImportResult:
         """Commit analyzed records to database.
@@ -192,21 +260,195 @@ class IntakeFunnel:
         Returns:
             ImportResult with counts
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        from src.db.models import Activity, ActivityType, Company, ResearchTask
+
+        result = ImportResult()
+
+        # Process new records
+        for analysis in preview.new_records:
+            record = analysis.record
+
+            # Find or create company
+            company_id = self._get_or_create_company(record)
+
+            # Determine population based on completeness
+            has_email = record.email is not None and record.email != ""
+            has_phone = record.phone is not None and record.phone != ""
+            population = Population.UNENGAGED if (has_email and has_phone) else Population.BROKEN
+
+            is_broken = population == Population.BROKEN
+            if is_broken:
+                result.broken_count += 1
+
+            # Create prospect
+            prospect = Prospect(
+                company_id=company_id,
+                first_name=record.first_name,
+                last_name=record.last_name,
+                title=record.title,
+                population=population,
+                source=record.source or preview.source_name,
+                notes=record.notes,
+            )
+            prospect_id = self.db.create_prospect(prospect)
+
+            # Create contact methods
+            if record.email:
+                self.db.create_contact_method(ContactMethod(
+                    prospect_id=prospect_id,
+                    type=ContactMethodType.EMAIL,
+                    value=record.email.lower(),
+                    is_primary=True,
+                    source=preview.source_name,
+                ))
+
+            if record.phone:
+                self.db.create_contact_method(ContactMethod(
+                    prospect_id=prospect_id,
+                    type=ContactMethodType.PHONE,
+                    value=record.phone,
+                    is_primary=not record.email,
+                    source=preview.source_name,
+                ))
+
+            # Log import activity
+            self.db.create_activity(Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.IMPORT,
+                notes=f"Imported from {preview.source_name or preview.filename}",
+                created_by="system",
+            ))
+
+            # Queue broken records for research
+            if is_broken:
+                self.db.create_research_task(ResearchTask(
+                    prospect_id=prospect_id,
+                    priority=0,
+                ))
+
+            result.imported_count += 1
+
+        # Process merge records
+        for analysis in preview.merge_records:
+            record = analysis.record
+            prospect_id = analysis.matched_prospect_id
+            if prospect_id is None:
+                continue
+
+            prospect = self.db.get_prospect(prospect_id)
+            if prospect is None:
+                continue
+
+            # Update fields that are empty in existing record
+            updated = False
+            if not prospect.title and record.title:
+                prospect.title = record.title
+                updated = True
+            if record.notes and not prospect.notes:
+                prospect.notes = record.notes
+                updated = True
+
+            if updated:
+                self.db.update_prospect(prospect)
+
+            # Add any new contact methods
+            existing_methods = self.db.get_contact_methods(prospect_id)
+            existing_emails = {
+                m.value.lower() for m in existing_methods
+                if m.type == ContactMethodType.EMAIL
+            }
+            existing_phones = {
+                "".join(c for c in m.value if c.isdigit())
+                for m in existing_methods if m.type == ContactMethodType.PHONE
+            }
+
+            if record.email and record.email.lower() not in existing_emails:
+                self.db.create_contact_method(ContactMethod(
+                    prospect_id=prospect_id,
+                    type=ContactMethodType.EMAIL,
+                    value=record.email.lower(),
+                    source=preview.source_name,
+                ))
+
+            if record.phone:
+                phone_digits = "".join(c for c in record.phone if c.isdigit())
+                if phone_digits not in existing_phones:
+                    self.db.create_contact_method(ContactMethod(
+                        prospect_id=prospect_id,
+                        type=ContactMethodType.PHONE,
+                        value=record.phone,
+                        source=preview.source_name,
+                    ))
+
+            # Log merge activity
+            self.db.create_activity(Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.ENRICHMENT,
+                notes=(
+                    f"Merged from import: {preview.source_name or preview.filename}"
+                    f" (match: {analysis.match_reason})"
+                ),
+                created_by="system",
+            ))
+
+            result.merged_count += 1
+
+        # Create import source record
+        source = ImportSource(
+            source_name=preview.source_name,
+            filename=preview.filename,
+            total_records=preview.total_records,
+            imported_records=result.imported_count,
+            duplicate_records=result.merged_count,
+            broken_records=result.broken_count,
+            dnc_blocked_records=len(preview.blocked_dnc),
+        )
+        result.source_id = self.db.create_import_source(source)
+
+        logger.info(
+            "Import committed",
+            extra={"context": {
+                "imported": result.imported_count,
+                "merged": result.merged_count,
+                "broken": result.broken_count,
+                "source_id": result.source_id,
+            }},
+        )
+
+        return result
+
+    def _get_or_create_company(self, record: ImportRecord) -> int:
+        """Find or create company for an import record."""
+        from src.db.models import Company
+
+        if not record.company_name:
+            company = Company(name="Unknown", state=record.state)
+            return self.db.create_company(company)
+
+        existing = self.db.get_company_by_normalized_name(record.company_name)
+        if existing and existing.id is not None:
+            return existing.id
+
+        company = Company(name=record.company_name, state=record.state)
+        return self.db.create_company(company)
 
     def _check_dnc(self, record: ImportRecord) -> bool:
         """Check if record matches any DNC.
 
         Returns True if blocked by DNC.
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        if record.email and self.db.is_dnc(email=record.email):
+            return True
+        if record.phone and self.db.is_dnc(phone=record.phone):
+            return True
+        return False
 
     def _check_email_match(self, email: str) -> Optional[int]:
         """Check for exact email match.
 
         Returns prospect ID if found.
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        return self.db.find_prospect_by_email(email)
 
     def _check_fuzzy_match(
         self,
@@ -218,14 +460,27 @@ class IntakeFunnel:
 
         Returns (prospect_id, similarity) if above threshold.
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        existing_company = self.db.get_company_by_normalized_name(company_name)
+        if existing_company is None or existing_company.id is None:
+            return None
+
+        prospects = self.db.get_prospects(company_id=existing_company.id, limit=500)
+        full_name = f"{first_name} {last_name}".strip()
+
+        for prospect in prospects:
+            existing_name = prospect.full_name
+            similarity = self.name_similarity(full_name, existing_name)
+            if similarity >= self.name_similarity_threshold:
+                return (prospect.id, similarity)
+
+        return None
 
     def _check_phone_match(self, phone: str) -> Optional[int]:
         """Check for phone match.
 
         Returns prospect ID if found (for manual review).
         """
-        raise NotImplementedError("Phase 1, Step 1.13")
+        return self.db.find_prospect_by_phone(phone)
 
     @staticmethod
     def name_similarity(name1: str, name2: str) -> float:

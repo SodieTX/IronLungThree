@@ -26,14 +26,20 @@ from src.core.exceptions import DatabaseError
 from src.core.logging import get_logger
 from src.db.models import (
     Activity,
+    ActivityType,
     Company,
     ContactMethod,
+    ContactMethodType,
+    DeadReason,
     EngagementStage,
     ImportSource,
+    IntelCategory,
     IntelNugget,
     Population,
     Prospect,
+    ProspectFull,
     ProspectTag,
+    ResearchStatus,
     ResearchTask,
     normalize_company_name,
     timezone_from_state,
@@ -305,6 +311,124 @@ class Database:
         """
 
     # =========================================================================
+    # ROW-TO-MODEL HELPERS
+    # =========================================================================
+
+    def _row_to_company(self, row: sqlite3.Row) -> Company:
+        """Convert a database row to a Company dataclass."""
+        return Company(
+            id=row["id"],
+            name=row["name"],
+            name_normalized=row["name_normalized"],
+            domain=row["domain"],
+            loan_types=row["loan_types"],
+            size=row["size"],
+            state=row["state"],
+            timezone=row["timezone"],
+            notes=row["notes"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def _row_to_prospect(self, row: sqlite3.Row) -> Prospect:
+        """Convert a database row to a Prospect dataclass."""
+        pop_val = row["population"]
+        population = Population(pop_val) if pop_val else Population.BROKEN
+
+        stage_val = row["engagement_stage"]
+        engagement_stage = EngagementStage(stage_val) if stage_val else None
+
+        lost_val = row["lost_reason"]
+        from src.db.models import LostReason
+        lost_reason = LostReason(lost_val) if lost_val else None
+
+        dead_val = row["dead_reason"]
+        dead_reason = DeadReason(dead_val) if dead_val else None
+
+        return Prospect(
+            id=row["id"],
+            company_id=row["company_id"],
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            title=row["title"],
+            population=population,
+            engagement_stage=engagement_stage,
+            follow_up_date=row["follow_up_date"],
+            last_contact_date=row["last_contact_date"],
+            parked_month=row["parked_month"],
+            attempt_count=row["attempt_count"] or 0,
+            prospect_score=row["prospect_score"] or 0,
+            data_confidence=row["data_confidence"] or 0,
+            preferred_contact_method=row["preferred_contact_method"],
+            source=row["source"],
+            referred_by_prospect_id=row["referred_by_prospect_id"],
+            dead_reason=dead_reason,
+            dead_date=row["dead_date"],
+            lost_reason=lost_reason,
+            lost_competitor=row["lost_competitor"],
+            lost_date=row["lost_date"],
+            deal_value=row["deal_value"],
+            close_date=row["close_date"],
+            close_notes=row["close_notes"],
+            notes=row["notes"],
+            custom_fields=row["custom_fields"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def _row_to_contact_method(self, row: sqlite3.Row) -> ContactMethod:
+        """Convert a database row to a ContactMethod dataclass."""
+        from src.db.models import ContactMethodType
+        return ContactMethod(
+            id=row["id"],
+            prospect_id=row["prospect_id"],
+            type=ContactMethodType(row["type"]),
+            value=row["value"],
+            label=row["label"],
+            is_primary=bool(row["is_primary"]),
+            is_verified=bool(row["is_verified"]),
+            verified_date=row["verified_date"],
+            confidence_score=row["confidence_score"] or 0,
+            is_suspect=bool(row["is_suspect"]),
+            source=row["source"],
+            created_at=row["created_at"],
+        )
+
+    def _row_to_activity(self, row: sqlite3.Row) -> Activity:
+        """Convert a database row to an Activity dataclass."""
+        from src.db.models import ActivityOutcome, AttemptType
+        activity_type = ActivityType(row["activity_type"]) if row["activity_type"] else ActivityType.NOTE
+
+        outcome_val = row["outcome"]
+        outcome = ActivityOutcome(outcome_val) if outcome_val else None
+
+        pop_before = Population(row["population_before"]) if row["population_before"] else None
+        pop_after = Population(row["population_after"]) if row["population_after"] else None
+        stage_before = EngagementStage(row["stage_before"]) if row["stage_before"] else None
+        stage_after = EngagementStage(row["stage_after"]) if row["stage_after"] else None
+        attempt_val = row["attempt_type"]
+        attempt_type = AttemptType(attempt_val) if attempt_val else None
+
+        return Activity(
+            id=row["id"],
+            prospect_id=row["prospect_id"],
+            activity_type=activity_type,
+            outcome=outcome,
+            call_duration_seconds=row["call_duration_seconds"],
+            population_before=pop_before,
+            population_after=pop_after,
+            stage_before=stage_before,
+            stage_after=stage_after,
+            email_subject=row["email_subject"],
+            email_body=row["email_body"],
+            follow_up_set=row["follow_up_set"],
+            attempt_type=attempt_type,
+            notes=row["notes"],
+            created_by=row["created_by"] or "user",
+            created_at=row["created_at"],
+        )
+
+    # =========================================================================
     # COMPANY OPERATIONS
     # =========================================================================
 
@@ -319,23 +443,97 @@ class Database:
         Returns:
             New company ID
         """
-        raise NotImplementedError("Phase 1, Step 1.6")
+        conn = self._get_connection()
+        name_norm = normalize_company_name(company.name)
+        tz = timezone_from_state(company.state)
+
+        try:
+            cursor = conn.execute(
+                """INSERT INTO companies
+                   (name, name_normalized, domain, loan_types, size, state, timezone, notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    company.name,
+                    name_norm,
+                    company.domain,
+                    company.loan_types,
+                    company.size,
+                    company.state,
+                    tz,
+                    company.notes,
+                ),
+            )
+            conn.commit()
+            company_id = cursor.lastrowid
+            logger.info(
+                "Company created",
+                extra={"context": {"company_id": company_id, "name": company.name}},
+            )
+            return company_id
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create company: {e}") from e
 
     def get_company(self, company_id: int) -> Optional[Company]:
         """Get company by ID."""
-        raise NotImplementedError("Phase 1, Step 1.6")
+        conn = self._get_connection()
+        row = conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if row is None:
+            return None
+        return self._row_to_company(row)
 
     def get_company_by_normalized_name(self, name: str) -> Optional[Company]:
         """Find company by normalized name for dedup."""
-        raise NotImplementedError("Phase 1, Step 1.6")
+        conn = self._get_connection()
+        name_norm = normalize_company_name(name)
+        row = conn.execute(
+            "SELECT * FROM companies WHERE name_normalized = ?", (name_norm,)
+        ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_company(row)
 
     def update_company(self, company: Company) -> bool:
         """Update company. Returns True if updated."""
-        raise NotImplementedError("Phase 1, Step 1.6")
+        if company.id is None:
+            return False
+        conn = self._get_connection()
+        name_norm = normalize_company_name(company.name)
+        tz = timezone_from_state(company.state)
+        try:
+            cursor = conn.execute(
+                """UPDATE companies SET
+                   name = ?, name_normalized = ?, domain = ?, loan_types = ?,
+                   size = ?, state = ?, timezone = ?, notes = ?,
+                   updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (
+                    company.name,
+                    name_norm,
+                    company.domain,
+                    company.loan_types,
+                    company.size,
+                    company.state,
+                    tz,
+                    company.notes,
+                    company.id,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to update company: {e}") from e
 
     def search_companies(self, query: str, limit: int = 50) -> list[Company]:
         """Search companies by partial name."""
-        raise NotImplementedError("Phase 1, Step 1.6")
+        conn = self._get_connection()
+        pattern = f"%{query.lower()}%"
+        rows = conn.execute(
+            "SELECT * FROM companies WHERE name_normalized LIKE ? ORDER BY name LIMIT ?",
+            (pattern, limit),
+        ).fetchall()
+        return [self._row_to_company(row) for row in rows]
 
     # =========================================================================
     # PROSPECT OPERATIONS
@@ -343,19 +541,136 @@ class Database:
 
     def create_prospect(self, prospect: Prospect) -> int:
         """Create a prospect record."""
-        raise NotImplementedError("Phase 1, Step 1.7")
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO prospects
+                   (company_id, first_name, last_name, title, population,
+                    engagement_stage, follow_up_date, last_contact_date, parked_month,
+                    attempt_count, prospect_score, data_confidence,
+                    preferred_contact_method, source, referred_by_prospect_id,
+                    dead_reason, dead_date, lost_reason, lost_competitor, lost_date,
+                    deal_value, close_date, close_notes, notes, custom_fields)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    prospect.company_id,
+                    prospect.first_name,
+                    prospect.last_name,
+                    prospect.title,
+                    prospect.population.value if isinstance(prospect.population, Population) else prospect.population,
+                    prospect.engagement_stage.value if prospect.engagement_stage else None,
+                    prospect.follow_up_date,
+                    prospect.last_contact_date,
+                    prospect.parked_month,
+                    prospect.attempt_count,
+                    prospect.prospect_score,
+                    prospect.data_confidence,
+                    prospect.preferred_contact_method,
+                    prospect.source,
+                    prospect.referred_by_prospect_id,
+                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
+                    prospect.dead_date,
+                    prospect.lost_reason.value if prospect.lost_reason else None,
+                    prospect.lost_competitor,
+                    prospect.lost_date,
+                    prospect.deal_value,
+                    prospect.close_date,
+                    prospect.close_notes,
+                    prospect.notes,
+                    prospect.custom_fields,
+                ),
+            )
+            conn.commit()
+            prospect_id = cursor.lastrowid
+            logger.info(
+                "Prospect created",
+                extra={"context": {"prospect_id": prospect_id, "name": prospect.full_name}},
+            )
+            return prospect_id
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create prospect: {e}") from e
 
     def get_prospect(self, prospect_id: int) -> Optional[Prospect]:
         """Get prospect by ID (basic fields only)."""
-        raise NotImplementedError("Phase 1, Step 1.7")
+        conn = self._get_connection()
+        row = conn.execute("SELECT * FROM prospects WHERE id = ?", (prospect_id,)).fetchone()
+        if row is None:
+            return None
+        return self._row_to_prospect(row)
 
-    def get_prospect_full(self, prospect_id: int) -> Optional[dict[str, Any]]:
+    def get_prospect_full(self, prospect_id: int) -> Optional[ProspectFull]:
         """Get prospect with company, contact methods, activities."""
-        raise NotImplementedError("Phase 1, Step 1.7")
+        prospect = self.get_prospect(prospect_id)
+        if prospect is None:
+            return None
+
+        company = self.get_company(prospect.company_id) if prospect.company_id else None
+        contact_methods = self.get_contact_methods(prospect_id)
+        activities = self.get_activities(prospect_id)
+        tags = self.get_tags(prospect_id)
+
+        return ProspectFull(
+            prospect=prospect,
+            company=company,
+            contact_methods=contact_methods,
+            activities=activities,
+            tags=tags,
+        )
 
     def update_prospect(self, prospect: Prospect) -> bool:
         """Update prospect. Returns True if updated."""
-        raise NotImplementedError("Phase 1, Step 1.7")
+        if prospect.id is None:
+            return False
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """UPDATE prospects SET
+                   company_id = ?, first_name = ?, last_name = ?, title = ?,
+                   population = ?, engagement_stage = ?,
+                   follow_up_date = ?, last_contact_date = ?, parked_month = ?,
+                   attempt_count = ?, prospect_score = ?, data_confidence = ?,
+                   preferred_contact_method = ?, source = ?, referred_by_prospect_id = ?,
+                   dead_reason = ?, dead_date = ?, lost_reason = ?,
+                   lost_competitor = ?, lost_date = ?,
+                   deal_value = ?, close_date = ?, close_notes = ?,
+                   notes = ?, custom_fields = ?,
+                   updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (
+                    prospect.company_id,
+                    prospect.first_name,
+                    prospect.last_name,
+                    prospect.title,
+                    prospect.population.value if isinstance(prospect.population, Population) else prospect.population,
+                    prospect.engagement_stage.value if prospect.engagement_stage else None,
+                    prospect.follow_up_date,
+                    prospect.last_contact_date,
+                    prospect.parked_month,
+                    prospect.attempt_count,
+                    prospect.prospect_score,
+                    prospect.data_confidence,
+                    prospect.preferred_contact_method,
+                    prospect.source,
+                    prospect.referred_by_prospect_id,
+                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
+                    prospect.dead_date,
+                    prospect.lost_reason.value if prospect.lost_reason else None,
+                    prospect.lost_competitor,
+                    prospect.lost_date,
+                    prospect.deal_value,
+                    prospect.close_date,
+                    prospect.close_notes,
+                    prospect.notes,
+                    prospect.custom_fields,
+                    prospect.id,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to update prospect: {e}") from e
 
     def get_prospects(
         self,
@@ -372,11 +687,85 @@ class Database:
         offset: int = 0,
     ) -> list[Prospect]:
         """Get prospects with filtering and pagination."""
-        raise NotImplementedError("Phase 1, Step 1.7")
+        conn = self._get_connection()
+
+        # Whitelist sort columns to prevent SQL injection
+        allowed_sort_cols = {
+            "prospect_score", "first_name", "last_name", "created_at",
+            "updated_at", "follow_up_date", "attempt_count", "data_confidence",
+        }
+        if sort_by not in allowed_sort_cols:
+            sort_by = "prospect_score"
+        if sort_dir.upper() not in ("ASC", "DESC"):
+            sort_dir = "DESC"
+
+        conditions: list[str] = []
+        params: list[Any] = []
+
+        if population is not None:
+            conditions.append("p.population = ?")
+            params.append(population.value)
+
+        if company_id is not None:
+            conditions.append("p.company_id = ?")
+            params.append(company_id)
+
+        if state is not None:
+            conditions.append("c.state = ?")
+            params.append(state)
+
+        if score_min is not None:
+            conditions.append("p.prospect_score >= ?")
+            params.append(score_min)
+
+        if score_max is not None:
+            conditions.append("p.prospect_score <= ?")
+            params.append(score_max)
+
+        if search_query:
+            conditions.append(
+                "(p.first_name LIKE ? OR p.last_name LIKE ? OR c.name LIKE ?)"
+            )
+            pattern = f"%{search_query}%"
+            params.extend([pattern, pattern, pattern])
+
+        if tags:
+            placeholders = ",".join("?" for _ in tags)
+            conditions.append(
+                f"p.id IN (SELECT prospect_id FROM prospect_tags WHERE tag_name IN ({placeholders}))"
+            )
+            params.extend(tags)
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        query = f"""
+            SELECT p.* FROM prospects p
+            LEFT JOIN companies c ON p.company_id = c.id
+            {where_clause}
+            ORDER BY p.{sort_by} {sort_dir}
+            LIMIT ? OFFSET ?
+        """
+        params.extend([limit, offset])
+
+        rows = conn.execute(query, params).fetchall()
+        return [self._row_to_prospect(row) for row in rows]
 
     def get_population_counts(self) -> dict[Population, int]:
         """Return count of prospects in each population."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT population, COUNT(*) as cnt FROM prospects GROUP BY population"
+        ).fetchall()
+        counts: dict[Population, int] = {}
+        for row in rows:
+            try:
+                pop = Population(row["population"])
+                counts[pop] = row["cnt"]
+            except ValueError:
+                pass
+        return counts
 
     # =========================================================================
     # CONTACT METHOD OPERATIONS
@@ -384,27 +773,120 @@ class Database:
 
     def create_contact_method(self, method: ContactMethod) -> int:
         """Add contact method to prospect."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO contact_methods
+                   (prospect_id, type, value, label, is_primary, is_verified,
+                    verified_date, confidence_score, is_suspect, source)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    method.prospect_id,
+                    method.type.value if isinstance(method.type, ContactMethodType) else method.type,
+                    method.value,
+                    method.label,
+                    1 if method.is_primary else 0,
+                    1 if method.is_verified else 0,
+                    method.verified_date,
+                    method.confidence_score,
+                    1 if method.is_suspect else 0,
+                    method.source,
+                ),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create contact method: {e}") from e
 
     def get_contact_methods(self, prospect_id: int) -> list[ContactMethod]:
         """Get all contact methods for prospect, primary first."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT * FROM contact_methods WHERE prospect_id = ? ORDER BY is_primary DESC, id ASC",
+            (prospect_id,),
+        ).fetchall()
+        return [self._row_to_contact_method(row) for row in rows]
 
     def update_contact_method(self, method: ContactMethod) -> bool:
         """Update contact method."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        if method.id is None:
+            return False
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """UPDATE contact_methods SET
+                   type = ?, value = ?, label = ?, is_primary = ?, is_verified = ?,
+                   verified_date = ?, confidence_score = ?, is_suspect = ?, source = ?
+                   WHERE id = ?""",
+                (
+                    method.type.value if isinstance(method.type, ContactMethodType) else method.type,
+                    method.value,
+                    method.label,
+                    1 if method.is_primary else 0,
+                    1 if method.is_verified else 0,
+                    method.verified_date,
+                    method.confidence_score,
+                    1 if method.is_suspect else 0,
+                    method.source,
+                    method.id,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to update contact method: {e}") from e
 
     def find_prospect_by_email(self, email: str) -> Optional[int]:
         """Find prospect ID by email (case-insensitive)."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        conn = self._get_connection()
+        row = conn.execute(
+            "SELECT prospect_id FROM contact_methods WHERE LOWER(value) = LOWER(?) AND type = 'email'",
+            (email,),
+        ).fetchone()
+        if row is None:
+            return None
+        return row["prospect_id"]
 
     def find_prospect_by_phone(self, phone: str) -> Optional[int]:
-        """Find prospect ID by phone (digits-only match)."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        """Find prospect ID by phone (digits-only match).
+
+        Strips non-digit characters from both the input and stored values
+        before comparing.
+        """
+        conn = self._get_connection()
+        # Normalize input to digits only
+        digits = "".join(c for c in phone if c.isdigit())
+        if not digits:
+            return None
+        # SQLite doesn't have a regex replace, so we fetch phone methods and compare in Python
+        rows = conn.execute(
+            "SELECT prospect_id, value FROM contact_methods WHERE type = 'phone'"
+        ).fetchall()
+        for row in rows:
+            stored_digits = "".join(c for c in row["value"] if c.isdigit())
+            if stored_digits == digits:
+                return row["prospect_id"]
+        return None
 
     def is_dnc(self, email: Optional[str] = None, phone: Optional[str] = None) -> bool:
         """Check if email or phone belongs to a DNC prospect."""
-        raise NotImplementedError("Phase 1, Step 1.8")
+        if email:
+            prospect_id = self.find_prospect_by_email(email)
+            if prospect_id is not None:
+                prospect = self.get_prospect(prospect_id)
+                if prospect and prospect.population == Population.DEAD_DNC:
+                    return True
+
+        if phone:
+            prospect_id = self.find_prospect_by_phone(phone)
+            if prospect_id is not None:
+                prospect = self.get_prospect(prospect_id)
+                if prospect and prospect.population == Population.DEAD_DNC:
+                    return True
+
+        return False
 
     # =========================================================================
     # ACTIVITY OPERATIONS
@@ -412,11 +894,219 @@ class Database:
 
     def create_activity(self, activity: Activity) -> int:
         """Log an activity."""
-        raise NotImplementedError("Phase 1, Step 1.9")
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO activities
+                   (prospect_id, activity_type, outcome, call_duration_seconds,
+                    population_before, population_after, stage_before, stage_after,
+                    email_subject, email_body, follow_up_set, attempt_type,
+                    notes, created_by)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    activity.prospect_id,
+                    activity.activity_type.value if isinstance(activity.activity_type, ActivityType) else activity.activity_type,
+                    activity.outcome.value if activity.outcome else None,
+                    activity.call_duration_seconds,
+                    activity.population_before.value if activity.population_before else None,
+                    activity.population_after.value if activity.population_after else None,
+                    activity.stage_before.value if activity.stage_before else None,
+                    activity.stage_after.value if activity.stage_after else None,
+                    activity.email_subject,
+                    activity.email_body,
+                    activity.follow_up_set,
+                    activity.attempt_type.value if activity.attempt_type else None,
+                    activity.notes,
+                    activity.created_by,
+                ),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create activity: {e}") from e
 
     def get_activities(self, prospect_id: int, limit: int = 50) -> list[Activity]:
         """Get activities for prospect, most recent first."""
-        raise NotImplementedError("Phase 1, Step 1.9")
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT * FROM activities WHERE prospect_id = ? ORDER BY created_at DESC LIMIT ?",
+            (prospect_id, limit),
+        ).fetchall()
+        return [self._row_to_activity(row) for row in rows]
+
+    # =========================================================================
+    # REMAINING TABLE OPERATIONS
+    # =========================================================================
+
+    def create_data_freshness(
+        self,
+        prospect_id: int,
+        field_name: str,
+        verified_date: date,
+        verification_method: Optional[str] = None,
+        confidence: Optional[int] = None,
+        previous_value: Optional[str] = None,
+    ) -> int:
+        """Create a data freshness record."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO data_freshness
+                   (prospect_id, field_name, verified_date, verification_method, confidence, previous_value)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (prospect_id, field_name, verified_date, verification_method, confidence, previous_value),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create data freshness: {e}") from e
+
+    def get_data_freshness(self, prospect_id: int) -> list[dict[str, Any]]:
+        """Get all data freshness records for a prospect."""
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT * FROM data_freshness WHERE prospect_id = ? ORDER BY verified_date DESC",
+            (prospect_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def create_import_source(self, source: ImportSource) -> int:
+        """Create an import source record."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO import_sources
+                   (source_name, filename, total_records, imported_records,
+                    duplicate_records, broken_records, dnc_blocked_records)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    source.source_name,
+                    source.filename,
+                    source.total_records,
+                    source.imported_records,
+                    source.duplicate_records,
+                    source.broken_records,
+                    source.dnc_blocked_records,
+                ),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create import source: {e}") from e
+
+    def get_import_sources(self, limit: int = 50) -> list[ImportSource]:
+        """Get import sources, most recent first."""
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT * FROM import_sources ORDER BY import_date DESC LIMIT ?", (limit,)
+        ).fetchall()
+        result = []
+        for row in rows:
+            result.append(ImportSource(
+                id=row["id"],
+                source_name=row["source_name"],
+                filename=row["filename"],
+                total_records=row["total_records"] or 0,
+                imported_records=row["imported_records"] or 0,
+                duplicate_records=row["duplicate_records"] or 0,
+                broken_records=row["broken_records"] or 0,
+                dnc_blocked_records=row["dnc_blocked_records"] or 0,
+                import_date=row["import_date"],
+            ))
+        return result
+
+    def create_research_task(self, task: ResearchTask) -> int:
+        """Create a research queue entry."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO research_queue
+                   (prospect_id, priority, status, attempts, last_attempt_date, findings)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    task.prospect_id,
+                    task.priority,
+                    task.status.value if isinstance(task.status, ResearchStatus) else task.status,
+                    task.attempts,
+                    task.last_attempt_date,
+                    task.findings,
+                ),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create research task: {e}") from e
+
+    def get_research_tasks(self, status: Optional[str] = None, limit: int = 50) -> list[ResearchTask]:
+        """Get research tasks, optionally filtered by status."""
+        conn = self._get_connection()
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM research_queue WHERE status = ? ORDER BY priority DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM research_queue ORDER BY priority DESC LIMIT ?", (limit,)
+            ).fetchall()
+        result = []
+        for row in rows:
+            from src.db.models import ResearchStatus as RS
+            result.append(ResearchTask(
+                id=row["id"],
+                prospect_id=row["prospect_id"],
+                priority=row["priority"] or 0,
+                status=RS(row["status"]) if row["status"] else RS.PENDING,
+                attempts=row["attempts"] or 0,
+                last_attempt_date=row["last_attempt_date"],
+                findings=row["findings"],
+            ))
+        return result
+
+    def create_intel_nugget(self, nugget: IntelNugget) -> int:
+        """Create an intel nugget."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """INSERT INTO intel_nuggets
+                   (prospect_id, category, content, source_activity_id)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    nugget.prospect_id,
+                    nugget.category.value if isinstance(nugget.category, IntelCategory) else nugget.category,
+                    nugget.content,
+                    nugget.source_activity_id,
+                ),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to create intel nugget: {e}") from e
+
+    def get_intel_nuggets(self, prospect_id: int) -> list[IntelNugget]:
+        """Get intel nuggets for prospect."""
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT * FROM intel_nuggets WHERE prospect_id = ? ORDER BY extracted_date DESC",
+            (prospect_id,),
+        ).fetchall()
+        from src.db.models import IntelCategory as IC
+        result = []
+        for row in rows:
+            result.append(IntelNugget(
+                id=row["id"],
+                prospect_id=row["prospect_id"],
+                category=IC(row["category"]) if row["category"] else IC.KEY_FACT,
+                content=row["content"],
+                source_activity_id=row["source_activity_id"],
+                extracted_date=row["extracted_date"],
+            ))
+        return result
 
     # =========================================================================
     # BULK OPERATIONS
@@ -435,7 +1125,45 @@ class Database:
         Returns:
             Tuple of (updated_count, skipped_dnc_count)
         """
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        updated = 0
+        skipped_dnc = 0
+
+        for pid in prospect_ids:
+            prospect = self.get_prospect(pid)
+            if prospect is None:
+                continue
+            if prospect.population == Population.DEAD_DNC:
+                skipped_dnc += 1
+                continue
+
+            old_pop = prospect.population
+            try:
+                conn.execute(
+                    "UPDATE prospects SET population = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (population.value, pid),
+                )
+                # Log activity for each transition
+                conn.execute(
+                    """INSERT INTO activities
+                       (prospect_id, activity_type, population_before, population_after,
+                        notes, created_by)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        pid,
+                        ActivityType.STATUS_CHANGE.value,
+                        old_pop.value,
+                        population.value,
+                        reason,
+                        "user",
+                    ),
+                )
+                updated += 1
+            except sqlite3.Error:
+                continue
+
+        conn.commit()
+        return (updated, skipped_dnc)
 
     def bulk_set_follow_up(
         self,
@@ -443,7 +1171,20 @@ class Database:
         follow_up_date: datetime,
     ) -> int:
         """Set follow-up date for multiple prospects."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        updated = 0
+        for pid in prospect_ids:
+            try:
+                cursor = conn.execute(
+                    "UPDATE prospects SET follow_up_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (follow_up_date, pid),
+                )
+                if cursor.rowcount > 0:
+                    updated += 1
+            except sqlite3.Error:
+                continue
+        conn.commit()
+        return updated
 
     def bulk_park(
         self,
@@ -455,24 +1196,87 @@ class Database:
         Returns:
             Tuple of (parked_count, skipped_dnc_count)
         """
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        parked = 0
+        skipped_dnc = 0
+
+        for pid in prospect_ids:
+            prospect = self.get_prospect(pid)
+            if prospect is None:
+                continue
+            if prospect.population == Population.DEAD_DNC:
+                skipped_dnc += 1
+                continue
+
+            old_pop = prospect.population
+            try:
+                conn.execute(
+                    """UPDATE prospects SET
+                       population = ?, parked_month = ?, updated_at = CURRENT_TIMESTAMP
+                       WHERE id = ?""",
+                    (Population.PARKED.value, parked_month, pid),
+                )
+                conn.execute(
+                    """INSERT INTO activities
+                       (prospect_id, activity_type, population_before, population_after,
+                        notes, created_by)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        pid,
+                        ActivityType.STATUS_CHANGE.value,
+                        old_pop.value,
+                        Population.PARKED.value,
+                        f"Parked until {parked_month}",
+                        "user",
+                    ),
+                )
+                parked += 1
+            except sqlite3.Error:
+                continue
+
+        conn.commit()
+        return (parked, skipped_dnc)
 
     # =========================================================================
     # TAG OPERATIONS
     # =========================================================================
 
     def add_tag(self, prospect_id: int, tag_name: str) -> bool:
-        """Add tag to prospect."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        """Add tag to prospect. Returns True if added (False if already exists)."""
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO prospect_tags (prospect_id, tag_name) VALUES (?, ?)",
+                (prospect_id, tag_name),
+            )
+            conn.commit()
+            return True
+        except sqlite3.Error:
+            return False
 
     def remove_tag(self, prospect_id: int, tag_name: str) -> bool:
         """Remove tag from prospect."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        cursor = conn.execute(
+            "DELETE FROM prospect_tags WHERE prospect_id = ? AND tag_name = ?",
+            (prospect_id, tag_name),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
 
     def get_tags(self, prospect_id: int) -> list[str]:
         """Get all tags for prospect."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT tag_name FROM prospect_tags WHERE prospect_id = ? ORDER BY tag_name",
+            (prospect_id,),
+        ).fetchall()
+        return [row["tag_name"] for row in rows]
 
     def get_all_tags(self) -> list[str]:
         """Get all unique tags in system."""
-        raise NotImplementedError("Phase 1, Step 1.10")
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT DISTINCT tag_name FROM prospect_tags ORDER BY tag_name"
+        ).fetchall()
+        return [row["tag_name"] for row in rows]
