@@ -100,9 +100,7 @@ class CallSession:
         last_contact = self._get_last_contact_summary(activities)
 
         # Build talking points
-        talking_points = self._build_talking_points(
-            prospect, company, activities
-        )
+        talking_points = self._build_talking_points(prospect, company, activities)
 
         # Get recent notes
         recent_notes = self._get_recent_notes(activities, limit=3)
@@ -162,10 +160,12 @@ class CallSession:
 
         logger.info(
             f"Call outcome logged: {outcome}",
-            extra={"context": {
-                "prospect_id": prospect_id,
-                "outcome": outcome,
-            }},
+            extra={
+                "context": {
+                    "prospect_id": prospect_id,
+                    "outcome": outcome,
+                }
+            },
         )
 
         return activity_id
@@ -207,9 +207,12 @@ class CallSession:
 
         # Find most recent non-import activity
         contact_types = {
-            ActivityType.CALL, ActivityType.VOICEMAIL,
-            ActivityType.EMAIL_SENT, ActivityType.EMAIL_RECEIVED,
-            ActivityType.DEMO, ActivityType.DEMO_COMPLETED,
+            ActivityType.CALL,
+            ActivityType.VOICEMAIL,
+            ActivityType.EMAIL_SENT,
+            ActivityType.EMAIL_RECEIVED,
+            ActivityType.DEMO,
+            ActivityType.DEMO_COMPLETED,
         }
         contacts = [a for a in activities if a.activity_type in contact_types]
 
@@ -250,9 +253,12 @@ class CallSession:
             points.append(f"Speaking with {prospect.title}")
 
         # Check if we've had demos
-        demos = [a for a in activities if a.activity_type in (
-            ActivityType.DEMO, ActivityType.DEMO_COMPLETED, ActivityType.DEMO_SCHEDULED
-        )]
+        demos = [
+            a
+            for a in activities
+            if a.activity_type
+            in (ActivityType.DEMO, ActivityType.DEMO_COMPLETED, ActivityType.DEMO_SCHEDULED)
+        ]
         if demos:
             points.append("Has had demo — follow up on questions/next steps")
 
@@ -274,9 +280,7 @@ class CallSession:
 
         return points
 
-    def _get_recent_notes(
-        self, activities: list[Activity], limit: int = 3
-    ) -> list[str]:
+    def _get_recent_notes(self, activities: list[Activity], limit: int = 3) -> list[str]:
         """Get recent activity notes."""
         noted = [a for a in activities if a.notes]
         noted.sort(key=lambda a: a.created_at or datetime.min, reverse=True)

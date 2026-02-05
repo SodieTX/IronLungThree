@@ -185,21 +185,27 @@ class TestGetEmailHistory:
         db, prospect_id, _ = setup_db
 
         # Add some email activities
-        db.create_activity(Activity(
-            prospect_id=prospect_id,
-            activity_type=ActivityType.EMAIL_SENT,
-            notes="Subject: Intro | Body preview here",
-        ))
-        db.create_activity(Activity(
-            prospect_id=prospect_id,
-            activity_type=ActivityType.EMAIL_RECEIVED,
-            notes="Subject: Re: Intro | Thanks for reaching out",
-        ))
-        db.create_activity(Activity(
-            prospect_id=prospect_id,
-            activity_type=ActivityType.CALL,
-            notes="Left voicemail",
-        ))
+        db.create_activity(
+            Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.EMAIL_SENT,
+                notes="Subject: Intro | Body preview here",
+            )
+        )
+        db.create_activity(
+            Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.EMAIL_RECEIVED,
+                notes="Subject: Re: Intro | Thanks for reaching out",
+            )
+        )
+        db.create_activity(
+            Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.CALL,
+                notes="Left voicemail",
+            )
+        )
 
         service = EmailService(db)
         history = service.get_email_history(prospect_id)
@@ -223,11 +229,13 @@ class TestGetEmailHistory:
         db, prospect_id, _ = setup_db
 
         for i in range(5):
-            db.create_activity(Activity(
-                prospect_id=prospect_id,
-                activity_type=ActivityType.EMAIL_SENT,
-                notes=f"Subject: Email {i} | Body {i}",
-            ))
+            db.create_activity(
+                Activity(
+                    prospect_id=prospect_id,
+                    activity_type=ActivityType.EMAIL_SENT,
+                    notes=f"Subject: Email {i} | Body {i}",
+                )
+            )
 
         service = EmailService(db)
         history = service.get_email_history(prospect_id, limit=3)

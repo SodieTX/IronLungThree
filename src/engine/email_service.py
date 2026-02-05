@@ -127,12 +127,18 @@ class EmailService:
             return EmailResult(success=False)
 
         body_html = render_template(
-            template_name, prospect, company,
-            sender=sender, **template_vars,
+            template_name,
+            prospect,
+            company,
+            sender=sender,
+            **template_vars,
         )
         subject = get_template_subject(
-            template_name, prospect, company,
-            sender=sender, **template_vars,
+            template_name,
+            prospect,
+            company,
+            sender=sender,
+            **template_vars,
         )
 
         return self._send_or_draft(
@@ -202,7 +208,8 @@ class EmailService:
         activities = self._db.get_activities(prospect_id)
 
         email_activities = [
-            a for a in activities
+            a
+            for a in activities
             if a.activity_type in (ActivityType.EMAIL_SENT, ActivityType.EMAIL_RECEIVED)
         ]
 
@@ -214,10 +221,7 @@ class EmailService:
 
         entries: list[EmailHistoryEntry] = []
         for activity in email_activities[:limit]:
-            direction = (
-                "sent" if activity.activity_type == ActivityType.EMAIL_SENT
-                else "received"
-            )
+            direction = "sent" if activity.activity_type == ActivityType.EMAIL_SENT else "received"
 
             # Parse subject from notes (format: "Subject: ... | Body preview...")
             subject = ""
@@ -322,11 +326,13 @@ class EmailService:
 
         logger.info(
             f"Email {'drafted' if draft_only else 'sent'}: {subject} -> {recipient}",
-            extra={"context": {
-                "prospect_id": prospect.id,
-                "subject": subject,
-                "draft": draft_only,
-            }},
+            extra={
+                "context": {
+                    "prospect_id": prospect.id,
+                    "subject": subject,
+                    "draft": draft_only,
+                }
+            },
         )
 
         return EmailResult(

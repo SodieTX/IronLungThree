@@ -59,9 +59,7 @@ class TestOfflineOutlookClient:
 
     def test_get_inbox_with_since(self):
         client = OfflineOutlookClient()
-        messages = client.get_inbox(
-            since=datetime(2026, 1, 1, tzinfo=timezone.utc)
-        )
+        messages = client.get_inbox(since=datetime(2026, 1, 1, tzinfo=timezone.utc))
         assert messages == []
 
     def test_classify_reply_returns_unknown(self):

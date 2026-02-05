@@ -142,21 +142,37 @@ class TestCalculateScore:
     def test_engaged_scores_higher_than_unengaged(
         self, ceo_prospect, unengaged_prospect, full_company
     ):
-        """Engaged prospects score higher than unengaged."""
+        """Engaged prospects score meaningfully higher than unengaged."""
         engaged_score = calculate_score(ceo_prospect, full_company)
         unengaged_score = calculate_score(unengaged_prospect, full_company)
         assert engaged_score > unengaged_score
+        # Should be at least 10 points apart to be meaningful
+        assert engaged_score - unengaged_score >= 10
 
     def test_full_data_scores_higher(self, unengaged_prospect, full_company, sparse_company):
-        """Full company data scores higher than sparse."""
+        """Full company data scores meaningfully higher than sparse."""
         full_score = calculate_score(unengaged_prospect, full_company)
         sparse_score = calculate_score(unengaged_prospect, sparse_company)
         assert full_score > sparse_score
+        # Company fit is 25% of score; full=100 vs sparse=30 -> ~17pt difference
+        assert full_score - sparse_score >= 10
 
     def test_broken_scores_low(self, associate_prospect, sparse_company):
-        """Broken prospect with sparse data scores low."""
+        """Broken prospect with sparse data scores below 40."""
         score = calculate_score(associate_prospect, sparse_company)
-        assert score < 50
+        assert score < 40
+
+    def test_dnc_prospect_scores_near_zero(self, sparse_company):
+        """DNC prospect engagement is 0, dragging total score very low."""
+        dnc = Prospect(
+            company_id=1,
+            first_name="Dead",
+            last_name="Contact",
+            population=Population.DEAD_DNC,
+        )
+        score = calculate_score(dnc, sparse_company)
+        # Engagement=0 (25% weight) plus weak everything else
+        assert score < 30
 
     def test_custom_weights(self, unengaged_prospect, full_company):
         """Custom weights produce different scores."""
@@ -181,31 +197,57 @@ class TestCalculateScore:
 class TestCompanyFit:
     """Test company fit scoring."""
 
-    def test_full_company_scores_high(self, full_company):
-        """Company with all fields scores high."""
+    def test_full_company_exact_score(self, full_company):
+        """Company with loan_types + size=medium + state=TX = capped at 100."""
+        # loan_types: 40, size medium: 70, state: 30 = 140 -> capped to 100
         score = _score_company_fit(full_company)
-        assert score >= 70
+        assert score == 100
 
-    def test_sparse_company_scores_low(self, sparse_company):
-        """Company with no data scores low."""
+    def test_sparse_company_exact_score(self, sparse_company):
+        """Company with only name gets baseline scores."""
+        # no loan_types: 15, no size: 15, no state/domain: 0 = 30
         score = _score_company_fit(sparse_company)
-        assert score < 50
+        assert score == 30
+
+    def test_company_with_domain_only(self):
+        """Company with domain but no state gets partial geography credit."""
+        company = Company(name="DomainCo", domain="domainco.com")
+        # no loan_types: 15, no size: 15, domain: 15 = 45
+        score = _score_company_fit(company)
+        assert score == 45
 
 
 class TestContactQuality:
     """Test contact quality scoring."""
 
+    def test_ceo_exact_score(self, ceo_prospect, full_company):
+        """CEO with full data: seniority=100 -> 60*100/100=60, completeness=35."""
+        # title=60*(100/100)=60, first+last+title+domain+state = 10+10+10+5+5=40
+        # Total = 100 (capped)
+        ceo_score = _score_contact_quality(ceo_prospect, full_company)
+        assert ceo_score == 100
+
+    def test_associate_exact_score(self, associate_prospect, full_company):
+        """Associate with partial data scores distinctly lower than CEO."""
+        # title "Associate" -> seniority=20 -> 60*20/100=12
+        # first+last+title+domain+state = 10+10+10+5+5=40
+        # Total = 52
+        associate_score = _score_contact_quality(associate_prospect, full_company)
+        assert associate_score == 52
+
     def test_ceo_scores_higher_than_associate(self, ceo_prospect, associate_prospect, full_company):
-        """CEO title scores higher than Associate."""
+        """CEO title scores higher than Associate (at least 30 points gap)."""
         ceo_score = _score_contact_quality(ceo_prospect, full_company)
         associate_score = _score_contact_quality(associate_prospect, full_company)
         assert ceo_score > associate_score
+        assert ceo_score - associate_score >= 30
 
-    def test_no_title_scores_low(self, full_company):
-        """No title produces low score."""
+    def test_no_title_exact_score(self, full_company):
+        """No title produces specific low score."""
         prospect = Prospect(company_id=1, first_name="Unknown", last_name="Person")
+        # no title: 10, first+last=20, no title field=0, domain+state=10 = 40
         score = _score_contact_quality(prospect, full_company)
-        assert score < 50
+        assert score == 40
 
 
 class TestEngagement:

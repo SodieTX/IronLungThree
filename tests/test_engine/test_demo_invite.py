@@ -158,9 +158,7 @@ class TestDemoInviteWithOutlook:
         assert invite.activity_id is not None
 
         activities = db.get_activities(prospect_id)
-        demo_activities = [
-            a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED
-        ]
+        demo_activities = [a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED]
         assert len(demo_activities) == 1
         assert "2026-02-15" in demo_activities[0].notes
         assert "Invite email sent" in demo_activities[0].notes
@@ -239,9 +237,7 @@ class TestDemoInviteOffline:
         assert invite.activity_id is not None
 
         activities = db.get_activities(prospect_id)
-        demo_activities = [
-            a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED
-        ]
+        demo_activities = [a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED]
         assert len(demo_activities) == 1
         assert "offline mode" in demo_activities[0].notes.lower()
 
@@ -274,9 +270,7 @@ class TestActivityLogging:
         )
 
         activities = db.get_activities(prospect_id)
-        demo_activity = [
-            a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED
-        ][0]
+        demo_activity = [a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED][0]
         assert "2026-02-15 14:00" in demo_activity.notes
 
     def test_activity_notes_contain_duration(self, db, prospect_id, demo_time):
@@ -289,9 +283,7 @@ class TestActivityLogging:
         )
 
         activities = db.get_activities(prospect_id)
-        demo_activity = [
-            a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED
-        ][0]
+        demo_activity = [a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED][0]
         assert "45 minutes" in demo_activity.notes
 
     def test_activity_has_follow_up_set(self, db, prospect_id, demo_time):
@@ -303,9 +295,7 @@ class TestActivityLogging:
         )
 
         activities = db.get_activities(prospect_id)
-        demo_activity = [
-            a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED
-        ][0]
+        demo_activity = [a for a in activities if a.activity_type == ActivityType.DEMO_SCHEDULED][0]
         assert demo_activity.follow_up_set is not None
 
 

@@ -207,17 +207,33 @@ class ServiceRegistry:
         # ------------------------------------------------------------------
         # Phase 5: Google Custom Search
         # ------------------------------------------------------------------
-        # Google Search credentials aren't in Config yet (Phase 5 stub),
-        # so this is always unavailable for now.
+        google_creds = {
+            "GOOGLE_API_KEY": config.google_api_key,
+            "GOOGLE_CX": config.google_cx,
+        }
+        google_present = [k for k, v in google_creds.items() if v]
+        google_missing = [k for k, v in google_creds.items() if not v]
+        google_configured = len(google_missing) == 0
+
+        if google_present and google_missing:
+            google_reason = (
+                f"Partial Google Search config: have {', '.join(google_present)} "
+                f"but missing {', '.join(google_missing)}"
+            )
+        elif google_missing:
+            google_reason = "Google Search not configured"
+        else:
+            google_reason = ""
+
         self._statuses["google_search"] = ServiceStatus(
             name="Google Custom Search",
             service_key="google_search",
             phase=ServicePhase.PHASE_5,
-            configured=False,
-            available=False,
-            reason="Google Search not yet implemented (Phase 5)",
-            credentials_present=[],
-            credentials_missing=["GOOGLE_API_KEY", "GOOGLE_CX"],
+            configured=google_configured,
+            available=google_configured,
+            reason=google_reason,
+            credentials_present=google_present,
+            credentials_missing=google_missing,
         )
 
     def check(self, service_key: str) -> ServiceStatus:
@@ -268,9 +284,7 @@ class ServiceRegistry:
 
         status = self.check(service_key)
         if not status.available:
-            raise ConfigurationError(
-                f"{status.name} is not available: {status.reason}"
-            )
+            raise ConfigurationError(f"{status.name} is not available: {status.reason}")
 
     def readiness_report(self) -> ReadinessReport:
         """Generate a full readiness report for all services.
@@ -288,10 +302,7 @@ class ServiceRegistry:
                 phase_services[phase_num] = []
             phase_services[phase_num].append(svc.configured)
 
-        phase_ready = {
-            phase: all(statuses)
-            for phase, statuses in phase_services.items()
-        }
+        phase_ready = {phase: all(statuses) for phase, statuses in phase_services.items()}
 
         # Build summary
         lines = []
@@ -328,11 +339,13 @@ class ServiceRegistry:
                 # Partial config is a warning - likely a mistake
                 logger.warning(
                     f"Service partially configured: {svc.name} - {svc.reason}",
-                    extra={"context": {
-                        "service": svc.service_key,
-                        "present": svc.credentials_present,
-                        "missing": svc.credentials_missing,
-                    }},
+                    extra={
+                        "context": {
+                            "service": svc.service_key,
+                            "present": svc.credentials_present,
+                            "missing": svc.credentials_missing,
+                        }
+                    },
                 )
             else:
                 # Completely unconfigured is normal during development

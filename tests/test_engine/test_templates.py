@@ -61,8 +61,12 @@ class TestRenderTemplate:
     def test_render_follow_up_template(self, prospect, company, sender):
         """Follow-up template renders correctly."""
         html = render_template(
-            "follow_up", prospect, company,
-            sender=sender, last_contact_date="Feb 1", attempt_count=3,
+            "follow_up",
+            prospect,
+            company,
+            sender=sender,
+            last_contact_date="Feb 1",
+            attempt_count=3,
         )
         assert "John" in html
         assert "Acme Lending" in html
@@ -70,8 +74,11 @@ class TestRenderTemplate:
     def test_render_breakup_template(self, prospect, company, sender):
         """Breakup template renders correctly."""
         html = render_template(
-            "breakup", prospect, company,
-            sender=sender, attempt_count=5,
+            "breakup",
+            prospect,
+            company,
+            sender=sender,
+            attempt_count=5,
         )
         assert "John" in html or "Doe" in html
         assert "Acme Lending" in html
@@ -84,8 +91,11 @@ class TestRenderTemplate:
             "teams_link": "https://teams.microsoft.com/l/meeting/123",
         }
         html = render_template(
-            "demo_invite", prospect, company,
-            sender=sender, demo=demo,
+            "demo_invite",
+            prospect,
+            company,
+            sender=sender,
+            demo=demo,
         )
         assert "John" in html
         assert "teams.microsoft.com" in html
@@ -98,8 +108,11 @@ class TestRenderTemplate:
             "teams_link": "https://teams.microsoft.com/l/meeting/123",
         }
         html = render_template(
-            "demo_confirmation", prospect, company,
-            sender=sender, demo=demo,
+            "demo_confirmation",
+            prospect,
+            company,
+            sender=sender,
+            demo=demo,
         )
         assert "John" in html
 
@@ -128,9 +141,13 @@ class TestRenderTemplate:
         }
         for name in list_templates():
             html = render_template(
-                name, prospect, company,
-                sender=sender, demo=demo,
-                last_contact_date="Feb 1", attempt_count=3,
+                name,
+                prospect,
+                company,
+                sender=sender,
+                demo=demo,
+                last_contact_date="Feb 1",
+                attempt_count=3,
             )
             assert len(html) > 0, f"Template {name} rendered empty"
 
@@ -148,7 +165,10 @@ class TestGetTemplateSubject:
     def test_intro_subject(self, prospect, company, sender):
         """Intro subject includes both company names."""
         subject = get_template_subject(
-            "intro", prospect, company, sender=sender,
+            "intro",
+            prospect,
+            company,
+            sender=sender,
         )
         assert "Nexys LLC" in subject
         assert "Acme Lending" in subject

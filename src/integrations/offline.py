@@ -43,9 +43,7 @@ class OfflineOutlookClient:
         self._send_count = 0
         self._draft_count = 0
         self._event_count = 0
-        logger.info(
-            "OfflineOutlookClient initialized (no real emails will be sent)"
-        )
+        logger.info("OfflineOutlookClient initialized (no real emails will be sent)")
 
     def health_check(self) -> bool:
         return False  # We're offline
@@ -71,12 +69,14 @@ class OfflineOutlookClient:
         msg_id = f"{_SIM_PREFIX}-sent-{self._send_count}"
         logger.info(
             f"OFFLINE: Would send email to {to}: {subject}",
-            extra={"context": {
-                "to": to,
-                "subject": subject,
-                "sim_id": msg_id,
-                "offline": True,
-            }},
+            extra={
+                "context": {
+                    "to": to,
+                    "subject": subject,
+                    "sim_id": msg_id,
+                    "offline": True,
+                }
+            },
         )
         return msg_id
 
@@ -92,12 +92,14 @@ class OfflineOutlookClient:
         draft_id = f"{_SIM_PREFIX}-draft-{self._draft_count}"
         logger.info(
             f"OFFLINE: Would create draft for {to}: {subject}",
-            extra={"context": {
-                "to": to,
-                "subject": subject,
-                "sim_id": draft_id,
-                "offline": True,
-            }},
+            extra={
+                "context": {
+                    "to": to,
+                    "subject": subject,
+                    "sim_id": draft_id,
+                    "offline": True,
+                }
+            },
         )
         return draft_id
 
@@ -131,12 +133,14 @@ class OfflineOutlookClient:
         event_id = f"{_SIM_PREFIX}-event-{self._event_count}"
         logger.info(
             f"OFFLINE: Would create event: {subject}",
-            extra={"context": {
-                "subject": subject,
-                "start": str(start),
-                "sim_id": event_id,
-                "offline": True,
-            }},
+            extra={
+                "context": {
+                    "subject": subject,
+                    "start": str(start),
+                    "sim_id": event_id,
+                    "offline": True,
+                }
+            },
         )
         return event_id
 
@@ -180,9 +184,7 @@ class OfflineEmailGenerator:
 
     def __init__(self, style_examples: Optional[list[str]] = None) -> None:
         self._gen_count = 0
-        logger.info(
-            "OfflineEmailGenerator initialized (no real AI calls will be made)"
-        )
+        logger.info("OfflineEmailGenerator initialized (no real AI calls will be made)")
 
     def is_available(self) -> bool:
         return False  # No real API key
@@ -214,11 +216,13 @@ class OfflineEmailGenerator:
 
         logger.info(
             f"OFFLINE: Generated simulated email #{self._gen_count}",
-            extra={"context": {
-                "instruction": instruction[:80],
-                "prospect": f"{first} {last}",
-                "offline": True,
-            }},
+            extra={
+                "context": {
+                    "instruction": instruction[:80],
+                    "prospect": f"{first} {last}",
+                    "offline": True,
+                }
+            },
         )
 
         return SimulatedEmail(
@@ -256,6 +260,7 @@ def get_outlook_client():
     registry = get_service_registry()
     if registry.is_available("outlook"):
         from src.integrations.outlook import OutlookClient
+
         return OutlookClient()
     else:
         status = registry.check("outlook")
@@ -280,6 +285,7 @@ def get_email_generator(style_examples: Optional[list[str]] = None):
     registry = get_service_registry()
     if registry.is_available("claude"):
         from src.engine.email_gen import EmailGenerator
+
         return EmailGenerator(style_examples=style_examples)
     else:
         status = registry.check("claude")

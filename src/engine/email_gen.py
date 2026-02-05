@@ -78,13 +78,10 @@ class EmailGenerator:
             try:
                 import anthropic
 
-                self._client = anthropic.Anthropic(
-                    api_key=self._config.claude_api_key
-                )
+                self._client = anthropic.Anthropic(api_key=self._config.claude_api_key)
             except ImportError:
                 raise ImportError(
-                    "anthropic package not installed. "
-                    "Install with: pip install anthropic"
+                    "anthropic package not installed. " "Install with: pip install anthropic"
                 )
         return self._client
 
@@ -169,9 +166,9 @@ class EmailGenerator:
         lines = text.strip().split("\n")
         for i, line in enumerate(lines):
             if line.startswith("SUBJECT:"):
-                subject = line[len("SUBJECT:"):].strip()
+                subject = line[len("SUBJECT:") :].strip()
             elif line.startswith("BODY:"):
-                body = "\n".join(lines[i + 1:]).strip()
+                body = "\n".join(lines[i + 1 :]).strip()
                 break
 
         return GeneratedEmail(
@@ -213,16 +210,18 @@ class EmailGenerator:
         if style_guidance:
             parts.append(f"\n{style_guidance}")
 
-        parts.extend([
-            "",
-            "Write the email in this format:",
-            "SUBJECT: <subject line>",
-            "BODY:",
-            "<email body>",
-            "",
-            "Keep it concise, professional, and conversational. "
-            "No fluff or buzzwords. Sound like a real person.",
-        ])
+        parts.extend(
+            [
+                "",
+                "Write the email in this format:",
+                "SUBJECT: <subject line>",
+                "BODY:",
+                "<email body>",
+                "",
+                "Keep it concise, professional, and conversational. "
+                "No fluff or buzzwords. Sound like a real person.",
+            ]
+        )
 
         return "\n".join(parts)
 

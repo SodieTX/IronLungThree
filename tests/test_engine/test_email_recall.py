@@ -21,9 +21,7 @@ def mock_outlook():
     get_response.status_code = 200
     get_response.json.return_value = {
         "subject": "Quick intro",
-        "toRecipients": [
-            {"emailAddress": {"address": "prospect@acme.com"}}
-        ],
+        "toRecipients": [{"emailAddress": {"address": "prospect@acme.com"}}],
     }
 
     def graph_request(method, endpoint, **kwargs):
@@ -67,7 +65,8 @@ class TestAttemptRecall:
     def test_recall_custom_follow_up_text(self, mock_outlook):
         """Custom follow-up text is used."""
         result = attempt_recall(
-            mock_outlook, "msg-123",
+            mock_outlook,
+            "msg-123",
             follow_up_text="Wrong attachment! Correct one attached.",
         )
 
@@ -90,9 +89,7 @@ class TestAttemptRecall:
         get_response.status_code = 200
         get_response.json.return_value = {
             "subject": "Test",
-            "toRecipients": [
-                {"emailAddress": {"address": "p@acme.com"}}
-            ],
+            "toRecipients": [{"emailAddress": {"address": "p@acme.com"}}],
         }
 
         def graph_request(method, endpoint, **kwargs):
@@ -108,9 +105,7 @@ class TestAttemptRecall:
 
     def test_recall_everything_fails(self, mock_outlook):
         """When everything fails, returns failure result."""
-        mock_outlook._graph_request = MagicMock(
-            side_effect=Exception("Network error")
-        )
+        mock_outlook._graph_request = MagicMock(side_effect=Exception("Network error"))
 
         result = attempt_recall(mock_outlook, "msg-123", send_follow_up=False)
         assert result.success is False

@@ -44,4 +44,5 @@ class SettingsTab(TabBase):
             Multi-line status string
         """
         from src.gui.service_guard import get_service_status_text
+
         return get_service_status_text()
