@@ -51,6 +51,7 @@ class Config:
     outlook_client_id: Optional[str] = None
     outlook_client_secret: Optional[str] = None
     outlook_tenant_id: Optional[str] = None
+    outlook_user_email: Optional[str] = None
 
     # Phase 4: Claude
     claude_api_key: Optional[str] = None
@@ -175,6 +176,7 @@ def load_config(env_file: Optional[Path] = None) -> Config:
         outlook_client_id=_get_str("OUTLOOK_CLIENT_ID", env_vars),
         outlook_client_secret=_get_str("OUTLOOK_CLIENT_SECRET", env_vars),
         outlook_tenant_id=_get_str("OUTLOOK_TENANT_ID", env_vars),
+        outlook_user_email=_get_str("OUTLOOK_USER_EMAIL", env_vars),
         claude_api_key=_get_str("CLAUDE_API_KEY", env_vars),
         activecampaign_api_key=_get_str("ACTIVECAMPAIGN_API_KEY", env_vars),
         activecampaign_url=_get_str("ACTIVECAMPAIGN_URL", env_vars),
@@ -239,6 +241,10 @@ def validate_config(config: Config) -> list[str]:
     if any(outlook_creds) and not all(outlook_creds):
         issues.append(
             "Outlook credentials incomplete - need CLIENT_ID, CLIENT_SECRET, and TENANT_ID"
+        )
+    if all(outlook_creds) and not config.outlook_user_email:
+        issues.append(
+            "Outlook credentials present but OUTLOOK_USER_EMAIL is missing"
         )
 
     return issues
