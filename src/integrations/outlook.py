@@ -348,29 +348,192 @@ class OutlookClient(IntegrationBase):
         since: Optional[datetime] = None,
         limit: int = 50,
     ) -> list[EmailMessage]:
-        """Get inbox messages.
+        """Get inbox messages via Graph API polling.
 
         Args:
             since: Only messages received after this time
             limit: Maximum messages to return
 
         Returns:
-            List of email messages
+            List of email messages, newest first
+
+        Raises:
+            OutlookError: If inbox read fails
         """
-        raise NotImplementedError("Phase 3, Step 3.2")
+        self._ensure_authenticated()
+
+        params: dict[str, str] = {
+            "$top": str(limit),
+            "$orderby": "receivedDateTime desc",
+            "$select": (
+                "id,from,toRecipients,subject,body,bodyPreview,"
+                "receivedDateTime,isRead"
+            ),
+        }
+
+        if since:
+            iso_since = since.strftime("%Y-%m-%dT%H:%M:%SZ")
+            params["$filter"] = f"receivedDateTime ge {iso_since}"
+
+        try:
+            response = self._graph_request(
+                "GET",
+                f"/users/{self._user_email}/mailFolders/inbox/messages",
+                params=params,
+            )
+
+            if response.status_code != 200:
+                raise OutlookError(
+                    f"Inbox read failed ({response.status_code}): {response.text}"
+                )
+
+            data = response.json()
+            messages: list[EmailMessage] = []
+
+            for msg in data.get("value", []):
+                received_at = None
+                if msg.get("receivedDateTime"):
+                    received_at = datetime.fromisoformat(
+                        msg["receivedDateTime"].replace("Z", "+00:00")
+                    )
+
+                from_addr = ""
+                if msg.get("from", {}).get("emailAddress"):
+                    from_addr = msg["from"]["emailAddress"].get("address", "")
+
+                to_addrs = [
+                    r["emailAddress"]["address"]
+                    for r in msg.get("toRecipients", [])
+                    if r.get("emailAddress", {}).get("address")
+                ]
+
+                messages.append(
+                    EmailMessage(
+                        id=msg.get("id", ""),
+                        from_address=from_addr,
+                        to_addresses=to_addrs,
+                        subject=msg.get("subject", ""),
+                        body=msg.get("bodyPreview", ""),
+                        body_html=msg.get("body", {}).get("content"),
+                        received_at=received_at,
+                        is_read=msg.get("isRead", False),
+                    )
+                )
+
+            logger.info(
+                f"Retrieved {len(messages)} inbox messages",
+                extra={"context": {"count": len(messages), "since": str(since)}},
+            )
+            return messages
+
+        except OutlookError:
+            raise
+        except Exception as e:
+            raise OutlookError(f"Failed to read inbox: {e}") from e
 
     def classify_reply(self, message: EmailMessage) -> ReplyClassification:
-        """Classify an email reply.
+        """Classify an email reply using keyword heuristics.
 
-        Uses simple heuristics to classify:
-            - Keywords for interest
-            - OOO auto-reply patterns
-            - Referral patterns
+        Classification priority:
+            1. OOO (out-of-office auto-replies)
+            2. Not interested (explicit decline)
+            3. Referral (redirecting to someone else)
+            4. Interested (positive signal)
+            5. Unknown (default)
+
+        Args:
+            message: Email message to classify
 
         Returns:
             Reply classification
         """
-        raise NotImplementedError("Phase 3, Step 3.2")
+        text = f"{message.subject} {message.body}".lower()
+
+        # OOO patterns (check first — auto-replies should not be misclassified)
+        ooo_patterns = [
+            "out of office",
+            "out of the office",
+            "automatic reply",
+            "auto-reply",
+            "autoreply",
+            "i am currently out",
+            "i'm currently out",
+            "will be out of the office",
+            "on vacation",
+            "on leave",
+            "limited access to email",
+        ]
+        if any(pattern in text for pattern in ooo_patterns):
+            return ReplyClassification.OOO
+
+        # Not interested patterns
+        not_interested_patterns = [
+            "not interested",
+            "no thank you",
+            "no thanks",
+            "please remove",
+            "remove me",
+            "unsubscribe",
+            "stop contacting",
+            "don't contact",
+            "do not contact",
+            "not a good fit",
+            "not looking",
+            "we're all set",
+            "we are all set",
+            "pass on this",
+            "no need",
+        ]
+        if any(pattern in text for pattern in not_interested_patterns):
+            return ReplyClassification.NOT_INTERESTED
+
+        # Referral patterns
+        referral_patterns = [
+            "reach out to",
+            "contact instead",
+            "talk to",
+            "speak with",
+            "the right person",
+            "better person to talk to",
+            "forward this to",
+            "passing this along",
+            "cc'ing",
+            "ccing",
+            "loop in",
+            "adding",
+        ]
+        if any(pattern in text for pattern in referral_patterns):
+            return ReplyClassification.REFERRAL
+
+        # Interested patterns
+        interested_patterns = [
+            "interested",
+            "sounds good",
+            "sounds great",
+            "let's chat",
+            "let's talk",
+            "let's connect",
+            "set up a call",
+            "set up a time",
+            "schedule a",
+            "love to learn more",
+            "tell me more",
+            "more information",
+            "send me more",
+            "when are you available",
+            "what times work",
+            "happy to chat",
+            "i'd like to",
+            "would love to",
+            "that works",
+            "yes",
+            "sure",
+            "absolutely",
+        ]
+        if any(pattern in text for pattern in interested_patterns):
+            return ReplyClassification.INTERESTED
+
+        return ReplyClassification.UNKNOWN
 
     def create_event(
         self,
@@ -381,7 +544,7 @@ class OutlookClient(IntegrationBase):
         teams_meeting: bool = False,
         body: Optional[str] = None,
     ) -> str:
-        """Create a calendar event.
+        """Create a calendar event via Graph API.
 
         Args:
             subject: Event subject
@@ -393,24 +556,244 @@ class OutlookClient(IntegrationBase):
 
         Returns:
             Event ID
+
+        Raises:
+            OutlookError: If event creation fails
         """
-        raise NotImplementedError("Phase 3, Step 3.2")
+        self._ensure_authenticated()
+
+        end = start + timedelta(minutes=duration_minutes)
+        event_payload: dict[str, Any] = {
+            "subject": subject,
+            "start": {
+                "dateTime": start.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": end.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": "UTC",
+            },
+        }
+
+        if body:
+            event_payload["body"] = {
+                "contentType": "HTML",
+                "content": body,
+            }
+
+        if attendees:
+            event_payload["attendees"] = [
+                {
+                    "emailAddress": {"address": addr},
+                    "type": "required",
+                }
+                for addr in attendees
+            ]
+
+        if teams_meeting:
+            event_payload["isOnlineMeeting"] = True
+            event_payload["onlineMeetingProvider"] = "teamsForBusiness"
+
+        try:
+            response = self._graph_request(
+                "POST",
+                f"/users/{self._user_email}/events",
+                json_data=event_payload,
+            )
+
+            if response.status_code == 201:
+                data = response.json()
+                event_id = data.get("id", "")
+                logger.info(
+                    f"Calendar event created: {subject}",
+                    extra={
+                        "context": {
+                            "subject": subject,
+                            "start": str(start),
+                            "teams": teams_meeting,
+                        }
+                    },
+                )
+                return event_id
+            else:
+                raise OutlookError(
+                    f"Event creation failed ({response.status_code}): {response.text}"
+                )
+
+        except OutlookError:
+            raise
+        except Exception as e:
+            raise OutlookError(f"Failed to create event: {e}") from e
 
     def get_events(
         self,
         start: datetime,
         end: datetime,
     ) -> list[CalendarEvent]:
-        """Get calendar events in date range."""
-        raise NotImplementedError("Phase 3, Step 3.2")
+        """Get calendar events in date range.
+
+        Args:
+            start: Range start (inclusive)
+            end: Range end (exclusive)
+
+        Returns:
+            List of calendar events
+
+        Raises:
+            OutlookError: If calendar read fails
+        """
+        self._ensure_authenticated()
+
+        params: dict[str, str] = {
+            "startDateTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "endDateTime": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "$orderby": "start/dateTime",
+            "$select": (
+                "id,subject,start,end,location,attendees,"
+                "onlineMeeting,body"
+            ),
+        }
+
+        try:
+            response = self._graph_request(
+                "GET",
+                f"/users/{self._user_email}/calendarView",
+                params=params,
+            )
+
+            if response.status_code != 200:
+                raise OutlookError(
+                    f"Calendar read failed ({response.status_code}): {response.text}"
+                )
+
+            data = response.json()
+            events: list[CalendarEvent] = []
+
+            for evt in data.get("value", []):
+                evt_start = datetime.fromisoformat(
+                    evt["start"]["dateTime"].replace("Z", "+00:00")
+                )
+                evt_end = datetime.fromisoformat(
+                    evt["end"]["dateTime"].replace("Z", "+00:00")
+                )
+
+                attendee_emails = [
+                    a["emailAddress"]["address"]
+                    for a in evt.get("attendees", [])
+                    if a.get("emailAddress", {}).get("address")
+                ]
+
+                teams_link = None
+                online = evt.get("onlineMeeting")
+                if online and isinstance(online, dict):
+                    teams_link = online.get("joinUrl")
+
+                events.append(
+                    CalendarEvent(
+                        id=evt.get("id", ""),
+                        subject=evt.get("subject", ""),
+                        start=evt_start,
+                        end=evt_end,
+                        location=evt.get("location", {}).get("displayName"),
+                        attendees=attendee_emails or None,
+                        teams_link=teams_link,
+                        body=evt.get("body", {}).get("content"),
+                    )
+                )
+
+            logger.info(
+                f"Retrieved {len(events)} calendar events",
+                extra={"context": {"count": len(events)}},
+            )
+            return events
+
+        except OutlookError:
+            raise
+        except Exception as e:
+            raise OutlookError(f"Failed to read calendar: {e}") from e
 
     def update_event(self, event_id: str, **kwargs: Any) -> bool:
-        """Update an event."""
-        raise NotImplementedError("Phase 3, Step 3.2")
+        """Update a calendar event.
+
+        Args:
+            event_id: Event ID to update
+            **kwargs: Fields to update (subject, start, end, body, attendees)
+
+        Returns:
+            True if update successful
+
+        Raises:
+            OutlookError: If update fails
+        """
+        self._ensure_authenticated()
+
+        patch_payload: dict[str, Any] = {}
+        if "subject" in kwargs:
+            patch_payload["subject"] = kwargs["subject"]
+        if "body" in kwargs:
+            patch_payload["body"] = {
+                "contentType": "HTML",
+                "content": kwargs["body"],
+            }
+        if "start" in kwargs:
+            patch_payload["start"] = {
+                "dateTime": kwargs["start"].strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": "UTC",
+            }
+        if "end" in kwargs:
+            patch_payload["end"] = {
+                "dateTime": kwargs["end"].strftime("%Y-%m-%dT%H:%M:%S"),
+                "timeZone": "UTC",
+            }
+
+        try:
+            response = self._graph_request(
+                "PATCH",
+                f"/users/{self._user_email}/events/{event_id}",
+                json_data=patch_payload,
+            )
+            if response.status_code == 200:
+                logger.info(f"Event updated: {event_id}")
+                return True
+            else:
+                raise OutlookError(
+                    f"Event update failed ({response.status_code}): {response.text}"
+                )
+        except OutlookError:
+            raise
+        except Exception as e:
+            raise OutlookError(f"Failed to update event: {e}") from e
 
     def delete_event(self, event_id: str) -> bool:
-        """Delete an event."""
-        raise NotImplementedError("Phase 3, Step 3.2")
+        """Delete a calendar event.
+
+        Args:
+            event_id: Event ID to delete
+
+        Returns:
+            True if deletion successful
+
+        Raises:
+            OutlookError: If deletion fails
+        """
+        self._ensure_authenticated()
+
+        try:
+            response = self._graph_request(
+                "DELETE",
+                f"/users/{self._user_email}/events/{event_id}",
+            )
+            if response.status_code == 204:
+                logger.info(f"Event deleted: {event_id}")
+                return True
+            else:
+                raise OutlookError(
+                    f"Event deletion failed ({response.status_code}): {response.text}"
+                )
+        except OutlookError:
+            raise
+        except Exception as e:
+            raise OutlookError(f"Failed to delete event: {e}") from e
 
     # -------------------------------------------------------------------------
     # Internal helpers

@@ -384,3 +384,311 @@ class TestReplyClassification:
         """Classification values are lowercase strings."""
         assert ReplyClassification.INTERESTED.value == "interested"
         assert ReplyClassification.OOO.value == "ooo"
+
+
+class TestOutlookGetInbox:
+    """Test inbox reading."""
+
+    def test_get_inbox_success(self, mock_msal):
+        """Get inbox returns parsed email messages."""
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "value": [
+                {
+                    "id": "msg-1",
+                    "from": {"emailAddress": {"address": "sender@test.com"}},
+                    "toRecipients": [
+                        {"emailAddress": {"address": "jeff@nexys.com"}}
+                    ],
+                    "subject": "Re: Intro",
+                    "bodyPreview": "Sounds great, let's talk",
+                    "body": {"content": "<p>Sounds great, let's talk</p>"},
+                    "receivedDateTime": "2026-02-05T10:30:00Z",
+                    "isRead": False,
+                }
+            ]
+        }
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            messages = client.get_inbox()
+
+        assert len(messages) == 1
+        assert messages[0].id == "msg-1"
+        assert messages[0].from_address == "sender@test.com"
+        assert messages[0].subject == "Re: Intro"
+        assert messages[0].is_read is False
+
+    def test_get_inbox_with_since_filter(self, mock_msal):
+        """Get inbox includes filter param when since is given."""
+        from datetime import datetime, timezone
+
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"value": []}
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            since = datetime(2026, 2, 1, tzinfo=timezone.utc)
+            client.get_inbox(since=since)
+
+            call_params = mock_requests.request.call_args.kwargs["params"]
+            assert "$filter" in call_params
+            assert "2026-02-01" in call_params["$filter"]
+
+    def test_get_inbox_failure_raises(self, mock_msal):
+        """Get inbox raises OutlookError on API failure."""
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Server Error"
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            with pytest.raises(OutlookError, match="Inbox read failed"):
+                client.get_inbox()
+
+
+class TestClassifyReply:
+    """Test email reply classification heuristics."""
+
+    def _make_msg(self, subject: str = "", body: str = "") -> EmailMessage:
+        return EmailMessage(
+            id="test",
+            from_address="sender@test.com",
+            to_addresses=["jeff@nexys.com"],
+            subject=subject,
+            body=body,
+        )
+
+    def test_classify_ooo(self):
+        """Classify out-of-office auto-reply."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(subject="Automatic Reply: Out of Office")
+        assert client.classify_reply(msg) == ReplyClassification.OOO
+
+    def test_classify_ooo_body(self):
+        """Classify OOO from body content."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="I am currently out of the office until Feb 10")
+        assert client.classify_reply(msg) == ReplyClassification.OOO
+
+    def test_classify_not_interested(self):
+        """Classify explicit decline."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="Not interested, please remove me from your list")
+        assert client.classify_reply(msg) == ReplyClassification.NOT_INTERESTED
+
+    def test_classify_not_interested_polite(self):
+        """Classify polite decline."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="No thank you, we're all set right now.")
+        assert client.classify_reply(msg) == ReplyClassification.NOT_INTERESTED
+
+    def test_classify_referral(self):
+        """Classify referral to another person."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(
+            body="You should reach out to Mike Johnson, he's the right person to talk to"
+        )
+        assert client.classify_reply(msg) == ReplyClassification.REFERRAL
+
+    def test_classify_interested(self):
+        """Classify positive interest signal."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="Sounds great, let's set up a call next week")
+        assert client.classify_reply(msg) == ReplyClassification.INTERESTED
+
+    def test_classify_interested_short(self):
+        """Classify brief positive reply."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="Sure, when are you available?")
+        assert client.classify_reply(msg) == ReplyClassification.INTERESTED
+
+    def test_classify_unknown(self):
+        """Classify ambiguous reply as unknown."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(body="Thanks for the email. Let me think about it.")
+        assert client.classify_reply(msg) == ReplyClassification.UNKNOWN
+
+    def test_ooo_takes_priority_over_interested(self):
+        """OOO classification takes priority when both signals present."""
+        client = OutlookClient.__new__(OutlookClient)
+        msg = self._make_msg(
+            subject="Automatic Reply",
+            body="I'm interested but I am currently out of the office"
+        )
+        assert client.classify_reply(msg) == ReplyClassification.OOO
+
+
+class TestOutlookCalendar:
+    """Test calendar operations."""
+
+    def test_create_event_success(self, mock_msal):
+        """Create event returns event ID on success."""
+        from datetime import datetime, timezone
+
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"id": "event-id-123"}
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+
+            event_id = client.create_event(
+                subject="Demo with Acme Corp",
+                start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
+                duration_minutes=30,
+                attendees=["prospect@acme.com"],
+            )
+
+            assert event_id == "event-id-123"
+            payload = mock_requests.request.call_args.kwargs["json"]
+            assert payload["subject"] == "Demo with Acme Corp"
+            assert len(payload["attendees"]) == 1
+
+    def test_create_event_with_teams(self, mock_msal):
+        """Create event with Teams meeting link."""
+        from datetime import datetime, timezone
+
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"id": "event-teams-123"}
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+
+            client.create_event(
+                subject="Demo",
+                start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
+                teams_meeting=True,
+            )
+
+            payload = mock_requests.request.call_args.kwargs["json"]
+            assert payload["isOnlineMeeting"] is True
+            assert payload["onlineMeetingProvider"] == "teamsForBusiness"
+
+    def test_create_event_failure_raises(self, mock_msal):
+        """Create event raises OutlookError on API failure."""
+        from datetime import datetime, timezone
+
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            with pytest.raises(OutlookError, match="Event creation failed"):
+                client.create_event(
+                    subject="Demo",
+                    start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
+                )
+
+    def test_get_events_success(self, mock_msal):
+        """Get events returns parsed calendar events."""
+        from datetime import datetime, timezone
+
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "value": [
+                {
+                    "id": "evt-1",
+                    "subject": "Demo with Acme",
+                    "start": {"dateTime": "2026-02-10T14:00:00"},
+                    "end": {"dateTime": "2026-02-10T14:30:00"},
+                    "location": {"displayName": "Teams"},
+                    "attendees": [
+                        {"emailAddress": {"address": "p@acme.com"}}
+                    ],
+                    "onlineMeeting": {"joinUrl": "https://teams.link/123"},
+                    "body": {"content": "Demo description"},
+                }
+            ]
+        }
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            events = client.get_events(
+                start=datetime(2026, 2, 10, tzinfo=timezone.utc),
+                end=datetime(2026, 2, 11, tzinfo=timezone.utc),
+            )
+
+        assert len(events) == 1
+        assert events[0].id == "evt-1"
+        assert events[0].subject == "Demo with Acme"
+        assert events[0].teams_link == "https://teams.link/123"
+        assert events[0].attendees == ["p@acme.com"]
+
+    def test_update_event_success(self, mock_msal):
+        """Update event returns True on success."""
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            result = client.update_event("evt-1", subject="Updated Demo")
+            assert result is True
+            assert mock_requests.request.call_args.kwargs["method"] == "PATCH"
+
+    def test_delete_event_success(self, mock_msal):
+        """Delete event returns True on success."""
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 204
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            result = client.delete_event("evt-1")
+            assert result is True
+            assert mock_requests.request.call_args.kwargs["method"] == "DELETE"
+
+    def test_delete_event_failure_raises(self, mock_msal):
+        """Delete event raises OutlookError on API failure."""
+        mocked, mock_app = mock_msal
+        client = OutlookClient()
+        client.authenticate()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+
+        with patch("src.integrations.outlook.requests") as mock_requests:
+            mock_requests.request.return_value = mock_response
+            with pytest.raises(OutlookError, match="Event deletion failed"):
+                client.delete_event("evt-nonexistent")
