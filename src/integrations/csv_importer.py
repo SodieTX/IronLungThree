@@ -247,7 +247,7 @@ class CSVImporter:
         Returns:
             Tuple of (headers, all_rows, encoding)
         """
-        encodings = ["utf-8", "latin-1", "cp1252"]
+        encodings = ["utf-8-sig", "utf-8", "latin-1", "cp1252"]
 
         for encoding in encodings:
             try:
