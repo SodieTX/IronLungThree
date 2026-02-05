@@ -10,7 +10,7 @@ Provides:
 
 Usage:
     from src.integrations.outlook import OutlookClient
-    
+
     client = OutlookClient()
     if client.is_configured():
         client.send_email(to="test@example.com", subject="Hello", body="...")
@@ -30,6 +30,7 @@ logger = get_logger(__name__)
 
 class ReplyClassification(str, Enum):
     """Classification of email reply."""
+
     INTERESTED = "interested"
     NOT_INTERESTED = "not_interested"
     OOO = "ooo"
@@ -40,7 +41,7 @@ class ReplyClassification(str, Enum):
 @dataclass
 class EmailMessage:
     """Email message from Outlook.
-    
+
     Attributes:
         id: Message ID
         from_address: Sender email
@@ -51,6 +52,7 @@ class EmailMessage:
         received_at: When received
         is_read: Read status
     """
+
     id: str
     from_address: str
     to_addresses: list[str]
@@ -64,7 +66,7 @@ class EmailMessage:
 @dataclass
 class CalendarEvent:
     """Calendar event from Outlook.
-    
+
     Attributes:
         id: Event ID
         subject: Event subject
@@ -75,54 +77,57 @@ class CalendarEvent:
         teams_link: Teams meeting link (if any)
         body: Event body/description
     """
+
     id: str
     subject: str
     start: datetime
     end: datetime
     location: Optional[str] = None
-    attendees: list[str] = None
+    attendees: Optional[list[str]] = None
     teams_link: Optional[str] = None
     body: Optional[str] = None
 
 
 class OutlookClient(IntegrationBase):
     """Microsoft Graph API client for Outlook.
-    
+
     Handles:
         - OAuth2 authentication with MSAL
         - Token caching and refresh
         - Email send/receive
         - Calendar operations
     """
-    
+
     def __init__(self):
         """Initialize Outlook client."""
         self._config = get_config()
         self._access_token: Optional[str] = None
         self._token_expiry: Optional[datetime] = None
-        
+
     def health_check(self) -> bool:
         """Check if Outlook API is reachable."""
         raise NotImplementedError("Phase 3, Step 3.1")
-        
+
     def is_configured(self) -> bool:
         """Check if Outlook credentials are configured."""
-        return all([
-            self._config.outlook_client_id,
-            self._config.outlook_client_secret,
-            self._config.outlook_tenant_id,
-        ])
-        
+        return all(
+            [
+                self._config.outlook_client_id,
+                self._config.outlook_client_secret,
+                self._config.outlook_tenant_id,
+            ]
+        )
+
     def authenticate(self) -> bool:
         """Authenticate with Microsoft Graph.
-        
+
         Uses OAuth2 with client credentials flow.
-        
+
         Returns:
             True if authentication successful
         """
         raise NotImplementedError("Phase 3, Step 3.1")
-        
+
     def send_email(
         self,
         to: str,
@@ -133,7 +138,7 @@ class OutlookClient(IntegrationBase):
         bcc: Optional[list[str]] = None,
     ) -> str:
         """Send an email.
-        
+
         Args:
             to: Recipient email address
             subject: Email subject
@@ -141,12 +146,12 @@ class OutlookClient(IntegrationBase):
             html: True if body is HTML
             cc: CC recipients
             bcc: BCC recipients
-            
+
         Returns:
             Message ID
         """
         raise NotImplementedError("Phase 3, Step 3.1")
-        
+
     def create_draft(
         self,
         to: str,
@@ -155,41 +160,41 @@ class OutlookClient(IntegrationBase):
         html: bool = False,
     ) -> str:
         """Create a draft email.
-        
+
         Returns:
             Draft ID
         """
         raise NotImplementedError("Phase 3, Step 3.1")
-        
+
     def get_inbox(
         self,
         since: Optional[datetime] = None,
         limit: int = 50,
     ) -> list[EmailMessage]:
         """Get inbox messages.
-        
+
         Args:
             since: Only messages received after this time
             limit: Maximum messages to return
-            
+
         Returns:
             List of email messages
         """
         raise NotImplementedError("Phase 3, Step 3.2")
-        
+
     def classify_reply(self, message: EmailMessage) -> ReplyClassification:
         """Classify an email reply.
-        
+
         Uses simple heuristics to classify:
             - Keywords for interest
             - OOO auto-reply patterns
             - Referral patterns
-            
+
         Returns:
             Reply classification
         """
         raise NotImplementedError("Phase 3, Step 3.2")
-        
+
     def create_event(
         self,
         subject: str,
@@ -200,7 +205,7 @@ class OutlookClient(IntegrationBase):
         body: Optional[str] = None,
     ) -> str:
         """Create a calendar event.
-        
+
         Args:
             subject: Event subject
             start: Start datetime
@@ -208,12 +213,12 @@ class OutlookClient(IntegrationBase):
             attendees: Attendee email addresses
             teams_meeting: Generate Teams meeting link
             body: Event description
-            
+
         Returns:
             Event ID
         """
         raise NotImplementedError("Phase 3, Step 3.2")
-        
+
     def get_events(
         self,
         start: datetime,
@@ -221,11 +226,11 @@ class OutlookClient(IntegrationBase):
     ) -> list[CalendarEvent]:
         """Get calendar events in date range."""
         raise NotImplementedError("Phase 3, Step 3.2")
-        
+
     def update_event(self, event_id: str, **kwargs) -> bool:
         """Update an event."""
         raise NotImplementedError("Phase 3, Step 3.2")
-        
+
     def delete_event(self, event_id: str) -> bool:
         """Delete an event."""
         raise NotImplementedError("Phase 3, Step 3.2")

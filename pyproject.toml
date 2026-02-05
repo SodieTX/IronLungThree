@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ironlung3"
+version = "0.1.0"
+description = "ADHD-optimized sales pipeline management system"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Jeff Soderstrom", email = "jeff@nexys.com"}
+]
+keywords = ["sales", "crm", "pipeline", "adhd", "productivity"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
+
+dependencies = [
+    "openpyxl>=3.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+]
+phase3 = [
+    "msal>=1.26.0",  # Microsoft Graph auth
+    "requests>=2.31.0",
+    "jinja2>=3.1.0",
+]
+phase4 = [
+    "anthropic>=0.18.0",  # Claude API
+]
+
+[project.scripts]
+ironlung3 = "ironlung3:main"
+
+[project.urls]
+Homepage = "https://github.com/jsoderstrom/ironlung3"
+Documentation = "https://github.com/jsoderstrom/ironlung3/docs"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.mypy_cache
+    | \.pytest_cache
+    | __pycache__
+    | data
+    | backups
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_first_party = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "tests/",
+    "data/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "src/gui/*",  # GUI tested manually
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

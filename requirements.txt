@@ -1,0 +1,14 @@
+# IronLung 3 - Production Dependencies
+# Python 3.11+ required
+
+# Phase 1: Core functionality
+openpyxl>=3.1.0           # Excel file support for imports
+python-dotenv>=1.0.0      # Environment variable loading
+
+# Phase 3: Communications (uncomment when needed)
+# msal>=1.26.0            # Microsoft Graph authentication
+# requests>=2.31.0        # HTTP client for APIs
+# jinja2>=3.1.0           # Email template rendering
+
+# Phase 4: AI (uncomment when needed)
+# anthropic>=0.18.0       # Claude API client

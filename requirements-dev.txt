@@ -1,0 +1,17 @@
+# IronLung 3 - Development Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Include production dependencies
+-r requirements.txt
+
+# Testing
+pytest>=8.0.0             # Test framework
+pytest-cov>=4.1.0         # Coverage reporting
+
+# Code quality
+mypy>=1.8.0               # Static type checking
+black>=24.0.0             # Code formatting
+isort>=5.13.0             # Import sorting
+
+# Development utilities
+pip-tools>=7.3.0          # Dependency management

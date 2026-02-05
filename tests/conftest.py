@@ -39,7 +39,7 @@ def temp_db(tmp_path: Path) -> Generator[Database, None, None]:
     """
     db_path = tmp_path / "test.db"
     db = Database(str(db_path))
-    db.initialize_schema()
+    db.initialize()
     yield db
     db.close()
 
@@ -52,7 +52,7 @@ def memory_db() -> Generator[Database, None, None]:
         Database using :memory:, no cleanup needed
     """
     db = Database(":memory:")
-    db.initialize_schema()
+    db.initialize()
     yield db
     db.close()
 
@@ -117,8 +117,9 @@ def sample_contact_method(sample_prospect: Prospect) -> ContactMethod:
     return ContactMethod(
         id=1,
         prospect_id=sample_prospect.id,
-        type=ContactMethodType.WORK_EMAIL,
+        type=ContactMethodType.EMAIL,
         value="john.doe@acme.com",
+        label="work",
         is_verified=True,
     )
 
@@ -129,10 +130,9 @@ def sample_activity(sample_prospect: Prospect) -> Activity:
     return Activity(
         id=1,
         prospect_id=sample_prospect.id,
-        type=ActivityType.CALL_OUTBOUND,
-        outcome="left_voicemail",
+        activity_type=ActivityType.CALL,
         notes="Left voicemail about Q1 priorities",
-        activity_date=datetime(2026, 2, 1, 10, 30),
+        created_at=datetime(2026, 2, 1, 10, 30),
     )
 
 
@@ -140,11 +140,10 @@ def sample_activity(sample_prospect: Prospect) -> Activity:
 def mock_config(tmp_path: Path) -> Config:
     """Test configuration with temp paths."""
     return Config(
-        db_path=str(tmp_path / "test.db"),
-        backup_path=str(tmp_path / "backups"),
-        log_path=str(tmp_path / "logs"),
-        data_path=str(tmp_path / "data"),
-        debug_mode=True,
+        db_path=tmp_path / "test.db",
+        backup_path=tmp_path / "backups",
+        log_path=tmp_path / "logs",
+        debug=True,
     )
 
 
