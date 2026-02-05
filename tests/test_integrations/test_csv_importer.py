@@ -188,15 +188,15 @@ class TestApplyMapping:
         records = importer.apply_mapping(csv_file, mapping)
         assert records[0].phone == "7135551234"
 
-    def test_state_uppercased_and_trimmed(self, tmp_path: Path):
-        """State is uppercased and trimmed to 2 chars."""
+    def test_state_normalized_to_code(self, tmp_path: Path):
+        """State full name is resolved to 2-letter code."""
         csv_file = tmp_path / "state.csv"
         csv_file.write_text("Name,State\nJohn, texas \n")
 
         importer = CSVImporter()
         mapping = {"first_name": "Name", "state": "State"}
         records = importer.apply_mapping(csv_file, mapping)
-        assert records[0].state == "TE"
+        assert records[0].state == "TX"
 
     def test_skip_empty_rows(self, tmp_path: Path):
         """Empty rows are skipped."""
