@@ -15,7 +15,6 @@ Usage:
 
 import platform
 import shutil
-import subprocess
 import webbrowser
 
 from src.core.logging import get_logger
