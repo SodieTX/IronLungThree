@@ -83,7 +83,7 @@ def check_service(
         messagebox.showwarning(
             f"{status.name} Unavailable",
             message,
-            parent=parent,
+            parent=parent,  # type: ignore[arg-type]
         )
 
     return False

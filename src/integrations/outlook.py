@@ -32,7 +32,7 @@ try:
 except ImportError:
     msal = None  # type: ignore[assignment]
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from src.core.config import get_config
 from src.core.exceptions import OutlookError
@@ -148,7 +148,7 @@ class OutlookClient(IntegrationBase):
         try:
             self._ensure_authenticated()
             response = self._graph_request("GET", f"/users/{self._user_email}")
-            return response.status_code == 200
+            return bool(response.status_code == 200)
         except (OutlookError, requests.RequestException):
             return False
 
@@ -327,7 +327,7 @@ class OutlookClient(IntegrationBase):
 
             if response.status_code == 201:
                 data = response.json()
-                draft_id = data.get("id", "")
+                draft_id: str = data.get("id", "")
                 logger.info(
                     f"Draft created for {to}",
                     extra={"context": {"to": to, "subject": subject}},
@@ -598,7 +598,7 @@ class OutlookClient(IntegrationBase):
 
             if response.status_code == 201:
                 data = response.json()
-                event_id = data.get("id", "")
+                event_id: str = data.get("id", "")
                 logger.info(
                     f"Calendar event created: {subject}",
                     extra={

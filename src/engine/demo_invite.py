@@ -215,7 +215,7 @@ def _create_calendar_event(
         pass
 
     try:
-        event_id = outlook.create_event(  # type: ignore[union-attr]
+        event_id = outlook.create_event(  # type: ignore[attr-defined]
             subject=subject,
             start=demo_datetime,
             duration_minutes=duration_minutes,
@@ -309,7 +309,7 @@ def _send_invite_email(
             )
             return False
 
-        outlook.send_email(  # type: ignore[union-attr]
+        outlook.send_email(  # type: ignore[attr-defined]
             to=email_address,
             subject=subject,
             body=body_html,

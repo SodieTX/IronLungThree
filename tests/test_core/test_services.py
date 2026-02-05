@@ -1,7 +1,8 @@
 """Tests for ServiceRegistry and service availability tracking."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from src.core.config import Config
 from src.core.exceptions import ConfigurationError

@@ -91,7 +91,7 @@ def render_template(
         **kwargs,
     }
 
-    rendered = template.render(**context)
+    rendered: str = template.render(**context)
     logger.info(
         f"Rendered template: {template_name}",
         extra={"context": {"template": template_name}},

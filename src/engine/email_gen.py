@@ -139,15 +139,15 @@ class EmailGenerator:
         """
         client = self._get_client()
 
-        response = client.messages.create(  # type: ignore[union-attr]
+        response = client.messages.create(  # type: ignore[attr-defined]
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        text = response.content[0].text  # type: ignore[union-attr]
+        text = response.content[0].text  # type: ignore[attr-defined]
         tokens_used = (
-            response.usage.input_tokens + response.usage.output_tokens  # type: ignore[union-attr]
+            response.usage.input_tokens + response.usage.output_tokens  # type: ignore[attr-defined]
         )
 
         return self._parse_response(text, tokens_used)

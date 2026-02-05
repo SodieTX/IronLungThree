@@ -284,4 +284,4 @@ class CallSession:
         """Get recent activity notes."""
         noted = [a for a in activities if a.notes]
         noted.sort(key=lambda a: a.created_at or datetime.min, reverse=True)
-        return [a.notes for a in noted[:limit]]
+        return [a.notes for a in noted[:limit] if a.notes is not None]

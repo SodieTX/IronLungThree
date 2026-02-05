@@ -84,7 +84,7 @@ def attempt_recall(
                     "I apologize — please disregard my previous email. " "It was sent in error."
                 )
                 try:
-                    outlook.send_email(  # type: ignore[union-attr]
+                    outlook.send_email(  # type: ignore[attr-defined]
                         to=to_address,
                         subject=f"Please disregard: {subject}",
                         body=body,
@@ -131,9 +131,9 @@ def _delete_sent_message(outlook: object, message_id: str) -> bool:
         True if deletion succeeded
     """
     try:
-        response = outlook._graph_request(  # type: ignore[union-attr]
+        response = outlook._graph_request(  # type: ignore[attr-defined]
             "DELETE",
-            f"/users/{outlook._user_email}/messages/{message_id}",  # type: ignore[union-attr]
+            f"/users/{outlook._user_email}/messages/{message_id}",  # type: ignore[attr-defined]
         )
         if response.status_code == 204:
             logger.info(f"Deleted message {message_id} from Sent Items")
@@ -157,9 +157,9 @@ def _get_original_message(outlook: object, message_id: str) -> Optional[dict[str
         Dict with 'to' and 'subject', or None if not found
     """
     try:
-        response = outlook._graph_request(  # type: ignore[union-attr]
+        response = outlook._graph_request(  # type: ignore[attr-defined]
             "GET",
-            f"/users/{outlook._user_email}/messages/{message_id}",  # type: ignore[union-attr]
+            f"/users/{outlook._user_email}/messages/{message_id}",  # type: ignore[attr-defined]
             params={"$select": "subject,toRecipients"},
         )
         if response.status_code == 200:

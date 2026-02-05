@@ -85,7 +85,7 @@ class BriaDialer(IntegrationBase):
                     r"SOFTWARE\WOW6432Node\CounterPath\Bria",
                 ]:
                     try:
-                        winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)
+                        winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)  # type: ignore[attr-defined]
                         self._available = True
                         logger.info("Bria found via Windows registry")
                         return True
