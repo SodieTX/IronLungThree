@@ -161,13 +161,63 @@ def populated_db(
     """Database pre-populated with sample data.
 
     Contains:
-        - 1 company
+        - 1 company (Acme Corp)
         - 2 prospects (1 unengaged, 1 engaged)
-        - 1 contact method
-        - 1 activity
+        - 1 contact method (email on unengaged prospect)
+        - 1 activity (call on unengaged prospect)
     """
-    # Note: These would insert data once save methods are implemented
-    # For now, fixture just provides populated database concept
+    company_id = memory_db.create_company(sample_company)
+
+    # Create unengaged prospect
+    unengaged = Prospect(
+        company_id=company_id,
+        first_name=sample_prospect.first_name,
+        last_name=sample_prospect.last_name,
+        title=sample_prospect.title,
+        population=sample_prospect.population,
+        follow_up_date=sample_prospect.follow_up_date,
+        attempt_count=sample_prospect.attempt_count,
+        prospect_score=sample_prospect.prospect_score,
+        data_confidence=sample_prospect.data_confidence,
+        source=sample_prospect.source,
+    )
+    p1_id = memory_db.create_prospect(unengaged)
+
+    # Create engaged prospect
+    engaged = Prospect(
+        company_id=company_id,
+        first_name=sample_engaged_prospect.first_name,
+        last_name=sample_engaged_prospect.last_name,
+        title=sample_engaged_prospect.title,
+        population=sample_engaged_prospect.population,
+        engagement_stage=sample_engaged_prospect.engagement_stage,
+        follow_up_date=sample_engaged_prospect.follow_up_date,
+        last_contact_date=sample_engaged_prospect.last_contact_date,
+        attempt_count=sample_engaged_prospect.attempt_count,
+        prospect_score=sample_engaged_prospect.prospect_score,
+        data_confidence=sample_engaged_prospect.data_confidence,
+        source=sample_engaged_prospect.source,
+    )
+    memory_db.create_prospect(engaged)
+
+    # Add contact method to unengaged prospect
+    contact = ContactMethod(
+        prospect_id=p1_id,
+        type=sample_contact_method.type,
+        value=sample_contact_method.value,
+        label=sample_contact_method.label,
+        is_verified=sample_contact_method.is_verified,
+    )
+    memory_db.create_contact_method(contact)
+
+    # Add activity to unengaged prospect
+    activity = Activity(
+        prospect_id=p1_id,
+        activity_type=sample_activity.activity_type,
+        notes=sample_activity.notes,
+    )
+    memory_db.create_activity(activity)
+
     return memory_db
 
 

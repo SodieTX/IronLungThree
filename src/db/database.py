@@ -26,7 +26,9 @@ from src.core.exceptions import DatabaseError
 from src.core.logging import get_logger
 from src.db.models import (
     Activity,
+    ActivityOutcome,
     ActivityType,
+    AttemptType,
     Company,
     ContactMethod,
     ContactMethodType,
@@ -35,6 +37,7 @@ from src.db.models import (
     ImportSource,
     IntelCategory,
     IntelNugget,
+    LostReason,
     Population,
     Prospect,
     ProspectFull,
@@ -339,7 +342,6 @@ class Database:
         engagement_stage = EngagementStage(stage_val) if stage_val else None
 
         lost_val = row["lost_reason"]
-        from src.db.models import LostReason
         lost_reason = LostReason(lost_val) if lost_val else None
 
         dead_val = row["dead_reason"]
@@ -378,7 +380,6 @@ class Database:
 
     def _row_to_contact_method(self, row: sqlite3.Row) -> ContactMethod:
         """Convert a database row to a ContactMethod dataclass."""
-        from src.db.models import ContactMethodType
         return ContactMethod(
             id=row["id"],
             prospect_id=row["prospect_id"],
@@ -396,7 +397,6 @@ class Database:
 
     def _row_to_activity(self, row: sqlite3.Row) -> Activity:
         """Convert a database row to an Activity dataclass."""
-        from src.db.models import ActivityOutcome, AttemptType
         activity_type = ActivityType(row["activity_type"]) if row["activity_type"] else ActivityType.NOTE
 
         outcome_val = row["outcome"]
@@ -1055,12 +1055,11 @@ class Database:
             ).fetchall()
         result = []
         for row in rows:
-            from src.db.models import ResearchStatus as RS
             result.append(ResearchTask(
                 id=row["id"],
                 prospect_id=row["prospect_id"],
                 priority=row["priority"] or 0,
-                status=RS(row["status"]) if row["status"] else RS.PENDING,
+                status=ResearchStatus(row["status"]) if row["status"] else ResearchStatus.PENDING,
                 attempts=row["attempts"] or 0,
                 last_attempt_date=row["last_attempt_date"],
                 findings=row["findings"],
@@ -1095,13 +1094,12 @@ class Database:
             "SELECT * FROM intel_nuggets WHERE prospect_id = ? ORDER BY extracted_date DESC",
             (prospect_id,),
         ).fetchall()
-        from src.db.models import IntelCategory as IC
         result = []
         for row in rows:
             result.append(IntelNugget(
                 id=row["id"],
                 prospect_id=row["prospect_id"],
-                category=IC(row["category"]) if row["category"] else IC.KEY_FACT,
+                category=IntelCategory(row["category"]) if row["category"] else IntelCategory.KEY_FACT,
                 content=row["content"],
                 source_activity_id=row["source_activity_id"],
                 extracted_date=row["extracted_date"],
@@ -1117,17 +1115,21 @@ class Database:
         prospect_ids: list[int],
         population: Population,
         reason: str,
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, int]:
         """Update population for multiple prospects.
 
         DNC records are skipped, not modified.
+        Invalid transitions (per population rules) are skipped.
 
         Returns:
-            Tuple of (updated_count, skipped_dnc_count)
+            Tuple of (updated_count, skipped_dnc_count, skipped_invalid_count)
         """
+        from src.engine.populations import can_transition
+
         conn = self._get_connection()
         updated = 0
         skipped_dnc = 0
+        skipped_invalid = 0
 
         for pid in prospect_ids:
             prospect = self.get_prospect(pid)
@@ -1138,6 +1140,18 @@ class Database:
                 continue
 
             old_pop = prospect.population
+            if not can_transition(old_pop, population):
+                skipped_invalid += 1
+                logger.warning(
+                    "Bulk update skipped invalid transition",
+                    extra={"context": {
+                        "prospect_id": pid,
+                        "from": old_pop.value,
+                        "to": population.value,
+                    }},
+                )
+                continue
+
             try:
                 conn.execute(
                     "UPDATE prospects SET population = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -1163,7 +1177,7 @@ class Database:
                 continue
 
         conn.commit()
-        return (updated, skipped_dnc)
+        return (updated, skipped_dnc, skipped_invalid)
 
     def bulk_set_follow_up(
         self,
@@ -1190,15 +1204,20 @@ class Database:
         self,
         prospect_ids: list[int],
         parked_month: str,
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, int]:
         """Park prospects in a month (YYYY-MM).
 
+        Invalid transitions (per population rules) are skipped.
+
         Returns:
-            Tuple of (parked_count, skipped_dnc_count)
+            Tuple of (parked_count, skipped_dnc_count, skipped_invalid_count)
         """
+        from src.engine.populations import can_transition
+
         conn = self._get_connection()
         parked = 0
         skipped_dnc = 0
+        skipped_invalid = 0
 
         for pid in prospect_ids:
             prospect = self.get_prospect(pid)
@@ -1209,6 +1228,17 @@ class Database:
                 continue
 
             old_pop = prospect.population
+            if not can_transition(old_pop, Population.PARKED):
+                skipped_invalid += 1
+                logger.warning(
+                    "Bulk park skipped invalid transition",
+                    extra={"context": {
+                        "prospect_id": pid,
+                        "from": old_pop.value,
+                    }},
+                )
+                continue
+
             try:
                 conn.execute(
                     """UPDATE prospects SET
@@ -1235,7 +1265,7 @@ class Database:
                 continue
 
         conn.commit()
-        return (parked, skipped_dnc)
+        return (parked, skipped_dnc, skipped_invalid)
 
     # =========================================================================
     # TAG OPERATIONS

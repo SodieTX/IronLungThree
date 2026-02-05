@@ -489,11 +489,12 @@ class TestBulkOperations:
             population=Population.UNENGAGED,
         ))
 
-        updated, skipped = memory_db.bulk_update_population(
+        updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
             [p1, p2], Population.PARKED, "Parking for Q2"
         )
         assert updated == 2
-        assert skipped == 0
+        assert skipped_dnc == 0
+        assert skipped_invalid == 0
         assert memory_db.get_prospect(p1).population == Population.PARKED
 
     def test_bulk_update_skips_dnc(self, memory_db: Database):
@@ -508,12 +509,35 @@ class TestBulkOperations:
             population=Population.DEAD_DNC,
         ))
 
-        updated, skipped = memory_db.bulk_update_population(
+        updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
             [p1, p2], Population.PARKED, "Test"
         )
         assert updated == 1
-        assert skipped == 1
+        assert skipped_dnc == 1
         assert memory_db.get_prospect(p2).population == Population.DEAD_DNC
+
+    def test_bulk_update_skips_invalid_transitions(self, memory_db: Database):
+        """Bulk update skips transitions that violate population rules."""
+        cid = memory_db.create_company(Company(name="Test Co", state="TX"))
+        # CLOSED_WON is terminal - can't transition out
+        p1 = memory_db.create_prospect(Prospect(
+            company_id=cid, first_name="Won", last_name="Deal",
+            population=Population.CLOSED_WON,
+        ))
+        # BROKEN can't go directly to ENGAGED
+        p2 = memory_db.create_prospect(Prospect(
+            company_id=cid, first_name="Broken", last_name="Record",
+            population=Population.BROKEN,
+        ))
+
+        updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
+            [p1, p2], Population.ENGAGED, "Test"
+        )
+        assert updated == 0
+        assert skipped_dnc == 0
+        assert skipped_invalid == 2
+        assert memory_db.get_prospect(p1).population == Population.CLOSED_WON
+        assert memory_db.get_prospect(p2).population == Population.BROKEN
 
     def test_bulk_set_follow_up(self, memory_db: Database):
         """Bulk set follow-up date."""
@@ -537,12 +561,34 @@ class TestBulkOperations:
             population=Population.UNENGAGED,
         ))
 
-        parked, skipped = memory_db.bulk_park([p1], "2026-06")
+        parked, skipped_dnc, skipped_invalid = memory_db.bulk_park([p1], "2026-06")
         assert parked == 1
-        assert skipped == 0
+        assert skipped_dnc == 0
+        assert skipped_invalid == 0
         prospect = memory_db.get_prospect(p1)
         assert prospect.population == Population.PARKED
         assert prospect.parked_month == "2026-06"
+
+    def test_bulk_park_skips_invalid_transitions(self, memory_db: Database):
+        """Bulk park skips prospects that can't be parked per population rules."""
+        cid = memory_db.create_company(Company(name="Test Co", state="TX"))
+        # CLOSED_WON can't be parked
+        p1 = memory_db.create_prospect(Prospect(
+            company_id=cid, first_name="Won", last_name="Deal",
+            population=Population.CLOSED_WON,
+        ))
+        # LOST can't be parked (must go to UNENGAGED first)
+        p2 = memory_db.create_prospect(Prospect(
+            company_id=cid, first_name="Lost", last_name="Deal",
+            population=Population.LOST,
+        ))
+
+        parked, skipped_dnc, skipped_invalid = memory_db.bulk_park([p1, p2], "2026-06")
+        assert parked == 0
+        assert skipped_dnc == 0
+        assert skipped_invalid == 2
+        assert memory_db.get_prospect(p1).population == Population.CLOSED_WON
+        assert memory_db.get_prospect(p2).population == Population.LOST
 
 
 class TestTagOperations:
