@@ -63,9 +63,7 @@ class IntelGapsService:
 
         return gaps
 
-    def get_gap_summary(
-        self, populations: Optional[list[Population]] = None
-    ) -> dict[str, int]:
+    def get_gap_summary(self, populations: Optional[list[Population]] = None) -> dict[str, int]:
         """Get count of gaps by type.
 
         Returns:

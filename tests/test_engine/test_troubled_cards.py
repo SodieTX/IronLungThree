@@ -35,9 +35,7 @@ def troubled_db(memory_db: Database) -> Database:
             follow_up_date=datetime.combine(today - timedelta(days=5), datetime.min.time()),
         )
     )
-    memory_db.create_activity(
-        Activity(prospect_id=p_overdue, activity_type=ActivityType.CALL)
-    )
+    memory_db.create_activity(Activity(prospect_id=p_overdue, activity_type=ActivityType.CALL))
 
     # ON TIME: engaged, follow-up today (NOT troubled)
     p_ontime = memory_db.create_prospect(
@@ -50,9 +48,7 @@ def troubled_db(memory_db: Database) -> Database:
             follow_up_date=datetime.combine(today, datetime.min.time()),
         )
     )
-    memory_db.create_activity(
-        Activity(prospect_id=p_ontime, activity_type=ActivityType.CALL)
-    )
+    memory_db.create_activity(Activity(prospect_id=p_ontime, activity_type=ActivityType.CALL))
 
     # STALLED: engaged, last activity 20 days ago, no follow-up date
     p_stalled = memory_db.create_prospect(

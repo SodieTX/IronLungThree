@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import pytest
 
 from src.gui.adhd.compassion import (
-    CompassionEngine,
     _BREAK_SUGGESTIONS,
     _ENCOURAGEMENT_EARLY,
     _ENCOURAGEMENT_LATE,
@@ -18,6 +17,7 @@ from src.gui.adhd.compassion import (
     _WELCOME_BACK_LONG,
     _WELCOME_BACK_SHORT,
     _WELCOME_FRESH,
+    CompassionEngine,
 )
 
 

@@ -100,9 +100,11 @@ def rescue_db(memory_db: Database) -> Database:
             last_name="Tomorrow",
             population=Population.ENGAGED,
             engagement_stage=EngagementStage.PRE_DEMO,
-            follow_up_date=datetime(today.year, today.month, today.day + 1, 9, 0)
-            if today.day < 28
-            else datetime(today.year, today.month + 1, 1, 9, 0),
+            follow_up_date=(
+                datetime(today.year, today.month, today.day + 1, 9, 0)
+                if today.day < 28
+                else datetime(today.year, today.month + 1, 1, 9, 0)
+            ),
             prospect_score=60,
         )
     )

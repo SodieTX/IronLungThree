@@ -80,9 +80,8 @@ class DashboardService:
             + type_counts.get(ActivityType.DEFER.value, 0)
         )
 
-        calls_made = (
-            type_counts.get(ActivityType.CALL.value, 0)
-            + type_counts.get(ActivityType.VOICEMAIL.value, 0)
+        calls_made = type_counts.get(ActivityType.CALL.value, 0) + type_counts.get(
+            ActivityType.VOICEMAIL.value, 0
         )
 
         emails_sent = type_counts.get(ActivityType.EMAIL_SENT.value, 0)

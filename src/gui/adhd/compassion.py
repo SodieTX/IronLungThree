@@ -7,7 +7,7 @@ and what needs attention without making him feel bad.
 
 import random
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Callable, Optional
 
 from src.core.logging import get_logger
 
@@ -95,7 +95,7 @@ class CompassionEngine:
     No guilt. No shame. Just clear, kind guidance.
     """
 
-    def __init__(self, now_fn: Optional[callable] = None):
+    def __init__(self, now_fn: Optional[Callable] = None):
         self._now_fn = now_fn or datetime.now
 
     def get_welcome_message(

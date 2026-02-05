@@ -130,9 +130,7 @@ class TestRegistration:
 
     def test_register_many(self) -> None:
         cp = CommandPalette()
-        items = [
-            PaletteItem(label=f"Item {i}", category="action", action=_noop) for i in range(5)
-        ]
+        items = [PaletteItem(label=f"Item {i}", category="action", action=_noop) for i in range(5)]
         cp.register_many(items)
         assert cp.item_count() == 5
 

@@ -36,9 +36,7 @@ def dash_db(memory_db: Database) -> Database:
     memory_db.create_activity(
         Activity(prospect_id=prospect_id, activity_type=ActivityType.DEMO_SCHEDULED)
     )
-    memory_db.create_activity(
-        Activity(prospect_id=prospect_id, activity_type=ActivityType.SKIP)
-    )
+    memory_db.create_activity(Activity(prospect_id=prospect_id, activity_type=ActivityType.SKIP))
 
     return memory_db
 

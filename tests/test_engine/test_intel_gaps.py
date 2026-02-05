@@ -24,9 +24,7 @@ def gaps_db(memory_db: Database) -> Database:
         Company(name="Full Corp", domain="full.com", size="medium", state="TX")
     )
     # Company WITHOUT domain
-    co_no_domain = memory_db.create_company(
-        Company(name="NoDomain Corp", state="CA")
-    )
+    co_no_domain = memory_db.create_company(Company(name="NoDomain Corp", state="CA"))
     # Company WITHOUT size
     co_no_size = memory_db.create_company(
         Company(name="NoSize Corp", domain="nosize.com", state="NY")

@@ -120,7 +120,9 @@ class SetupWizard:
             return SetupConfig()
         try:
             data = json.loads(self._config_path.read_text(encoding="utf-8"))
-            return SetupConfig(**{k: v for k, v in data.items() if k in SetupConfig.__dataclass_fields__})
+            return SetupConfig(
+                **{k: v for k, v in data.items() if k in SetupConfig.__dataclass_fields__}
+            )
         except (OSError, json.JSONDecodeError, TypeError):
             logger.warning("Failed to load setup config, using defaults", exc_info=True)
             return SetupConfig()
