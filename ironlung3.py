@@ -41,6 +41,11 @@ def main() -> int:
         help="Run background orchestrator (headless mode)",
     )
     parser.add_argument("--version", action="store_true", help="Show version and exit")
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Show service readiness report and exit",
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
@@ -59,7 +64,28 @@ def main() -> int:
     issues = validate_config(config)
     if issues:
         for issue in issues:
-            logger.warning(f"Configuration issue: {issue}")
+            if issue.startswith("CRITICAL:"):
+                logger.error(f"Configuration: {issue}")
+            else:
+                logger.warning(f"Configuration issue: {issue}")
+
+    # Initialize service registry and log what's available
+    from src.core.services import get_service_registry
+
+    registry = get_service_registry()
+    registry.log_status()
+
+    # --status: print readiness report and exit
+    if args.status:
+        report = registry.readiness_report()
+        print(f"\nIronLung 3 v{__version__} - Service Readiness\n")
+        print(report.summary)
+        if issues:
+            print(f"\nConfiguration issues ({len(issues)}):")
+            for issue in issues:
+                print(f"  ! {issue}")
+        print()
+        return 0
 
     # Initialize database
     from src.db.database import Database

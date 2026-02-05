@@ -233,18 +233,38 @@ def validate_config(config: Config) -> list[str]:
         )
 
     # Check Outlook credentials (Phase 3 - all or none)
-    outlook_creds = [
-        config.outlook_client_id,
-        config.outlook_client_secret,
-        config.outlook_tenant_id,
-    ]
-    if any(outlook_creds) and not all(outlook_creds):
+    outlook_creds = {
+        "OUTLOOK_CLIENT_ID": config.outlook_client_id,
+        "OUTLOOK_CLIENT_SECRET": config.outlook_client_secret,
+        "OUTLOOK_TENANT_ID": config.outlook_tenant_id,
+    }
+    present = [k for k, v in outlook_creds.items() if v]
+    missing = [k for k, v in outlook_creds.items() if not v]
+
+    if present and missing:
         issues.append(
-            "Outlook credentials incomplete - need CLIENT_ID, CLIENT_SECRET, and TENANT_ID"
+            f"CRITICAL: Partial Outlook credentials will cause auth failures. "
+            f"Have: {', '.join(present)}. Missing: {', '.join(missing)}. "
+            f"Provide all four Outlook variables or remove them entirely."
         )
-    if all(outlook_creds) and not config.outlook_user_email:
+    if all(outlook_creds.values()) and not config.outlook_user_email:
         issues.append(
-            "Outlook credentials present but OUTLOOK_USER_EMAIL is missing"
+            "CRITICAL: Outlook credentials present but OUTLOOK_USER_EMAIL is missing. "
+            "Email send/receive will fail."
+        )
+
+    # Check ActiveCampaign credentials (Phase 5 - all or none)
+    ac_creds = {
+        "ACTIVECAMPAIGN_API_KEY": config.activecampaign_api_key,
+        "ACTIVECAMPAIGN_URL": config.activecampaign_url,
+    }
+    ac_present = [k for k, v in ac_creds.items() if v]
+    ac_missing = [k for k, v in ac_creds.items() if not v]
+
+    if ac_present and ac_missing:
+        issues.append(
+            f"Partial ActiveCampaign credentials. "
+            f"Have: {', '.join(ac_present)}. Missing: {', '.join(ac_missing)}."
         )
 
     return issues
