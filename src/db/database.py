@@ -147,10 +147,10 @@ class Database:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_companies_normalized ON companies(name_normalized);
         CREATE INDEX IF NOT EXISTS idx_companies_domain ON companies(domain);
-        
+
         -- Prospects
         CREATE TABLE IF NOT EXISTS prospects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,14 +184,14 @@ class Database:
             FOREIGN KEY (company_id) REFERENCES companies(id),
             FOREIGN KEY (referred_by_prospect_id) REFERENCES prospects(id)
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_prospects_population ON prospects(population);
         CREATE INDEX IF NOT EXISTS idx_prospects_follow_up ON prospects(follow_up_date);
         CREATE INDEX IF NOT EXISTS idx_prospects_company ON prospects(company_id);
         CREATE INDEX IF NOT EXISTS idx_prospects_score ON prospects(prospect_score);
         CREATE INDEX IF NOT EXISTS idx_prospects_parked ON prospects(parked_month);
         CREATE INDEX IF NOT EXISTS idx_prospects_referrer ON prospects(referred_by_prospect_id);
-        
+
         -- Contact Methods
         CREATE TABLE IF NOT EXISTS contact_methods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,11 +208,11 @@ class Database:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_contact_methods_prospect ON contact_methods(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_contact_methods_email ON contact_methods(value) WHERE type='email';
         CREATE INDEX IF NOT EXISTS idx_contact_methods_phone ON contact_methods(value) WHERE type='phone';
-        
+
         -- Activities
         CREATE TABLE IF NOT EXISTS activities (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,11 +233,11 @@ class Database:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_activities_prospect ON activities(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(created_at);
         CREATE INDEX IF NOT EXISTS idx_activities_type ON activities(activity_type);
-        
+
         -- Data Freshness
         CREATE TABLE IF NOT EXISTS data_freshness (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,10 +249,10 @@ class Database:
             previous_value TEXT,
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_freshness_prospect ON data_freshness(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_freshness_date ON data_freshness(verified_date);
-        
+
         -- Import Sources
         CREATE TABLE IF NOT EXISTS import_sources (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -265,9 +265,9 @@ class Database:
             dnc_blocked_records INTEGER,
             import_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_import_date ON import_sources(import_date);
-        
+
         -- Research Queue
         CREATE TABLE IF NOT EXISTS research_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -279,10 +279,10 @@ class Database:
             findings TEXT,
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_research_prospect ON research_queue(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_research_status ON research_queue(status);
-        
+
         -- Intel Nuggets
         CREATE TABLE IF NOT EXISTS intel_nuggets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,10 +294,10 @@ class Database:
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE,
             FOREIGN KEY (source_activity_id) REFERENCES activities(id)
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_nuggets_prospect ON intel_nuggets(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_nuggets_category ON intel_nuggets(category);
-        
+
         -- Prospect Tags
         CREATE TABLE IF NOT EXISTS prospect_tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -307,16 +307,16 @@ class Database:
             FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE,
             UNIQUE(prospect_id, tag_name)
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_tags_prospect ON prospect_tags(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_tags_name ON prospect_tags(tag_name);
-        
+
         -- Schema Version
         CREATE TABLE IF NOT EXISTS schema_version (
             version INTEGER PRIMARY KEY,
             applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        
+
         INSERT OR IGNORE INTO schema_version (version) VALUES (1);
         """
 

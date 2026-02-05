@@ -2,8 +2,8 @@
 
 **Business Logic**
 
-Version: 1.0  
-Date: February 5, 2026  
+Version: 1.0
+Date: February 5, 2026
 Parent: Blueprint v3.2
 
 ---

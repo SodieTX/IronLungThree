@@ -30,7 +30,7 @@ from src.core.exceptions import ValidationError, DNCViolationError
 def set_follow_up(prospect, date):
     if date < datetime.now():
         raise ValidationError(f"Follow-up date must be in future: {date}")
-    
+
     if prospect.population == Population.DNC:
         raise DNCViolationError(f"Cannot set follow-up for DNC: {prospect.id}")
 ```
@@ -132,7 +132,7 @@ When external services fail, degrade gracefully:
 ```python
 def get_prospect_data(prospect_id):
     prospect = db.get_prospect(prospect_id)
-    
+
     try:
         prospect.ai_insights = ai.get_insights(prospect)
     except IntegrationError:
@@ -140,7 +140,7 @@ def get_prospect_data(prospect_id):
         logger.warning("AI insights unavailable", extra={
             "prospect_id": prospect_id,
         })
-    
+
     return prospect
 ```
 

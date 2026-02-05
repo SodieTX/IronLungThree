@@ -2,8 +2,8 @@
 
 **Conversational AI**
 
-Version: 1.0  
-Date: February 5, 2026  
+Version: 1.0
+Date: February 5, 2026
 Parent: Blueprint v3.2
 
 ---
@@ -46,12 +46,12 @@ Anne is the Anne Hathaway to Jeff's Anna Wintour. She's done her homework on eve
 ### Card Presentation Format
 
 ```
-"John Smith, ABC Lending. Bridge and fix-and-flip out of Houston. 
-This is attempt three — you left voicemails Monday and the Thursday 
+"John Smith, ABC Lending. Bridge and fix-and-flip out of Houston.
+This is attempt three — you left voicemails Monday and the Thursday
 before. No callback.
 
-His company's doing volume — they closed 40 loans last quarter 
-according to their site. He's worth pursuing. But three voicemails 
+His company's doing volume — they closed 40 loans last quarter
+according to their site. He's worth pursuing. But three voicemails
 with no callback isn't working.
 
 Want to switch to email? Or park him and try fresh in a month?"
@@ -225,8 +225,8 @@ Narrative context per prospect, generated from notes.
 ### Example Output
 
 ```
-"You first called John in November. He was interested but said Q1 
-was too early. You parked him for March. March is here. Last time, 
+"You first called John in November. He was interested but said Q1
+was too early. You parked him for March. March is here. Last time,
 he mentioned evaluating three vendors."
 ```
 

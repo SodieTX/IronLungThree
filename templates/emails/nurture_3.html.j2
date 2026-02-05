@@ -1,8 +1,8 @@
 {# IronLung 3 - Nurture Sequence Email 3 (Soft Close)
-   
+
    Third/final email in the 3-part nurture sequence.
    Sent 7 days after nurture_2 with no response.
-   
+
    Variables available:
    - prospect.first_name
    - prospect.last_name
@@ -17,18 +17,18 @@
 </head>
 <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
     <p>Hi {{ prospect.first_name }},</p>
-    
-    <p>I've reached out a few times and haven't heard back, so I'll keep 
+
+    <p>I've reached out a few times and haven't heard back, so I'll keep
     this short.</p>
-    
-    <p>If now's not the right time for {{ company.name }} to look at new 
+
+    <p>If now's not the right time for {{ company.name }} to look at new
     technology, no worries at all. These things have their own timing.</p>
-    
-    <p>If something changes down the road — new pain point, budget cycle, 
+
+    <p>If something changes down the road — new pain point, budget cycle,
     whatever — feel free to reach out. I'm always happy to help.</p>
-    
+
     <p>Wishing you a strong quarter ahead.</p>
-    
+
     <p>{{ sender.name }}</p>
 </body>
 </html>

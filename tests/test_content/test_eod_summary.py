@@ -13,14 +13,7 @@ import pytest
 from src.content.daily_cockpit import CockpitData, get_cockpit_data
 from src.content.eod_summary import EODSummary, generate_eod_summary
 from src.db.database import Database
-from src.db.models import (
-    Activity,
-    ActivityType,
-    Company,
-    EngagementStage,
-    Population,
-    Prospect,
-)
+from src.db.models import Activity, ActivityType, Company, EngagementStage, Population, Prospect
 
 
 @pytest.fixture

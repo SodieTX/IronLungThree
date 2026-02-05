@@ -42,12 +42,7 @@ from src.engine.populations import (
     transition_prospect,
     transition_stage,
 )
-from src.engine.scoring import (
-    DEFAULT_WEIGHTS,
-    ScoreWeights,
-    calculate_confidence,
-    calculate_score,
-)
+from src.engine.scoring import DEFAULT_WEIGHTS, ScoreWeights, calculate_confidence, calculate_score
 
 __all__ = [
     # Populations (Phase 2, Step 2.1)

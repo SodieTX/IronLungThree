@@ -15,14 +15,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from src.db.database import Database
-from src.db.models import (
-    Activity,
-    ActivityType,
-    Company,
-    EngagementStage,
-    Population,
-    Prospect,
-)
+from src.db.models import Activity, ActivityType, Company, EngagementStage, Population, Prospect
 from src.engine.cadence import (
     DEFAULT_INTERVALS,
     add_business_days,

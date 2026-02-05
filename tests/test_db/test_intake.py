@@ -3,13 +3,7 @@
 import pytest
 
 from src.db.database import Database
-from src.db.intake import (
-    AnalysisResult,
-    ImportPreview,
-    ImportRecord,
-    ImportResult,
-    IntakeFunnel,
-)
+from src.db.intake import AnalysisResult, ImportPreview, ImportRecord, ImportResult, IntakeFunnel
 from src.db.models import (
     Activity,
     ActivityType,
