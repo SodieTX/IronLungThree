@@ -90,7 +90,33 @@ class BackupManager:
         Raises:
             DatabaseError: If backup fails
         """
-        raise NotImplementedError("Phase 1, Step 1.11")
+        try:
+            self.backup_path.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.warning(f"Cannot create backup directory: {e}")
+            raise DatabaseError(f"Cannot create backup directory: {e}") from e
+
+        filename = self._generate_backup_filename(label)
+        dest = self.backup_path / filename
+
+        try:
+            # Use SQLite backup API for consistent snapshot
+            source_conn = sqlite3.connect(str(self.db_path))
+            dest_conn = sqlite3.connect(str(dest))
+            source_conn.backup(dest_conn)
+            dest_conn.close()
+            source_conn.close()
+
+            logger.info(
+                "Backup created",
+                extra={"context": {"path": str(dest), "label": label}},
+            )
+            return dest
+        except (sqlite3.Error, OSError) as e:
+            # Clean up partial backup
+            if dest.exists():
+                dest.unlink()
+            raise DatabaseError(f"Backup failed: {e}") from e
 
     def list_backups(self) -> list[BackupInfo]:
         """List all backups, newest first.
@@ -98,7 +124,24 @@ class BackupManager:
         Returns:
             List of BackupInfo objects
         """
-        raise NotImplementedError("Phase 1, Step 1.11")
+        if not self.backup_path.exists():
+            return []
+
+        backups: list[BackupInfo] = []
+        for f in self.backup_path.glob("ironlung3_*.db"):
+            parsed = self._parse_backup_filename(f.name)
+            if parsed:
+                timestamp, label = parsed
+                backups.append(BackupInfo(
+                    path=f,
+                    label=label,
+                    timestamp=timestamp,
+                    size_bytes=f.stat().st_size,
+                ))
+
+        # Sort newest first
+        backups.sort(key=lambda b: b.timestamp, reverse=True)
+        return backups
 
     def restore_backup(self, backup_path: Path) -> bool:
         """Restore database from backup.
@@ -114,7 +157,35 @@ class BackupManager:
         Raises:
             DatabaseError: If restore fails
         """
-        raise NotImplementedError("Phase 1, Step 1.11")
+        backup_path = Path(backup_path)
+        if not backup_path.exists():
+            raise DatabaseError(f"Backup file not found: {backup_path}")
+
+        # Validate the backup is a valid SQLite database
+        try:
+            test_conn = sqlite3.connect(str(backup_path))
+            test_conn.execute("SELECT count(*) FROM sqlite_master")
+            test_conn.close()
+        except sqlite3.Error as e:
+            raise DatabaseError(f"Backup file is corrupt: {e}") from e
+
+        # Create pre-restore safety backup
+        if Path(self.db_path).exists():
+            try:
+                self.create_backup(label="pre_restore")
+            except DatabaseError:
+                logger.warning("Could not create pre-restore safety backup")
+
+        # Restore by copying backup over current database
+        try:
+            shutil.copy2(str(backup_path), str(self.db_path))
+            logger.info(
+                "Database restored",
+                extra={"context": {"from": str(backup_path)}},
+            )
+            return True
+        except OSError as e:
+            raise DatabaseError(f"Restore failed: {e}") from e
 
     def cleanup_old_backups(self, keep_days: int = 30) -> int:
         """Remove backups older than keep_days.
@@ -125,7 +196,23 @@ class BackupManager:
         Returns:
             Number of backups removed
         """
-        raise NotImplementedError("Phase 1, Step 1.11")
+        if not self.backup_path.exists():
+            return 0
+
+        cutoff = datetime.now().timestamp() - (keep_days * 86400)
+        removed = 0
+
+        for backup in self.list_backups():
+            if backup.timestamp.timestamp() < cutoff:
+                try:
+                    backup.path.unlink()
+                    removed += 1
+                except OSError:
+                    logger.warning(f"Could not remove old backup: {backup.path}")
+
+        if removed:
+            logger.info(f"Cleaned up {removed} old backups")
+        return removed
 
     def sync_to_cloud(self) -> bool:
         """Copy latest backup to OneDrive sync folder.
@@ -133,7 +220,29 @@ class BackupManager:
         Returns:
             True if sync successful, False if no cloud path configured
         """
-        raise NotImplementedError("Phase 1, Step 1.11")
+        if not self.cloud_sync_path:
+            return False
+
+        if not self.cloud_sync_path.exists():
+            logger.info(
+                "Cloud sync directory missing",
+                extra={"context": {"path": str(self.cloud_sync_path)}},
+            )
+            return False
+
+        backups = self.list_backups()
+        if not backups:
+            return False
+
+        latest = backups[0]
+        try:
+            dest = self.cloud_sync_path / latest.path.name
+            shutil.copy2(str(latest.path), str(dest))
+            logger.info("Backup synced to cloud", extra={"context": {"path": str(dest)}})
+            return True
+        except OSError as e:
+            logger.warning(f"Cloud sync failed: {e}")
+            return False
 
     def _generate_backup_filename(self, label: str) -> str:
         """Generate backup filename with timestamp."""
