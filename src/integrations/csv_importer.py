@@ -190,8 +190,8 @@ class CSVImporter:
 
         records: list[ImportRecord] = []
         for row in all_rows:
-            # Skip empty rows
-            if not any(cell.strip() for cell in row if cell):
+            # Skip rows where all cells are empty or just whitespace
+            if all(not (cell and cell.strip()) for cell in row):
                 continue
 
             record = ImportRecord()
@@ -237,6 +237,10 @@ class CSVImporter:
 
         return records
 
+    # Delimiters the sniffer is allowed to detect; anything else
+    # (e.g. ``@`` from email addresses) is treated as a mis-detection.
+    _VALID_DELIMITERS = {",", "\t", ";", "|"}
+
     def _parse_csv(self, path: Path) -> tuple[list[str], list[list[str]], str]:
         """Parse CSV file, trying multiple encodings.
 
@@ -254,7 +258,10 @@ class CSVImporter:
 
                     try:
                         dialect = csv.Sniffer().sniff(sample)
-                        reader = csv.reader(f, dialect)
+                        if dialect.delimiter in self._VALID_DELIMITERS:
+                            reader = csv.reader(f, dialect)
+                        else:
+                            reader = csv.reader(f)
                     except csv.Error:
                         # Sniffer can fail on small/simple files.
                         # Default csv.reader uses comma delimiter,
