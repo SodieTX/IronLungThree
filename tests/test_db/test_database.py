@@ -175,11 +175,15 @@ class TestProspectCRUD:
     def test_get_prospect(self, memory_db: Database):
         """Can retrieve a prospect by ID."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Jane", last_name="Smith",
-            population=Population.ENGAGED,
-            engagement_stage=EngagementStage.PRE_DEMO,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Jane",
+                last_name="Smith",
+                population=Population.ENGAGED,
+                engagement_stage=EngagementStage.PRE_DEMO,
+            )
+        )
         retrieved = memory_db.get_prospect(pid)
         assert retrieved is not None
         assert retrieved.first_name == "Jane"
@@ -189,9 +193,13 @@ class TestProspectCRUD:
     def test_update_prospect(self, memory_db: Database):
         """Can update prospect fields."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         prospect = memory_db.get_prospect(pid)
         prospect.population = Population.ENGAGED
         prospect.engagement_stage = EngagementStage.DEMO_SCHEDULED
@@ -204,18 +212,30 @@ class TestProspectCRUD:
     def test_get_prospects_by_population(self, memory_db: Database):
         """Can filter prospects by population."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-            population=Population.UNENGAGED,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-            population=Population.ENGAGED,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="E", last_name="F",
-            population=Population.UNENGAGED,
-        ))
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                population=Population.UNENGAGED,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+                population=Population.ENGAGED,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="E",
+                last_name="F",
+                population=Population.UNENGAGED,
+            )
+        )
 
         unengaged = memory_db.get_prospects(population=Population.UNENGAGED)
         assert len(unengaged) == 2
@@ -225,15 +245,30 @@ class TestProspectCRUD:
     def test_get_prospects_by_score_range(self, memory_db: Database):
         """Can filter prospects by score range."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B", prospect_score=20,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D", prospect_score=80,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="E", last_name="F", prospect_score=50,
-        ))
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                prospect_score=20,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+                prospect_score=80,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="E",
+                last_name="F",
+                prospect_score=50,
+            )
+        )
 
         results = memory_db.get_prospects(score_min=40, score_max=90)
         assert len(results) == 2
@@ -241,12 +276,20 @@ class TestProspectCRUD:
     def test_get_prospects_search_query(self, memory_db: Database):
         """Can search prospects by name."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Jane", last_name="Smith",
-        ))
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Jane",
+                last_name="Smith",
+            )
+        )
 
         results = memory_db.get_prospects(search_query="John")
         assert len(results) == 1
@@ -256,10 +299,14 @@ class TestProspectCRUD:
         """Can paginate prospect results."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
         for i in range(10):
-            memory_db.create_prospect(Prospect(
-                company_id=cid, first_name=f"Person{i}", last_name="Test",
-                prospect_score=i * 10,
-            ))
+            memory_db.create_prospect(
+                Prospect(
+                    company_id=cid,
+                    first_name=f"Person{i}",
+                    last_name="Test",
+                    prospect_score=i * 10,
+                )
+            )
 
         page1 = memory_db.get_prospects(limit=3, offset=0, sort_by="prospect_score", sort_dir="ASC")
         page2 = memory_db.get_prospects(limit=3, offset=3, sort_by="prospect_score", sort_dir="ASC")
@@ -270,17 +317,28 @@ class TestProspectCRUD:
     def test_get_prospect_full(self, memory_db: Database):
         """Can get full prospect with company, contacts, activities."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="john@test.com", is_primary=True,
-        ))
-        memory_db.create_activity(Activity(
-            prospect_id=pid, activity_type=ActivityType.CALL,
-            notes="Test call",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="john@test.com",
+                is_primary=True,
+            )
+        )
+        memory_db.create_activity(
+            Activity(
+                prospect_id=pid,
+                activity_type=ActivityType.CALL,
+                notes="Test call",
+            )
+        )
 
         full = memory_db.get_prospect_full(pid)
         assert full is not None
@@ -292,18 +350,30 @@ class TestProspectCRUD:
     def test_get_population_counts(self, memory_db: Database):
         """Can get counts per population."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-            population=Population.UNENGAGED,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-            population=Population.UNENGAGED,
-        ))
-        memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="E", last_name="F",
-            population=Population.ENGAGED,
-        ))
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                population=Population.UNENGAGED,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+                population=Population.UNENGAGED,
+            )
+        )
+        memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="E",
+                last_name="F",
+                population=Population.ENGAGED,
+            )
+        )
 
         counts = memory_db.get_population_counts()
         assert counts[Population.UNENGAGED] == 2
@@ -316,29 +386,49 @@ class TestContactMethodsCRUD:
     def test_create_contact_method(self, memory_db: Database):
         """Can create a contact method."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        mid = memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="john@test.com", is_primary=True,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        mid = memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="john@test.com",
+                is_primary=True,
+            )
+        )
         assert mid > 0
 
     def test_get_contact_methods_primary_first(self, memory_db: Database):
         """Contact methods returned with primary first."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="555-1234", is_primary=False,
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="john@test.com", is_primary=True,
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="555-1234",
+                is_primary=False,
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="john@test.com",
+                is_primary=True,
+            )
+        )
 
         methods = memory_db.get_contact_methods(pid)
         assert len(methods) == 2
@@ -348,13 +438,20 @@ class TestContactMethodsCRUD:
     def test_find_prospect_by_email(self, memory_db: Database):
         """Can find prospect by email (case-insensitive)."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="John@Test.COM",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="John@Test.COM",
+            )
+        )
 
         found = memory_db.find_prospect_by_email("john@test.com")
         assert found == pid
@@ -362,13 +459,20 @@ class TestContactMethodsCRUD:
     def test_find_prospect_by_phone(self, memory_db: Database):
         """Can find prospect by phone (digits-only match)."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="(303) 555-1234",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="(303) 555-1234",
+            )
+        )
 
         found = memory_db.find_prospect_by_phone("303-555-1234")
         assert found == pid
@@ -376,14 +480,21 @@ class TestContactMethodsCRUD:
     def test_is_dnc_by_email(self, memory_db: Database):
         """DNC check works by email."""
         cid = memory_db.create_company(Company(name="DNC Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Dead", last_name="Contact",
-            population=Population.DEAD_DNC,
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="dead@test.com",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Dead",
+                last_name="Contact",
+                population=Population.DEAD_DNC,
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="dead@test.com",
+            )
+        )
 
         assert memory_db.is_dnc(email="dead@test.com") is True
         assert memory_db.is_dnc(email="alive@test.com") is False
@@ -391,14 +502,21 @@ class TestContactMethodsCRUD:
     def test_is_dnc_by_phone(self, memory_db: Database):
         """DNC check works by phone."""
         cid = memory_db.create_company(Company(name="DNC Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Dead", last_name="Contact",
-            population=Population.DEAD_DNC,
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE,
-            value="555-0000",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Dead",
+                last_name="Contact",
+                population=Population.DEAD_DNC,
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.PHONE,
+                value="555-0000",
+            )
+        )
 
         assert memory_db.is_dnc(phone="555-0000") is True
         assert memory_db.is_dnc(phone="555-9999") is False
@@ -406,13 +524,20 @@ class TestContactMethodsCRUD:
     def test_update_contact_method(self, memory_db: Database):
         """Can update contact method."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_contact_method(ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL,
-            value="old@test.com",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_contact_method(
+            ContactMethod(
+                prospect_id=pid,
+                type=ContactMethodType.EMAIL,
+                value="old@test.com",
+            )
+        )
         method = memory_db.get_contact_methods(pid)[0]
         method.value = "new@test.com"
         method.is_verified = True
@@ -428,29 +553,48 @@ class TestActivityCRUD:
     def test_create_activity(self, memory_db: Database):
         """Can log an activity."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        aid = memory_db.create_activity(Activity(
-            prospect_id=pid, activity_type=ActivityType.CALL,
-            outcome=ActivityOutcome.LEFT_VM,
-            call_duration_seconds=30,
-            notes="Left voicemail about Q1",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        aid = memory_db.create_activity(
+            Activity(
+                prospect_id=pid,
+                activity_type=ActivityType.CALL,
+                outcome=ActivityOutcome.LEFT_VM,
+                call_duration_seconds=30,
+                notes="Left voicemail about Q1",
+            )
+        )
         assert aid > 0
 
     def test_get_activities_most_recent_first(self, memory_db: Database):
         """Activities returned most recent first."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_activity(Activity(
-            prospect_id=pid, activity_type=ActivityType.NOTE, notes="First",
-        ))
-        memory_db.create_activity(Activity(
-            prospect_id=pid, activity_type=ActivityType.CALL, notes="Second",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_activity(
+            Activity(
+                prospect_id=pid,
+                activity_type=ActivityType.NOTE,
+                notes="First",
+            )
+        )
+        memory_db.create_activity(
+            Activity(
+                prospect_id=pid,
+                activity_type=ActivityType.CALL,
+                notes="Second",
+            )
+        )
 
         activities = memory_db.get_activities(pid)
         assert len(activities) == 2
@@ -458,16 +602,22 @@ class TestActivityCRUD:
     def test_activity_with_population_change(self, memory_db: Database):
         """Activity can record population transitions."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        memory_db.create_activity(Activity(
-            prospect_id=pid,
-            activity_type=ActivityType.STATUS_CHANGE,
-            population_before=Population.UNENGAGED,
-            population_after=Population.ENGAGED,
-            notes="Showed interest",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        memory_db.create_activity(
+            Activity(
+                prospect_id=pid,
+                activity_type=ActivityType.STATUS_CHANGE,
+                population_before=Population.UNENGAGED,
+                population_after=Population.ENGAGED,
+                notes="Showed interest",
+            )
+        )
 
         activities = memory_db.get_activities(pid)
         assert activities[0].population_before == Population.UNENGAGED
@@ -480,14 +630,22 @@ class TestBulkOperations:
     def test_bulk_update_population(self, memory_db: Database):
         """Bulk update population for multiple prospects."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-            population=Population.UNENGAGED,
-        ))
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-            population=Population.UNENGAGED,
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                population=Population.UNENGAGED,
+            )
+        )
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+                population=Population.UNENGAGED,
+            )
+        )
 
         updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
             [p1, p2], Population.PARKED, "Parking for Q2"
@@ -500,14 +658,22 @@ class TestBulkOperations:
     def test_bulk_update_skips_dnc(self, memory_db: Database):
         """Bulk update skips DNC records."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-            population=Population.UNENGAGED,
-        ))
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-            population=Population.DEAD_DNC,
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                population=Population.UNENGAGED,
+            )
+        )
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+                population=Population.DEAD_DNC,
+            )
+        )
 
         updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
             [p1, p2], Population.PARKED, "Test"
@@ -520,15 +686,23 @@ class TestBulkOperations:
         """Bulk update skips transitions that violate population rules."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
         # CLOSED_WON is terminal - can't transition out
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Won", last_name="Deal",
-            population=Population.CLOSED_WON,
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Won",
+                last_name="Deal",
+                population=Population.CLOSED_WON,
+            )
+        )
         # BROKEN can't go directly to ENGAGED
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Broken", last_name="Record",
-            population=Population.BROKEN,
-        ))
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Broken",
+                last_name="Record",
+                population=Population.BROKEN,
+            )
+        )
 
         updated, skipped_dnc, skipped_invalid = memory_db.bulk_update_population(
             [p1, p2], Population.ENGAGED, "Test"
@@ -542,12 +716,20 @@ class TestBulkOperations:
     def test_bulk_set_follow_up(self, memory_db: Database):
         """Bulk set follow-up date."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-        ))
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+            )
+        )
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+            )
+        )
 
         fu_date = datetime(2026, 3, 1, 9, 0)
         count = memory_db.bulk_set_follow_up([p1, p2], fu_date)
@@ -556,10 +738,14 @@ class TestBulkOperations:
     def test_bulk_park(self, memory_db: Database):
         """Bulk park prospects."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-            population=Population.UNENGAGED,
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+                population=Population.UNENGAGED,
+            )
+        )
 
         parked, skipped_dnc, skipped_invalid = memory_db.bulk_park([p1], "2026-06")
         assert parked == 1
@@ -573,15 +759,23 @@ class TestBulkOperations:
         """Bulk park skips prospects that can't be parked per population rules."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
         # CLOSED_WON can't be parked
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Won", last_name="Deal",
-            population=Population.CLOSED_WON,
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Won",
+                last_name="Deal",
+                population=Population.CLOSED_WON,
+            )
+        )
         # LOST can't be parked (must go to UNENGAGED first)
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Lost", last_name="Deal",
-            population=Population.LOST,
-        ))
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Lost",
+                last_name="Deal",
+                population=Population.LOST,
+            )
+        )
 
         parked, skipped_dnc, skipped_invalid = memory_db.bulk_park([p1, p2], "2026-06")
         assert parked == 0
@@ -597,9 +791,13 @@ class TestTagOperations:
     def test_add_and_get_tags(self, memory_db: Database):
         """Can add and retrieve tags."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         memory_db.add_tag(pid, "referral")
         memory_db.add_tag(pid, "conference")
         tags = memory_db.get_tags(pid)
@@ -609,9 +807,13 @@ class TestTagOperations:
     def test_remove_tag(self, memory_db: Database):
         """Can remove tag from prospect."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         memory_db.add_tag(pid, "test-tag")
         assert memory_db.remove_tag(pid, "test-tag") is True
         assert "test-tag" not in memory_db.get_tags(pid)
@@ -619,12 +821,20 @@ class TestTagOperations:
     def test_get_all_tags(self, memory_db: Database):
         """Can get all unique tags in system."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="A", last_name="B",
-        ))
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="C", last_name="D",
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="A",
+                last_name="B",
+            )
+        )
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="C",
+                last_name="D",
+            )
+        )
         memory_db.add_tag(p1, "tag1")
         memory_db.add_tag(p1, "tag2")
         memory_db.add_tag(p2, "tag2")
@@ -635,12 +845,20 @@ class TestTagOperations:
     def test_filter_prospects_by_tags(self, memory_db: Database):
         """Can filter prospects by tags."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        p1 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
-        p2 = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="Jane", last_name="Smith",
-        ))
+        p1 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
+        p2 = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="Jane",
+                last_name="Smith",
+            )
+        )
         memory_db.add_tag(p1, "hot-lead")
         memory_db.add_tag(p2, "cold-lead")
 
@@ -671,9 +889,13 @@ class TestRemainingTables:
     def test_create_research_task(self, memory_db: Database):
         """Can create research task."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         task = ResearchTask(prospect_id=pid, priority=5, status=ResearchStatus.PENDING)
         tid = memory_db.create_research_task(task)
         assert tid > 0
@@ -683,11 +905,16 @@ class TestRemainingTables:
     def test_create_intel_nugget(self, memory_db: Database):
         """Can create intel nugget."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         nugget = IntelNugget(
-            prospect_id=pid, category=IntelCategory.PAIN_POINT,
+            prospect_id=pid,
+            category=IntelCategory.PAIN_POINT,
             content="They need faster processing",
         )
         nid = memory_db.create_intel_nugget(nugget)
@@ -699,12 +926,19 @@ class TestRemainingTables:
     def test_create_data_freshness(self, memory_db: Database):
         """Can create data freshness record."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         fid = memory_db.create_data_freshness(
-            prospect_id=pid, field_name="email",
-            verified_date=date.today(), verification_method="manual", confidence=90,
+            prospect_id=pid,
+            field_name="email",
+            verified_date=date.today(),
+            verification_method="manual",
+            confidence=90,
         )
         assert fid > 0
         records = memory_db.get_data_freshness(pid)
@@ -718,17 +952,26 @@ class TestDatabaseIntegrity:
     def test_foreign_key_enforcement(self, memory_db: Database):
         """Prospect with invalid company_id should fail."""
         from src.core.exceptions import DatabaseError
+
         with pytest.raises(DatabaseError):
-            memory_db.create_prospect(Prospect(
-                company_id=99999, first_name="Bad", last_name="Ref",
-            ))
+            memory_db.create_prospect(
+                Prospect(
+                    company_id=99999,
+                    first_name="Bad",
+                    last_name="Ref",
+                )
+            )
 
     def test_unique_tag_constraint(self, memory_db: Database):
         """Duplicate tags on same prospect are handled gracefully."""
         cid = memory_db.create_company(Company(name="Test Co", state="TX"))
-        pid = memory_db.create_prospect(Prospect(
-            company_id=cid, first_name="John", last_name="Doe",
-        ))
+        pid = memory_db.create_prospect(
+            Prospect(
+                company_id=cid,
+                first_name="John",
+                last_name="Doe",
+            )
+        )
         memory_db.add_tag(pid, "test")
         memory_db.add_tag(pid, "test")  # Should not raise
         tags = memory_db.get_tags(pid)

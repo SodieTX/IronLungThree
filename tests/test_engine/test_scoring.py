@@ -8,8 +8,9 @@ Tests Step 2.2: Scoring Algorithm
     - Complete vs sparse data differentiation
 """
 
-import pytest
 from datetime import date, timedelta
+
+import pytest
 
 from src.db.models import (
     Company,
@@ -30,7 +31,6 @@ from src.engine.scoring import (
     calculate_confidence,
     calculate_score,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -168,9 +168,7 @@ class TestCalculateScore:
             source_quality=5,
         )
         default_score = calculate_score(unengaged_prospect, full_company)
-        custom_score = calculate_score(
-            unengaged_prospect, full_company, weights=heavy_engagement
-        )
+        custom_score = calculate_score(unengaged_prospect, full_company, weights=heavy_engagement)
         # Scores differ because weights differ
         assert default_score != custom_score
 
@@ -197,9 +195,7 @@ class TestCompanyFit:
 class TestContactQuality:
     """Test contact quality scoring."""
 
-    def test_ceo_scores_higher_than_associate(
-        self, ceo_prospect, associate_prospect, full_company
-    ):
+    def test_ceo_scores_higher_than_associate(self, ceo_prospect, associate_prospect, full_company):
         """CEO title scores higher than Associate."""
         ceo_score = _score_contact_quality(ceo_prospect, full_company)
         associate_score = _score_contact_quality(associate_prospect, full_company)
@@ -276,17 +272,13 @@ class TestSource:
 
     def test_referral_scores_highest(self):
         """Referral source scores highest."""
-        prospect = Prospect(
-            company_id=1, first_name="A", last_name="B", source="Referral"
-        )
+        prospect = Prospect(company_id=1, first_name="A", last_name="B", source="Referral")
         score = _score_source(prospect)
         assert score == 100
 
     def test_cold_scores_lowest(self):
         """Cold source scores lowest."""
-        prospect = Prospect(
-            company_id=1, first_name="A", last_name="B", source="Cold"
-        )
+        prospect = Prospect(company_id=1, first_name="A", last_name="B", source="Cold")
         score = _score_source(prospect)
         assert score == 20
 

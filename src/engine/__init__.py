@@ -23,22 +23,6 @@ Modules:
     - export: Data export
 """
 
-from src.engine.populations import (
-    VALID_TRANSITIONS,
-    can_transition,
-    can_transition_stage,
-    get_available_transitions,
-    transition_prospect,
-    transition_stage,
-)
-
-from src.engine.scoring import (
-    DEFAULT_WEIGHTS,
-    ScoreWeights,
-    calculate_confidence,
-    calculate_score,
-)
-
 from src.engine.cadence import (
     DEFAULT_INTERVALS,
     add_business_days,
@@ -49,6 +33,20 @@ from src.engine.cadence import (
     get_todays_follow_ups,
     get_todays_queue,
     set_follow_up,
+)
+from src.engine.populations import (
+    VALID_TRANSITIONS,
+    can_transition,
+    can_transition_stage,
+    get_available_transitions,
+    transition_prospect,
+    transition_stage,
+)
+from src.engine.scoring import (
+    DEFAULT_WEIGHTS,
+    ScoreWeights,
+    calculate_confidence,
+    calculate_score,
 )
 
 __all__ = [

@@ -103,6 +103,13 @@ class Database:
 
         return self._conn
 
+    @staticmethod
+    def _lastrowid(cursor: sqlite3.Cursor) -> int:
+        """Extract lastrowid from cursor (always set after INSERT in SQLite)."""
+        row_id = cursor.lastrowid
+        assert row_id is not None, "lastrowid was None after INSERT"
+        return row_id
+
     def close(self) -> None:
         """Close database connection."""
         if self._conn is not None:
@@ -397,7 +404,9 @@ class Database:
 
     def _row_to_activity(self, row: sqlite3.Row) -> Activity:
         """Convert a database row to an Activity dataclass."""
-        activity_type = ActivityType(row["activity_type"]) if row["activity_type"] else ActivityType.NOTE
+        activity_type = (
+            ActivityType(row["activity_type"]) if row["activity_type"] else ActivityType.NOTE
+        )
 
         outcome_val = row["outcome"]
         outcome = ActivityOutcome(outcome_val) if outcome_val else None
@@ -464,7 +473,7 @@ class Database:
                 ),
             )
             conn.commit()
-            company_id = cursor.lastrowid
+            company_id = self._lastrowid(cursor)
             logger.info(
                 "Company created",
                 extra={"context": {"company_id": company_id, "name": company.name}},
@@ -557,7 +566,11 @@ class Database:
                     prospect.first_name,
                     prospect.last_name,
                     prospect.title,
-                    prospect.population.value if isinstance(prospect.population, Population) else prospect.population,
+                    (
+                        prospect.population.value
+                        if isinstance(prospect.population, Population)
+                        else prospect.population
+                    ),
                     prospect.engagement_stage.value if prospect.engagement_stage else None,
                     prospect.follow_up_date,
                     prospect.last_contact_date,
@@ -568,7 +581,11 @@ class Database:
                     prospect.preferred_contact_method,
                     prospect.source,
                     prospect.referred_by_prospect_id,
-                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
+                    (
+                        prospect.dead_reason.value
+                        if isinstance(prospect.dead_reason, DeadReason)
+                        else prospect.dead_reason
+                    ),
                     prospect.dead_date,
                     prospect.lost_reason.value if prospect.lost_reason else None,
                     prospect.lost_competitor,
@@ -581,7 +598,7 @@ class Database:
                 ),
             )
             conn.commit()
-            prospect_id = cursor.lastrowid
+            prospect_id = self._lastrowid(cursor)
             logger.info(
                 "Prospect created",
                 extra={"context": {"prospect_id": prospect_id, "name": prospect.full_name}},
@@ -642,7 +659,11 @@ class Database:
                     prospect.first_name,
                     prospect.last_name,
                     prospect.title,
-                    prospect.population.value if isinstance(prospect.population, Population) else prospect.population,
+                    (
+                        prospect.population.value
+                        if isinstance(prospect.population, Population)
+                        else prospect.population
+                    ),
                     prospect.engagement_stage.value if prospect.engagement_stage else None,
                     prospect.follow_up_date,
                     prospect.last_contact_date,
@@ -653,7 +674,11 @@ class Database:
                     prospect.preferred_contact_method,
                     prospect.source,
                     prospect.referred_by_prospect_id,
-                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
+                    (
+                        prospect.dead_reason.value
+                        if isinstance(prospect.dead_reason, DeadReason)
+                        else prospect.dead_reason
+                    ),
                     prospect.dead_date,
                     prospect.lost_reason.value if prospect.lost_reason else None,
                     prospect.lost_competitor,
@@ -691,8 +716,14 @@ class Database:
 
         # Whitelist sort columns to prevent SQL injection
         allowed_sort_cols = {
-            "prospect_score", "first_name", "last_name", "created_at",
-            "updated_at", "follow_up_date", "attempt_count", "data_confidence",
+            "prospect_score",
+            "first_name",
+            "last_name",
+            "created_at",
+            "updated_at",
+            "follow_up_date",
+            "attempt_count",
+            "data_confidence",
         }
         if sort_by not in allowed_sort_cols:
             sort_by = "prospect_score"
@@ -723,9 +754,7 @@ class Database:
             params.append(score_max)
 
         if search_query:
-            conditions.append(
-                "(p.first_name LIKE ? OR p.last_name LIKE ? OR c.name LIKE ?)"
-            )
+            conditions.append("(p.first_name LIKE ? OR p.last_name LIKE ? OR c.name LIKE ?)")
             pattern = f"%{search_query}%"
             params.extend([pattern, pattern, pattern])
 
@@ -782,7 +811,11 @@ class Database:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     method.prospect_id,
-                    method.type.value if isinstance(method.type, ContactMethodType) else method.type,
+                    (
+                        method.type.value
+                        if isinstance(method.type, ContactMethodType)
+                        else method.type
+                    ),
                     method.value,
                     method.label,
                     1 if method.is_primary else 0,
@@ -794,7 +827,7 @@ class Database:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create contact method: {e}") from e
@@ -820,7 +853,11 @@ class Database:
                    verified_date = ?, confidence_score = ?, is_suspect = ?, source = ?
                    WHERE id = ?""",
                 (
-                    method.type.value if isinstance(method.type, ContactMethodType) else method.type,
+                    (
+                        method.type.value
+                        if isinstance(method.type, ContactMethodType)
+                        else method.type
+                    ),
                     method.value,
                     method.label,
                     1 if method.is_primary else 0,
@@ -847,7 +884,7 @@ class Database:
         ).fetchone()
         if row is None:
             return None
-        return row["prospect_id"]
+        return int(row["prospect_id"])
 
     def find_prospect_by_phone(self, phone: str) -> Optional[int]:
         """Find prospect ID by phone (digits-only match).
@@ -867,7 +904,7 @@ class Database:
         for row in rows:
             stored_digits = "".join(c for c in row["value"] if c.isdigit())
             if stored_digits == digits:
-                return row["prospect_id"]
+                return int(row["prospect_id"])
         return None
 
     def is_dnc(self, email: Optional[str] = None, phone: Optional[str] = None) -> bool:
@@ -905,7 +942,11 @@ class Database:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     activity.prospect_id,
-                    activity.activity_type.value if isinstance(activity.activity_type, ActivityType) else activity.activity_type,
+                    (
+                        activity.activity_type.value
+                        if isinstance(activity.activity_type, ActivityType)
+                        else activity.activity_type
+                    ),
                     activity.outcome.value if activity.outcome else None,
                     activity.call_duration_seconds,
                     activity.population_before.value if activity.population_before else None,
@@ -921,7 +962,7 @@ class Database:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create activity: {e}") from e
@@ -955,10 +996,17 @@ class Database:
                 """INSERT INTO data_freshness
                    (prospect_id, field_name, verified_date, verification_method, confidence, previous_value)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (prospect_id, field_name, verified_date, verification_method, confidence, previous_value),
+                (
+                    prospect_id,
+                    field_name,
+                    verified_date,
+                    verification_method,
+                    confidence,
+                    previous_value,
+                ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create data freshness: {e}") from e
@@ -992,7 +1040,7 @@ class Database:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create import source: {e}") from e
@@ -1005,17 +1053,19 @@ class Database:
         ).fetchall()
         result = []
         for row in rows:
-            result.append(ImportSource(
-                id=row["id"],
-                source_name=row["source_name"],
-                filename=row["filename"],
-                total_records=row["total_records"] or 0,
-                imported_records=row["imported_records"] or 0,
-                duplicate_records=row["duplicate_records"] or 0,
-                broken_records=row["broken_records"] or 0,
-                dnc_blocked_records=row["dnc_blocked_records"] or 0,
-                import_date=row["import_date"],
-            ))
+            result.append(
+                ImportSource(
+                    id=row["id"],
+                    source_name=row["source_name"],
+                    filename=row["filename"],
+                    total_records=row["total_records"] or 0,
+                    imported_records=row["imported_records"] or 0,
+                    duplicate_records=row["duplicate_records"] or 0,
+                    broken_records=row["broken_records"] or 0,
+                    dnc_blocked_records=row["dnc_blocked_records"] or 0,
+                    import_date=row["import_date"],
+                )
+            )
         return result
 
     def create_research_task(self, task: ResearchTask) -> int:
@@ -1036,12 +1086,14 @@ class Database:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create research task: {e}") from e
 
-    def get_research_tasks(self, status: Optional[str] = None, limit: int = 50) -> list[ResearchTask]:
+    def get_research_tasks(
+        self, status: Optional[str] = None, limit: int = 50
+    ) -> list[ResearchTask]:
         """Get research tasks, optionally filtered by status."""
         conn = self._get_connection()
         if status:
@@ -1055,15 +1107,19 @@ class Database:
             ).fetchall()
         result = []
         for row in rows:
-            result.append(ResearchTask(
-                id=row["id"],
-                prospect_id=row["prospect_id"],
-                priority=row["priority"] or 0,
-                status=ResearchStatus(row["status"]) if row["status"] else ResearchStatus.PENDING,
-                attempts=row["attempts"] or 0,
-                last_attempt_date=row["last_attempt_date"],
-                findings=row["findings"],
-            ))
+            result.append(
+                ResearchTask(
+                    id=row["id"],
+                    prospect_id=row["prospect_id"],
+                    priority=row["priority"] or 0,
+                    status=(
+                        ResearchStatus(row["status"]) if row["status"] else ResearchStatus.PENDING
+                    ),
+                    attempts=row["attempts"] or 0,
+                    last_attempt_date=row["last_attempt_date"],
+                    findings=row["findings"],
+                )
+            )
         return result
 
     def create_intel_nugget(self, nugget: IntelNugget) -> int:
@@ -1076,13 +1132,17 @@ class Database:
                    VALUES (?, ?, ?, ?)""",
                 (
                     nugget.prospect_id,
-                    nugget.category.value if isinstance(nugget.category, IntelCategory) else nugget.category,
+                    (
+                        nugget.category.value
+                        if isinstance(nugget.category, IntelCategory)
+                        else nugget.category
+                    ),
                     nugget.content,
                     nugget.source_activity_id,
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return self._lastrowid(cursor)
         except sqlite3.Error as e:
             conn.rollback()
             raise DatabaseError(f"Failed to create intel nugget: {e}") from e
@@ -1096,14 +1156,20 @@ class Database:
         ).fetchall()
         result = []
         for row in rows:
-            result.append(IntelNugget(
-                id=row["id"],
-                prospect_id=row["prospect_id"],
-                category=IntelCategory(row["category"]) if row["category"] else IntelCategory.KEY_FACT,
-                content=row["content"],
-                source_activity_id=row["source_activity_id"],
-                extracted_date=row["extracted_date"],
-            ))
+            result.append(
+                IntelNugget(
+                    id=row["id"],
+                    prospect_id=row["prospect_id"],
+                    category=(
+                        IntelCategory(row["category"])
+                        if row["category"]
+                        else IntelCategory.KEY_FACT
+                    ),
+                    content=row["content"],
+                    source_activity_id=row["source_activity_id"],
+                    extracted_date=row["extracted_date"],
+                )
+            )
         return result
 
     # =========================================================================
@@ -1144,11 +1210,13 @@ class Database:
                 skipped_invalid += 1
                 logger.warning(
                     "Bulk update skipped invalid transition",
-                    extra={"context": {
-                        "prospect_id": pid,
-                        "from": old_pop.value,
-                        "to": population.value,
-                    }},
+                    extra={
+                        "context": {
+                            "prospect_id": pid,
+                            "from": old_pop.value,
+                            "to": population.value,
+                        }
+                    },
                 )
                 continue
 
@@ -1232,10 +1300,12 @@ class Database:
                 skipped_invalid += 1
                 logger.warning(
                     "Bulk park skipped invalid transition",
-                    extra={"context": {
-                        "prospect_id": pid,
-                        "from": old_pop.value,
-                    }},
+                    extra={
+                        "context": {
+                            "prospect_id": pid,
+                            "from": old_pop.value,
+                        }
+                    },
                 )
                 continue
 

@@ -31,7 +31,6 @@ from src.engine.populations import (
     transition_stage,
 )
 
-
 # =============================================================================
 # FIXTURES
 # =============================================================================
@@ -66,14 +65,10 @@ def unengaged_prospect_id(db, company_id):
     pid = db.create_prospect(prospect)
     # Add contact methods so it's "complete"
     db.create_contact_method(
-        ContactMethod(
-            prospect_id=pid, type=ContactMethodType.EMAIL, value="john@test.com"
-        )
+        ContactMethod(prospect_id=pid, type=ContactMethodType.EMAIL, value="john@test.com")
     )
     db.create_contact_method(
-        ContactMethod(
-            prospect_id=pid, type=ContactMethodType.PHONE, value="5551234567"
-        )
+        ContactMethod(prospect_id=pid, type=ContactMethodType.PHONE, value="5551234567")
     )
     return pid
 
@@ -212,39 +207,27 @@ class TestEngagementStages:
 
     def test_pre_demo_to_demo_scheduled(self):
         """Pre-Demo -> Demo Scheduled is valid."""
-        assert can_transition_stage(
-            EngagementStage.PRE_DEMO, EngagementStage.DEMO_SCHEDULED
-        )
+        assert can_transition_stage(EngagementStage.PRE_DEMO, EngagementStage.DEMO_SCHEDULED)
 
     def test_demo_scheduled_to_post_demo(self):
         """Demo Scheduled -> Post Demo is valid."""
-        assert can_transition_stage(
-            EngagementStage.DEMO_SCHEDULED, EngagementStage.POST_DEMO
-        )
+        assert can_transition_stage(EngagementStage.DEMO_SCHEDULED, EngagementStage.POST_DEMO)
 
     def test_post_demo_to_closing(self):
         """Post Demo -> Closing is valid."""
-        assert can_transition_stage(
-            EngagementStage.POST_DEMO, EngagementStage.CLOSING
-        )
+        assert can_transition_stage(EngagementStage.POST_DEMO, EngagementStage.CLOSING)
 
     def test_cannot_skip_stages(self):
         """Cannot skip from Pre-Demo to Closing."""
-        assert not can_transition_stage(
-            EngagementStage.PRE_DEMO, EngagementStage.CLOSING
-        )
+        assert not can_transition_stage(EngagementStage.PRE_DEMO, EngagementStage.CLOSING)
 
     def test_cannot_go_backwards(self):
         """Cannot go from Closing back to Pre-Demo."""
-        assert not can_transition_stage(
-            EngagementStage.CLOSING, EngagementStage.PRE_DEMO
-        )
+        assert not can_transition_stage(EngagementStage.CLOSING, EngagementStage.PRE_DEMO)
 
     def test_same_stage_is_valid(self):
         """Same stage transition is valid (no-op)."""
-        assert can_transition_stage(
-            EngagementStage.PRE_DEMO, EngagementStage.PRE_DEMO
-        )
+        assert can_transition_stage(EngagementStage.PRE_DEMO, EngagementStage.PRE_DEMO)
 
 
 # =============================================================================
@@ -267,9 +250,7 @@ class TestTransitionProspect:
 
     def test_transition_logs_activity(self, db, unengaged_prospect_id):
         """Transition creates an activity record."""
-        transition_prospect(
-            db, unengaged_prospect_id, Population.ENGAGED, reason="Showed interest"
-        )
+        transition_prospect(db, unengaged_prospect_id, Population.ENGAGED, reason="Showed interest")
 
         activities = db.get_activities(unengaged_prospect_id)
         assert len(activities) >= 1
@@ -323,9 +304,7 @@ class TestTransitionProspect:
 
     def test_transition_to_dnc_sets_dead_fields(self, db, unengaged_prospect_id):
         """Transitioning to DNC sets dead_reason and dead_date."""
-        transition_prospect(
-            db, unengaged_prospect_id, Population.DEAD_DNC, reason="Requested DNC"
-        )
+        transition_prospect(db, unengaged_prospect_id, Population.DEAD_DNC, reason="Requested DNC")
 
         prospect = db.get_prospect(unengaged_prospect_id)
         assert prospect.population == Population.DEAD_DNC
@@ -334,9 +313,7 @@ class TestTransitionProspect:
 
     def test_same_population_noop(self, db, unengaged_prospect_id):
         """Same population transition is a no-op."""
-        result = transition_prospect(
-            db, unengaged_prospect_id, Population.UNENGAGED
-        )
+        result = transition_prospect(db, unengaged_prospect_id, Population.UNENGAGED)
         assert result is True
 
 
@@ -350,9 +327,7 @@ class TestTransitionStage:
 
     def test_stage_transition_updates(self, db, engaged_prospect_id):
         """Stage transition updates the prospect."""
-        result = transition_stage(
-            db, engaged_prospect_id, EngagementStage.DEMO_SCHEDULED
-        )
+        result = transition_stage(db, engaged_prospect_id, EngagementStage.DEMO_SCHEDULED)
         assert result is True
 
         prospect = db.get_prospect(engaged_prospect_id)
@@ -376,9 +351,7 @@ class TestTransitionStage:
     def test_non_engaged_raises_error(self, db, unengaged_prospect_id):
         """Stage transition on non-engaged raises PipelineError."""
         with pytest.raises(PipelineError):
-            transition_stage(
-                db, unengaged_prospect_id, EngagementStage.DEMO_SCHEDULED
-            )
+            transition_stage(db, unengaged_prospect_id, EngagementStage.DEMO_SCHEDULED)
 
     def test_invalid_stage_skip_raises_error(self, db, engaged_prospect_id):
         """Skipping stages raises PipelineError."""
@@ -464,24 +437,18 @@ class TestFullLifecycle:
 
         # Verify all transitions were logged
         activities = db.get_activities(pid)
-        status_changes = [
-            a for a in activities if a.activity_type == ActivityType.STATUS_CHANGE
-        ]
+        status_changes = [a for a in activities if a.activity_type == ActivityType.STATUS_CHANGE]
         # 2 population transitions + 3 stage transitions + closing = 6
         assert len(status_changes) >= 5
 
     def test_lifecycle_park_and_return(self, db, unengaged_prospect_id):
         """Park a prospect and bring them back."""
         # unengaged -> parked
-        transition_prospect(
-            db, unengaged_prospect_id, Population.PARKED, reason="Call me in June"
-        )
+        transition_prospect(db, unengaged_prospect_id, Population.PARKED, reason="Call me in June")
         p = db.get_prospect(unengaged_prospect_id)
         assert p.population == Population.PARKED
 
         # parked -> unengaged (month arrived)
-        transition_prospect(
-            db, unengaged_prospect_id, Population.UNENGAGED, reason="June arrived"
-        )
+        transition_prospect(db, unengaged_prospect_id, Population.UNENGAGED, reason="June arrived")
         p = db.get_prospect(unengaged_prospect_id)
         assert p.population == Population.UNENGAGED

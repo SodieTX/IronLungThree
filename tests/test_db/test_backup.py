@@ -10,7 +10,6 @@ import pytest
 from src.core.exceptions import DatabaseError
 from src.db.backup import BackupInfo, BackupManager
 
-
 # =========================================================================
 # BACKUP CREATION TESTS
 # =========================================================================
@@ -269,6 +268,7 @@ class TestCleanupOldBackups:
         old_backup = backup_dir / old_name
         # Copy the source db to simulate a real backup
         import shutil
+
         shutil.copy2(str(db_path), str(old_backup))
 
         # Create a recent backup

@@ -2,7 +2,14 @@
 
 import pytest
 
-from src.gui.theme import COLORS, FONTS
+try:
+    from src.gui.theme import COLORS, FONTS
+
+    HAS_TKINTER = True
+except ImportError:
+    HAS_TKINTER = False
+
+pytestmark = pytest.mark.skipif(not HAS_TKINTER, reason="tkinter not available")
 
 
 class TestColors:

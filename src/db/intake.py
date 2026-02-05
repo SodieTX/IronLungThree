@@ -237,14 +237,16 @@ class IntakeFunnel:
 
         logger.info(
             "Import analysis complete",
-            extra={"context": {
-                "total": preview.total_records,
-                "new": len(preview.new_records),
-                "merge": len(preview.merge_records),
-                "review": len(preview.needs_review),
-                "dnc_blocked": len(preview.blocked_dnc),
-                "incomplete": len(preview.incomplete),
-            }},
+            extra={
+                "context": {
+                    "total": preview.total_records,
+                    "new": len(preview.new_records),
+                    "merge": len(preview.merge_records),
+                    "review": len(preview.needs_review),
+                    "dnc_blocked": len(preview.blocked_dnc),
+                    "incomplete": len(preview.incomplete),
+                }
+            },
         )
 
         return preview
@@ -294,50 +296,59 @@ class IntakeFunnel:
 
             # Create contact methods
             if record.email:
-                self.db.create_contact_method(ContactMethod(
-                    prospect_id=prospect_id,
-                    type=ContactMethodType.EMAIL,
-                    value=record.email.lower(),
-                    is_primary=True,
-                    source=preview.source_name,
-                ))
+                self.db.create_contact_method(
+                    ContactMethod(
+                        prospect_id=prospect_id,
+                        type=ContactMethodType.EMAIL,
+                        value=record.email.lower(),
+                        is_primary=True,
+                        source=preview.source_name,
+                    )
+                )
 
             if record.phone:
-                self.db.create_contact_method(ContactMethod(
-                    prospect_id=prospect_id,
-                    type=ContactMethodType.PHONE,
-                    value=record.phone,
-                    is_primary=not record.email,
-                    source=preview.source_name,
-                ))
+                self.db.create_contact_method(
+                    ContactMethod(
+                        prospect_id=prospect_id,
+                        type=ContactMethodType.PHONE,
+                        value=record.phone,
+                        is_primary=not record.email,
+                        source=preview.source_name,
+                    )
+                )
 
             # Log import activity
-            self.db.create_activity(Activity(
-                prospect_id=prospect_id,
-                activity_type=ActivityType.IMPORT,
-                notes=f"Imported from {preview.source_name or preview.filename}",
-                created_by="system",
-            ))
+            self.db.create_activity(
+                Activity(
+                    prospect_id=prospect_id,
+                    activity_type=ActivityType.IMPORT,
+                    notes=f"Imported from {preview.source_name or preview.filename}",
+                    created_by="system",
+                )
+            )
 
             # Queue broken records for research
             if is_broken:
-                self.db.create_research_task(ResearchTask(
-                    prospect_id=prospect_id,
-                    priority=0,
-                ))
+                self.db.create_research_task(
+                    ResearchTask(
+                        prospect_id=prospect_id,
+                        priority=0,
+                    )
+                )
 
             result.imported_count += 1
 
         # Process merge records
         for analysis in preview.merge_records:
             record = analysis.record
-            prospect_id = analysis.matched_prospect_id
-            if prospect_id is None:
+            merge_pid: Optional[int] = analysis.matched_prospect_id
+            if merge_pid is None:
                 continue
 
-            prospect = self.db.get_prospect(prospect_id)
-            if prospect is None:
+            existing: Optional[Prospect] = self.db.get_prospect(merge_pid)
+            if existing is None:
                 continue
+            prospect = existing
 
             # Update fields that are empty in existing record
             updated = False
@@ -352,44 +363,50 @@ class IntakeFunnel:
                 self.db.update_prospect(prospect)
 
             # Add any new contact methods
-            existing_methods = self.db.get_contact_methods(prospect_id)
+            existing_methods = self.db.get_contact_methods(merge_pid)
             existing_emails = {
-                m.value.lower() for m in existing_methods
-                if m.type == ContactMethodType.EMAIL
+                m.value.lower() for m in existing_methods if m.type == ContactMethodType.EMAIL
             }
             existing_phones = {
                 "".join(c for c in m.value if c.isdigit())
-                for m in existing_methods if m.type == ContactMethodType.PHONE
+                for m in existing_methods
+                if m.type == ContactMethodType.PHONE
             }
 
             if record.email and record.email.lower() not in existing_emails:
-                self.db.create_contact_method(ContactMethod(
-                    prospect_id=prospect_id,
-                    type=ContactMethodType.EMAIL,
-                    value=record.email.lower(),
-                    source=preview.source_name,
-                ))
+                self.db.create_contact_method(
+                    ContactMethod(
+                        prospect_id=merge_pid,
+                        type=ContactMethodType.EMAIL,
+                        value=record.email.lower(),
+                        source=preview.source_name,
+                    )
+                )
 
             if record.phone:
                 phone_digits = "".join(c for c in record.phone if c.isdigit())
                 if phone_digits not in existing_phones:
-                    self.db.create_contact_method(ContactMethod(
-                        prospect_id=prospect_id,
-                        type=ContactMethodType.PHONE,
-                        value=record.phone,
-                        source=preview.source_name,
-                    ))
+                    self.db.create_contact_method(
+                        ContactMethod(
+                            prospect_id=merge_pid,
+                            type=ContactMethodType.PHONE,
+                            value=record.phone,
+                            source=preview.source_name,
+                        )
+                    )
 
             # Log merge activity
-            self.db.create_activity(Activity(
-                prospect_id=prospect_id,
-                activity_type=ActivityType.ENRICHMENT,
-                notes=(
-                    f"Merged from import: {preview.source_name or preview.filename}"
-                    f" (match: {analysis.match_reason})"
-                ),
-                created_by="system",
-            ))
+            self.db.create_activity(
+                Activity(
+                    prospect_id=merge_pid,
+                    activity_type=ActivityType.ENRICHMENT,
+                    notes=(
+                        f"Merged from import: {preview.source_name or preview.filename}"
+                        f" (match: {analysis.match_reason})"
+                    ),
+                    created_by="system",
+                )
+            )
 
             result.merged_count += 1
 
@@ -407,12 +424,14 @@ class IntakeFunnel:
 
         logger.info(
             "Import committed",
-            extra={"context": {
-                "imported": result.imported_count,
-                "merged": result.merged_count,
-                "broken": result.broken_count,
-                "source_id": result.source_id,
-            }},
+            extra={
+                "context": {
+                    "imported": result.imported_count,
+                    "merged": result.merged_count,
+                    "broken": result.broken_count,
+                    "source_id": result.source_id,
+                }
+            },
         )
 
         return result
@@ -470,7 +489,7 @@ class IntakeFunnel:
         for prospect in prospects:
             existing_name = prospect.full_name
             similarity = self.name_similarity(full_name, existing_name)
-            if similarity >= self.name_similarity_threshold:
+            if similarity >= self.name_similarity_threshold and prospect.id is not None:
                 return (prospect.id, similarity)
 
         return None

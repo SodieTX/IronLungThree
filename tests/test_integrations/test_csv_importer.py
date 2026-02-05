@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.integrations.csv_importer import CSVImporter, PRESETS, ParseResult
-
+from src.integrations.csv_importer import PRESETS, CSVImporter, ParseResult
 
 # =========================================================================
 # CSV PARSING TESTS
@@ -19,9 +18,7 @@ class TestParseCSV:
         """Parse a simple CSV file."""
         csv_file = tmp_path / "test.csv"
         csv_file.write_text(
-            "First Name,Last Name,Email\n"
-            "John,Doe,john@test.com\n"
-            "Jane,Smith,jane@test.com\n"
+            "First Name,Last Name,Email\n" "John,Doe,john@test.com\n" "Jane,Smith,jane@test.com\n"
         )
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
@@ -55,6 +52,7 @@ class TestParseCSV:
     def test_parse_nonexistent_file(self):
         """Raises ImportError_ for missing file."""
         from src.core.exceptions import ImportError_
+
         importer = CSVImporter()
         with pytest.raises(ImportError_, match="File not found"):
             importer.parse_file(Path("/nonexistent/file.csv"))
@@ -62,6 +60,7 @@ class TestParseCSV:
     def test_parse_unsupported_extension(self, tmp_path: Path):
         """Raises ImportError_ for unknown file type."""
         from src.core.exceptions import ImportError_
+
         bad_file = tmp_path / "test.pdf"
         bad_file.write_text("not a csv")
 
@@ -82,9 +81,7 @@ class TestParseCSV:
     def test_parse_csv_latin1(self, tmp_path: Path):
         """Handles Latin-1 encoded files."""
         csv_file = tmp_path / "latin.csv"
-        csv_file.write_bytes(
-            "Name,City\nJos\xe9,S\xe3o Paulo\n".encode("latin-1")
-        )
+        csv_file.write_bytes("Name,City\nJos\xe9,S\xe3o Paulo\n".encode("latin-1"))
 
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
@@ -134,7 +131,9 @@ class TestPresetDetection:
     def test_parse_file_includes_detected_preset(self, tmp_path: Path):
         """parse_file result includes detected preset."""
         csv_file = tmp_path / "pb.csv"
-        csv_file.write_text("First Name,Last Name,Email,Phone,Company,Title,State\nJohn,Doe,j@t.com,555,Acme,VP,TX\n")
+        csv_file.write_text(
+            "First Name,Last Name,Email,Phone,Company,Title,State\nJohn,Doe,j@t.com,555,Acme,VP,TX\n"
+        )
 
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
@@ -152,10 +151,7 @@ class TestApplyMapping:
     def test_basic_mapping(self, tmp_path: Path):
         """Apply explicit column mapping."""
         csv_file = tmp_path / "mapped.csv"
-        csv_file.write_text(
-            "fn,ln,em,ph,co\n"
-            "John,Doe,john@test.com,5551234567,Acme Corp\n"
-        )
+        csv_file.write_text("fn,ln,em,ph,co\n" "John,Doe,john@test.com,5551234567,Acme Corp\n")
         importer = CSVImporter()
         mapping = {
             "first_name": "fn",

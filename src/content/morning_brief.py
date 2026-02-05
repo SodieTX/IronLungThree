@@ -150,19 +150,13 @@ def generate_morning_brief(db: Database) -> MorningBrief:
     # Warnings
     warnings: list[str] = []
     if orphan_count > 0:
-        warnings.append(
-            f"{orphan_count} engaged prospect(s) have NO follow-up date set"
-        )
+        warnings.append(f"{orphan_count} engaged prospect(s) have NO follow-up date set")
     if overdue_count >= 5:
-        warnings.append(
-            f"You have {overdue_count} overdue follow-ups"
-        )
+        warnings.append(f"You have {overdue_count} overdue follow-ups")
 
     # Overnight changes (system activities from last 24 hours)
     overnight_lines = []
-    yesterday = datetime(today.year, today.month, today.day, 0, 0, 0).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    yesterday = datetime(today.year, today.month, today.day, 0, 0, 0).strftime("%Y-%m-%d %H:%M:%S")
     system_activities = conn.execute(
         """SELECT a.*, p.first_name, p.last_name
            FROM activities a

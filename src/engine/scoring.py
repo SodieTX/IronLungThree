@@ -213,10 +213,7 @@ def calculate_confidence(
     fresh_verified = any(
         m.is_verified
         and m.verified_date
-        and (
-            isinstance(m.verified_date, str)
-            or (date.today() - m.verified_date).days < 90
-        )
+        and (isinstance(m.verified_date, str) or (date.today() - m.verified_date).days < 90)
         for m in contact_methods
     )
     if fresh_verified:
