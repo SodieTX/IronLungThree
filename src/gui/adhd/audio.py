@@ -102,9 +102,9 @@ class AudioManager:
         """Default sound playback via winsound or log."""
         freq, duration = SOUND_PROFILES.get(sound, (800, 100))
         try:
-            import winsound
+            import winsound  # type: ignore[import-not-found]
 
-            winsound.Beep(freq, duration)
+            winsound.Beep(freq, duration)  # type: ignore[attr-defined]
             return True
         except (ImportError, RuntimeError):
             # Not on Windows or no audio — log and continue
