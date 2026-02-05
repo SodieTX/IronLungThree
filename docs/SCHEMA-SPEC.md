@@ -452,6 +452,46 @@ STATE_TO_TIMEZONE = {
 
 ---
 
+## MIGRATION STRATEGY
+
+On application startup, the system checks `schema_version` and applies migrations if needed.
+
+**Process:**
+1. Read current `schema_version` from database
+2. If version < expected version:
+   - Create pre-migration backup (`ironlung3_YYYYMMDD_HHMMSS_pre_migration.db`)
+   - Run sequential migration statements (ALTER TABLE, CREATE INDEX, etc.)
+   - Update `schema_version` to new value
+3. If migration fails:
+   - Log error with details
+   - Restore from pre-migration backup
+   - Exit with clear error message
+
+**Migration file naming:**
+```
+migrations/
+├── 001_initial_schema.sql      # v1 (Phase 1)
+├── 002_add_feature_x.sql       # v2 (future)
+└── ...
+```
+
+**Rules:**
+- Migrations are additive (no destructive changes without explicit backup/restore)
+- Each migration is idempotent where possible (IF NOT EXISTS)
+- Migration SQL stored in code, not external files (simpler for single-user desktop app)
+
+**Example migration (v1 → v2):**
+```python
+MIGRATIONS = {
+    2: [
+        "ALTER TABLE prospects ADD COLUMN new_field TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_new ON prospects(new_field)",
+    ],
+}
+```
+
+---
+
 **See also:**
 - `ARCHITECTURE-OVERVIEW.md` - The big picture
 - `layers/LAYER-1-SLAB.md` - Database implementation details
