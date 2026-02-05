@@ -284,10 +284,10 @@ class TestProspectCRUD:
 
         full = memory_db.get_prospect_full(pid)
         assert full is not None
-        assert full["prospect"].first_name == "John"
-        assert full["company"].name == "Test Co"
-        assert len(full["contact_methods"]) == 1
-        assert len(full["activities"]) == 1
+        assert full.prospect.first_name == "John"
+        assert full.company.name == "Test Co"
+        assert len(full.contact_methods) == 1
+        assert len(full.activities) == 1
 
     def test_get_population_counts(self, memory_db: Database):
         """Can get counts per population."""

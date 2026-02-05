@@ -386,7 +386,7 @@ class TestCommitNewRecords:
         assert prospects[0].population == Population.UNENGAGED
 
     def test_commit_missing_contact_is_broken(self, memory_db):
-        """Prospect missing email or phone → BROKEN."""
+        """Prospect missing email or phone → BROKEN + research_queue entry."""
         funnel = IntakeFunnel(memory_db)
         records = [ImportRecord(
             first_name="No",
@@ -400,6 +400,27 @@ class TestCommitNewRecords:
         assert result.broken_count == 1
         prospects = memory_db.get_prospects()
         assert prospects[0].population == Population.BROKEN
+
+        # Broken records are queued for research
+        tasks = memory_db.get_research_tasks()
+        assert len(tasks) == 1
+        assert tasks[0].prospect_id == prospects[0].id
+
+    def test_commit_complete_record_no_research_task(self, memory_db):
+        """Complete record (email + phone) does NOT create research_queue entry."""
+        funnel = IntakeFunnel(memory_db)
+        records = [ImportRecord(
+            first_name="Complete",
+            last_name="Person",
+            email="complete@test.com",
+            phone="5551234567",
+            company_name="CompleteCo",
+        )]
+        preview = funnel.analyze(records)
+        funnel.commit(preview)
+
+        tasks = memory_db.get_research_tasks()
+        assert len(tasks) == 0
 
     def test_commit_logs_import_activity(self, memory_db):
         """Commit logs an IMPORT activity for each new record."""

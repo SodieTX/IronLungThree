@@ -30,12 +30,14 @@ from src.db.models import (
     Company,
     ContactMethod,
     ContactMethodType,
+    DeadReason,
     EngagementStage,
     ImportSource,
     IntelCategory,
     IntelNugget,
     Population,
     Prospect,
+    ProspectFull,
     ProspectTag,
     ResearchStatus,
     ResearchTask,
@@ -340,6 +342,9 @@ class Database:
         from src.db.models import LostReason
         lost_reason = LostReason(lost_val) if lost_val else None
 
+        dead_val = row["dead_reason"]
+        dead_reason = DeadReason(dead_val) if dead_val else None
+
         return Prospect(
             id=row["id"],
             company_id=row["company_id"],
@@ -357,7 +362,7 @@ class Database:
             preferred_contact_method=row["preferred_contact_method"],
             source=row["source"],
             referred_by_prospect_id=row["referred_by_prospect_id"],
-            dead_reason=row["dead_reason"],
+            dead_reason=dead_reason,
             dead_date=row["dead_date"],
             lost_reason=lost_reason,
             lost_competitor=row["lost_competitor"],
@@ -563,7 +568,7 @@ class Database:
                     prospect.preferred_contact_method,
                     prospect.source,
                     prospect.referred_by_prospect_id,
-                    prospect.dead_reason,
+                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
                     prospect.dead_date,
                     prospect.lost_reason.value if prospect.lost_reason else None,
                     prospect.lost_competitor,
@@ -594,7 +599,7 @@ class Database:
             return None
         return self._row_to_prospect(row)
 
-    def get_prospect_full(self, prospect_id: int) -> Optional[dict[str, Any]]:
+    def get_prospect_full(self, prospect_id: int) -> Optional[ProspectFull]:
         """Get prospect with company, contact methods, activities."""
         prospect = self.get_prospect(prospect_id)
         if prospect is None:
@@ -605,13 +610,13 @@ class Database:
         activities = self.get_activities(prospect_id)
         tags = self.get_tags(prospect_id)
 
-        return {
-            "prospect": prospect,
-            "company": company,
-            "contact_methods": contact_methods,
-            "activities": activities,
-            "tags": tags,
-        }
+        return ProspectFull(
+            prospect=prospect,
+            company=company,
+            contact_methods=contact_methods,
+            activities=activities,
+            tags=tags,
+        )
 
     def update_prospect(self, prospect: Prospect) -> bool:
         """Update prospect. Returns True if updated."""
@@ -648,7 +653,7 @@ class Database:
                     prospect.preferred_contact_method,
                     prospect.source,
                     prospect.referred_by_prospect_id,
-                    prospect.dead_reason,
+                    prospect.dead_reason.value if isinstance(prospect.dead_reason, DeadReason) else prospect.dead_reason,
                     prospect.dead_date,
                     prospect.lost_reason.value if prospect.lost_reason else None,
                     prospect.lost_competitor,

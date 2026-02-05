@@ -260,7 +260,7 @@ class IntakeFunnel:
         Returns:
             ImportResult with counts
         """
-        from src.db.models import Activity, ActivityType, Company
+        from src.db.models import Activity, ActivityType, Company, ResearchTask
 
         result = ImportResult()
 
@@ -276,7 +276,8 @@ class IntakeFunnel:
             has_phone = record.phone is not None and record.phone != ""
             population = Population.UNENGAGED if (has_email and has_phone) else Population.BROKEN
 
-            if population == Population.BROKEN:
+            is_broken = population == Population.BROKEN
+            if is_broken:
                 result.broken_count += 1
 
             # Create prospect
@@ -317,6 +318,13 @@ class IntakeFunnel:
                 notes=f"Imported from {preview.source_name or preview.filename}",
                 created_by="system",
             ))
+
+            # Queue broken records for research
+            if is_broken:
+                self.db.create_research_task(ResearchTask(
+                    prospect_id=prospect_id,
+                    priority=0,
+                ))
 
             result.imported_count += 1
 
