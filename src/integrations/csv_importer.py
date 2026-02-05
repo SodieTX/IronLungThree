@@ -254,10 +254,12 @@ class CSVImporter:
 
                     try:
                         dialect = csv.Sniffer().sniff(sample)
+                        reader = csv.reader(f, dialect)
                     except csv.Error:
-                        dialect = csv.excel
-
-                    reader = csv.reader(f, dialect)
+                        # Sniffer can fail on small/simple files.
+                        # Default csv.reader uses comma delimiter,
+                        # which handles the majority of imports.
+                        reader = csv.reader(f)
                     rows = list(reader)
 
                     if not rows:
