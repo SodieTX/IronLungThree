@@ -174,7 +174,9 @@ class TestQuotedFields:
     def test_newline_inside_quoted_field(self, tmp_path: Path):
         """A newline inside a quoted field should NOT split the row."""
         csv_file = tmp_path / "multiline.csv"
-        csv_file.write_text('Name,Notes\nJohn,"line1\nline2"\nJane,ok\n')
+        # Use write_bytes to prevent Windows CRLF conversion inside the
+        # quoted field, which would change the expected value.
+        csv_file.write_bytes(b'Name,Notes\nJohn,"line1\nline2"\nJane,ok\n')
 
         importer = CSVImporter()
         mapping = {"first_name": "Name", "notes": "Notes"}
@@ -401,7 +403,10 @@ class TestUnicodeStress:
     def test_unicode_names(self, tmp_path: Path):
         """Names with accented characters, CJK, emoji, etc."""
         csv_file = tmp_path / "unicode.csv"
-        csv_file.write_text("Name,Email\nJosé,jose@t.com\n田中太郎,tanaka@t.com\n")
+        csv_file.write_text(
+            "Name,Email\nJosé,jose@t.com\n田中太郎,tanaka@t.com\n",
+            encoding="utf-8",
+        )
 
         importer = CSVImporter()
         mapping = {"first_name": "Name", "email": "Email"}
@@ -413,7 +418,7 @@ class TestUnicodeStress:
     def test_header_with_unicode(self, tmp_path: Path):
         """Headers containing unicode characters."""
         csv_file = tmp_path / "uheader.csv"
-        csv_file.write_text("Prénom,Courriel\nJean,jean@t.com\n")
+        csv_file.write_text("Prénom,Courriel\nJean,jean@t.com\n", encoding="utf-8")
 
         importer = CSVImporter()
         result = importer.parse_file(csv_file)

@@ -250,10 +250,6 @@ class CSVImporter:
 
         records: list[ImportRecord] = []
         for row in all_rows:
-            # Skip rows where all cells are empty or just whitespace
-            if all(not (cell and cell.strip()) for cell in row):
-                continue
-
             record = ImportRecord()
 
             for field, col_name in mapping.items():
