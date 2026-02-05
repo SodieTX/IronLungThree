@@ -97,6 +97,7 @@ IronLung 3 is built in 7 phases. Each phase produces a working tool.
 - `docs/build/` — Phase build specifications
 - `docs/adr/` — Architecture decision records
 - `docs/patterns/` — Engineering patterns
+- `docs/PHASE1-CHECKLIST.md` — Phase 1 sign-off checklist
 
 ## Testing
 
@@ -112,6 +113,9 @@ pytest tests/test_db/test_database.py
 
 # Run tests matching pattern
 pytest -k "test_normalize"
+
+# Phase 1 stage gate
+pytest -m phase1_ready
 ```
 
 ## Project Structure
