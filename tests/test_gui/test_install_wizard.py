@@ -35,6 +35,26 @@ def wizard(data_dir: Path) -> InstallWizard:
     return InstallWizard(data_dir=data_dir)
 
 
+@pytest.fixture
+def mock_tk_vars():
+    """Factory fixture for creating mock tk StringVar and BooleanVar with get/set behavior."""
+    def make_string_var(root=None, value=""):
+        var = MagicMock()
+        var._value = value
+        var.get.side_effect = lambda: var._value
+        var.set.side_effect = lambda v: setattr(var, '_value', v)
+        return var
+
+    def make_boolean_var(root=None, value=False):
+        var = MagicMock()
+        var._value = value
+        var.get.side_effect = lambda: var._value
+        var.set.side_effect = lambda v: setattr(var, '_value', v)
+        return var
+
+    return make_string_var, make_boolean_var
+
+
 class TestInstallWizardInit:
     def test_initial_step_is_zero(self, wizard: InstallWizard) -> None:
         assert wizard.current_step == 0
@@ -82,26 +102,14 @@ class TestInstallWizardFinish:
     @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_persists_config(
-        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock, data_dir: Path
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock, 
+        data_dir: Path, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
@@ -129,26 +137,13 @@ class TestInstallWizardFinish:
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_writes_env_file(
         self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
-        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
@@ -176,26 +171,13 @@ class TestInstallWizardFinish:
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_skips_existing_env(
         self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
-        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
@@ -220,26 +202,13 @@ class TestInstallWizardOutlook:
     @patch("src.gui.install_wizard.tk.Tk")
     def test_outlook_configured_when_all_fields_set(
         self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
-        data_dir: Path
+        data_dir: Path, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
@@ -263,26 +232,13 @@ class TestInstallWizardOutlook:
     @patch("src.gui.install_wizard.tk.Tk")
     def test_outlook_not_configured_when_empty(
         self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
-        data_dir: Path
+        data_dir: Path, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
@@ -300,26 +256,13 @@ class TestInstallWizardSetupPersistence:
     @patch("src.gui.install_wizard.tk.Tk")
     def test_config_json_written(
         self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
-        data_dir: Path
+        data_dir: Path, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
 
-        # Create factory functions that return mock variables with get/set behavior
-        def make_string_var(root=None, value=""):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
-        def make_boolean_var(root=None, value=False):
-            var = MagicMock()
-            var._value = value
-            var.get.side_effect = lambda: var._value
-            var.set.side_effect = lambda v: setattr(var, '_value', v)
-            return var
-
+        # Setup mock variable factories
+        make_string_var, make_boolean_var = mock_tk_vars
         mock_string_var.side_effect = make_string_var
         mock_boolean_var.side_effect = make_boolean_var
 
