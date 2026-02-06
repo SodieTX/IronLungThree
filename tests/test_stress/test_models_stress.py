@@ -286,16 +286,16 @@ class TestCompletenessAssessment:
         assert assess_completeness(p, methods) == Population.UNENGAGED
 
     def test_empty_email_value_still_counts(self):
-        """Empty string email still counts as 'has email' - potential bug."""
+        """Empty string email should NOT count as 'has email'."""
         p = Prospect(first_name="John", last_name="Doe")
         methods = [
             ContactMethod(type=ContactMethodType.EMAIL, value=""),  # Empty!
             ContactMethod(type=ContactMethodType.PHONE, value="5551234"),
         ]
-        # assess_completeness only checks type, not value validity
+        # assess_completeness now checks value validity
         result = assess_completeness(p, methods)
-        # This reveals the bug: empty email counts as having email
-        assert result == Population.UNENGAGED  # Bug: should arguably be BROKEN
+        # Bug is now fixed: empty email does not count
+        assert result == Population.BROKEN
 
     def test_multiple_emails_one_phone(self):
         """Multiple emails + one phone = UNENGAGED."""
