@@ -37,7 +37,6 @@ from src.db.models import (
     ResearchTask,
 )
 
-
 # =========================================================================
 # FIXTURES
 # =========================================================================
@@ -436,27 +435,21 @@ class TestBulkOperationsEdgeCases:
 
     def test_bulk_update_nonexistent_ids(self, db):
         """Bulk update with IDs that don't exist."""
-        result = db.bulk_update_population(
-            [99999, 88888, 77777], Population.ENGAGED, "ghost ids"
-        )
+        result = db.bulk_update_population([99999, 88888, 77777], Population.ENGAGED, "ghost ids")
         assert result == (0, 0, 0)
 
     def test_bulk_update_mixed_valid_invalid(self, db):
         """Mix of valid and nonexistent IDs."""
         cid = _make_company(db)
         pid = _make_prospect(db, cid, population=Population.UNENGAGED)
-        result = db.bulk_update_population(
-            [pid, 99999], Population.ENGAGED, "mixed"
-        )
+        result = db.bulk_update_population([pid, 99999], Population.ENGAGED, "mixed")
         assert result[0] >= 1  # At least the valid one updated
 
     def test_bulk_update_skips_dnc(self, db):
         """DNC records should be skipped in bulk update."""
         cid = _make_company(db)
         pid = _make_prospect(db, cid, population=Population.DEAD_DNC)
-        result = db.bulk_update_population(
-            [pid], Population.UNENGAGED, "escape dnc"
-        )
+        result = db.bulk_update_population([pid], Population.UNENGAGED, "escape dnc")
         assert result == (0, 1, 0)  # 1 skipped as DNC
 
     def test_bulk_park_skips_dnc(self, db):

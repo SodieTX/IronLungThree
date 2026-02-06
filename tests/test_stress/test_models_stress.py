@@ -39,7 +39,6 @@ from src.db.models import (
     timezone_from_state,
 )
 
-
 # =========================================================================
 # COMPANY NAME NORMALIZATION - ADVERSARIAL INPUTS
 # =========================================================================
@@ -188,18 +187,68 @@ class TestTimezoneLookup:
     def test_all_50_states_have_timezone(self):
         """Every valid state code should return a non-default timezone (mostly)."""
         valid_states = [
-            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-            "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-            "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-            "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "FL",
+            "GA",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY",
             "DC",
         ]
         for state in valid_states:
             tz = timezone_from_state(state)
-            assert tz in ("eastern", "central", "mountain", "pacific", "alaska", "hawaii"), (
-                f"State {state} returned unexpected timezone: {tz}"
-            )
+            assert tz in (
+                "eastern",
+                "central",
+                "mountain",
+                "pacific",
+                "alaska",
+                "hawaii",
+            ), f"State {state} returned unexpected timezone: {tz}"
 
 
 # =========================================================================

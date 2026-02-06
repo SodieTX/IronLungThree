@@ -18,7 +18,6 @@ import pytest
 from src.core.exceptions import ImportError_
 from src.integrations.csv_importer import CSVImporter
 
-
 # =========================================================================
 # ENCODING NIGHTMARES
 # =========================================================================
@@ -41,9 +40,7 @@ class TestEncodingNightmares:
         """Windows CP1252 with smart quotes (common Excel export)."""
         csv_file = tmp_path / "cp1252.csv"
         # \x93 and \x94 are left/right double quotes in CP1252
-        csv_file.write_bytes(
-            b"Name,Notes\nJohn,\x93Smart quotes\x94\n"
-        )
+        csv_file.write_bytes(b"Name,Notes\nJohn,\x93Smart quotes\x94\n")
         importer = CSVImporter()
         result = importer.parse_file(csv_file)
         assert result.total_rows == 1
@@ -134,9 +131,7 @@ class TestCellInjection:
     def test_html_injection_in_notes(self, tmp_path):
         """HTML/XSS payload should be stored as-is."""
         csv_file = tmp_path / "xss.csv"
-        csv_file.write_text(
-            'Name,Notes\nJohn,"<script>alert(1)</script>"\n'
-        )
+        csv_file.write_text('Name,Notes\nJohn,"<script>alert(1)</script>"\n')
         importer = CSVImporter()
         mapping = {"first_name": "Name", "notes": "Notes"}
         records = importer.apply_mapping(csv_file, mapping)
@@ -146,9 +141,7 @@ class TestCellInjection:
     def test_sql_injection_in_company(self, tmp_path):
         """SQL injection in company name should be stored as-is."""
         csv_file = tmp_path / "sqli.csv"
-        csv_file.write_text(
-            "Name,Company\nJohn,\"'; DROP TABLE companies; --\"\n"
-        )
+        csv_file.write_text('Name,Company\nJohn,"\'; DROP TABLE companies; --"\n')
         importer = CSVImporter()
         mapping = {"first_name": "Name", "company_name": "Company"}
         records = importer.apply_mapping(csv_file, mapping)
@@ -188,6 +181,7 @@ class TestStateNormalizationAdversarial:
     def test_all_50_state_names(self):
         """Every full state name should map correctly."""
         from src.integrations.csv_importer import _STATE_NAMES
+
         for full_name, code in _STATE_NAMES.items():
             result = CSVImporter.normalize_state(full_name)
             assert result == code, f"'{full_name}' -> '{result}', expected '{code}'"

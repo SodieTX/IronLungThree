@@ -25,7 +25,6 @@ from src.core.config import (
     validate_config,
 )
 
-
 # =========================================================================
 # .ENV FILE PARSING STRESS
 # =========================================================================
@@ -86,7 +85,7 @@ class TestEnvFileParsing:
     def test_single_quote_char_as_value(self, tmp_path):
         """A value that is just a single quote character."""
         env_file = tmp_path / ".env"
-        env_file.write_text("KEY=\"\n")
+        env_file.write_text('KEY="\n')
         result = load_env_file(env_file)
         # value = '"', value[0] = '"', value[-1] = '"', same quote
         # So it strips both -> empty string
@@ -181,8 +180,23 @@ class TestBooleanParsing:
 
     def test_false_values(self):
         """Everything else is False."""
-        for val in ["false", "FALSE", "0", "no", "NO", "off", "OFF", "", "maybe",
-                     "t", "y", "enabled", "disabled", "2", "-1"]:
+        for val in [
+            "false",
+            "FALSE",
+            "0",
+            "no",
+            "NO",
+            "off",
+            "OFF",
+            "",
+            "maybe",
+            "t",
+            "y",
+            "enabled",
+            "disabled",
+            "2",
+            "-1",
+        ]:
             env = {"KEY": val}
             assert _get_bool("KEY", True, env) is False, f"'{val}' should be False"
 

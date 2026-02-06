@@ -86,8 +86,7 @@ class TestDNCEvasion:
         """Exact DNC email should be blocked."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Sneaky", last_name="Person",
-                                email="dnc@forbidden.com")]
+        records = [ImportRecord(first_name="Sneaky", last_name="Person", email="dnc@forbidden.com")]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
         assert len(preview.new_records) == 0
@@ -96,8 +95,7 @@ class TestDNCEvasion:
         """Case variation should still be blocked (LOWER comparison)."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Sneaky", last_name="Person",
-                                email="DNC@FORBIDDEN.COM")]
+        records = [ImportRecord(first_name="Sneaky", last_name="Person", email="DNC@FORBIDDEN.COM")]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
@@ -105,8 +103,7 @@ class TestDNCEvasion:
         """Mixed case email should be blocked."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Sneaky", last_name="Person",
-                                email="Dnc@Forbidden.Com")]
+        records = [ImportRecord(first_name="Sneaky", last_name="Person", email="Dnc@Forbidden.Com")]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
@@ -114,8 +111,7 @@ class TestDNCEvasion:
         """DNC phone should be blocked."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Phone", last_name="Sneaker",
-                                phone="5559999999")]
+        records = [ImportRecord(first_name="Phone", last_name="Sneaker", phone="5559999999")]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
@@ -123,8 +119,7 @@ class TestDNCEvasion:
         """Formatted phone should still match DNC."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Phone", last_name="Formatter",
-                                phone="(555) 999-9999")]
+        records = [ImportRecord(first_name="Phone", last_name="Formatter", phone="(555) 999-9999")]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
@@ -140,8 +135,7 @@ class TestDNCEvasion:
         """
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Intl", last_name="Caller",
-                                phone="+15559999999")]
+        records = [ImportRecord(first_name="Intl", last_name="Caller", phone="+15559999999")]
         preview = funnel.analyze(records)
         # BUG: This should be blocked but isn't
         assert len(preview.blocked_dnc) == 0  # Documenting the bug
@@ -151,8 +145,9 @@ class TestDNCEvasion:
         """Even with a different name, DNC email blocks the record."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Totally", last_name="Different",
-                                email="dnc@forbidden.com")]
+        records = [
+            ImportRecord(first_name="Totally", last_name="Different", email="dnc@forbidden.com")
+        ]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
@@ -160,9 +155,14 @@ class TestDNCEvasion:
         """A record that doesn't match DNC should pass through."""
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Clean", last_name="Person",
-                                email="clean@allowed.com",
-                                phone="5551111111")]
+        records = [
+            ImportRecord(
+                first_name="Clean",
+                last_name="Person",
+                email="clean@allowed.com",
+                phone="5551111111",
+            )
+        ]
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 0
         assert len(preview.new_records) == 1
@@ -190,8 +190,9 @@ class TestDedupEdgeCases:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Existing", last_name="Person",
-                                email="existing@test.com")]
+        records = [
+            ImportRecord(first_name="Existing", last_name="Person", email="existing@test.com")
+        ]
         preview = funnel.analyze(records)
         assert len(preview.merge_records) == 1
         assert len(preview.new_records) == 0
@@ -199,13 +200,10 @@ class TestDedupEdgeCases:
     def test_fuzzy_name_match(self, db):
         """Similar name + same company should fuzzy match."""
         cid = db.create_company(Company(name="ABC Lending", state="TX"))
-        db.create_prospect(
-            Prospect(company_id=cid, first_name="John", last_name="Smith")
-        )
+        db.create_prospect(Prospect(company_id=cid, first_name="John", last_name="Smith"))
         funnel = IntakeFunnel(db)
         # Very similar name
-        records = [ImportRecord(first_name="Jon", last_name="Smith",
-                                company_name="ABC Lending")]
+        records = [ImportRecord(first_name="Jon", last_name="Smith", company_name="ABC Lending")]
         preview = funnel.analyze(records)
         # "John Smith" vs "Jon Smith" - depends on threshold (0.85)
         # SequenceMatcher("john smith", "jon smith") = 0.9 > 0.85
@@ -214,12 +212,11 @@ class TestDedupEdgeCases:
     def test_completely_different_name_not_matched(self, db):
         """Totally different names should not fuzzy match."""
         cid = db.create_company(Company(name="ABC Lending", state="TX"))
-        db.create_prospect(
-            Prospect(company_id=cid, first_name="John", last_name="Smith")
-        )
+        db.create_prospect(Prospect(company_id=cid, first_name="John", last_name="Smith"))
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Xenophon", last_name="Bartholomew",
-                                company_name="ABC Lending")]
+        records = [
+            ImportRecord(first_name="Xenophon", last_name="Bartholomew", company_name="ABC Lending")
+        ]
         preview = funnel.analyze(records)
         assert len(preview.new_records) == 1
         assert len(preview.merge_records) == 0
@@ -227,9 +224,7 @@ class TestDedupEdgeCases:
     def test_phone_match_goes_to_review(self, db):
         """Phone match should go to needs_review, not auto-merge."""
         cid = db.create_company(Company(name="Phone Co", state="TX"))
-        pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="Phone", last_name="Owner")
-        )
+        pid = db.create_prospect(Prospect(company_id=cid, first_name="Phone", last_name="Owner"))
         db.create_contact_method(
             ContactMethod(
                 prospect_id=pid,
@@ -238,17 +233,14 @@ class TestDedupEdgeCases:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Different", last_name="Person",
-                                phone="5551234567")]
+        records = [ImportRecord(first_name="Different", last_name="Person", phone="5551234567")]
         preview = funnel.analyze(records)
         assert len(preview.needs_review) == 1
 
     def test_email_takes_priority_over_fuzzy(self, db):
         """Email match should short-circuit before fuzzy matching."""
         cid = db.create_company(Company(name="Priority Co", state="TX"))
-        pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="John", last_name="Smith")
-        )
+        pid = db.create_prospect(Prospect(company_id=cid, first_name="John", last_name="Smith"))
         db.create_contact_method(
             ContactMethod(
                 prospect_id=pid,
@@ -257,9 +249,14 @@ class TestDedupEdgeCases:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="John", last_name="Smith",
-                                email="john@priority.com",
-                                company_name="Priority Co")]
+        records = [
+            ImportRecord(
+                first_name="John",
+                last_name="Smith",
+                email="john@priority.com",
+                company_name="Priority Co",
+            )
+        ]
         preview = funnel.analyze(records)
         # Should match on email, not fuzzy
         assert len(preview.merge_records) == 1
@@ -353,9 +350,7 @@ class TestMergeBehavior:
     def test_merge_adds_new_email(self, db):
         """Merging should add new email to existing prospect."""
         cid = db.create_company(Company(name="Merge Co", state="TX"))
-        pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="John", last_name="Doe")
-        )
+        pid = db.create_prospect(Prospect(company_id=cid, first_name="John", last_name="Doe"))
         db.create_contact_method(
             ContactMethod(
                 prospect_id=pid,
@@ -364,9 +359,11 @@ class TestMergeBehavior:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="John", last_name="Doe",
-                                email="old@merge.com",
-                                phone="5551234567")]
+        records = [
+            ImportRecord(
+                first_name="John", last_name="Doe", email="old@merge.com", phone="5551234567"
+            )
+        ]
         preview = funnel.analyze(records)
         result = funnel.commit(preview)
         assert result.merged_count == 1
@@ -378,9 +375,7 @@ class TestMergeBehavior:
     def test_merge_does_not_duplicate_email(self, db):
         """Merging same email should not create duplicate."""
         cid = db.create_company(Company(name="Nodup Co", state="TX"))
-        pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="Jane", last_name="Doe")
-        )
+        pid = db.create_prospect(Prospect(company_id=cid, first_name="Jane", last_name="Doe"))
         db.create_contact_method(
             ContactMethod(
                 prospect_id=pid,
@@ -389,8 +384,7 @@ class TestMergeBehavior:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Jane", last_name="Doe",
-                                email="jane@nodup.com")]
+        records = [ImportRecord(first_name="Jane", last_name="Doe", email="jane@nodup.com")]
         preview = funnel.analyze(records)
         funnel.commit(preview)
         methods = db.get_contact_methods(pid)
@@ -401,8 +395,7 @@ class TestMergeBehavior:
         """Merge should fill in missing title."""
         cid = db.create_company(Company(name="Title Co", state="TX"))
         pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="NoTitle", last_name="Person",
-                     title=None)
+            Prospect(company_id=cid, first_name="NoTitle", last_name="Person", title=None)
         )
         db.create_contact_method(
             ContactMethod(
@@ -412,9 +405,14 @@ class TestMergeBehavior:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="NoTitle", last_name="Person",
-                                email="notitle@test.com",
-                                title="VP of Sales")]
+        records = [
+            ImportRecord(
+                first_name="NoTitle",
+                last_name="Person",
+                email="notitle@test.com",
+                title="VP of Sales",
+            )
+        ]
         preview = funnel.analyze(records)
         funnel.commit(preview)
         p = db.get_prospect(pid)
@@ -424,8 +422,7 @@ class TestMergeBehavior:
         """Merge should NOT overwrite existing title."""
         cid = db.create_company(Company(name="Keep Co", state="TX"))
         pid = db.create_prospect(
-            Prospect(company_id=cid, first_name="Has", last_name="Title",
-                     title="CEO")
+            Prospect(company_id=cid, first_name="Has", last_name="Title", title="CEO")
         )
         db.create_contact_method(
             ContactMethod(
@@ -435,9 +432,9 @@ class TestMergeBehavior:
             )
         )
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Has", last_name="Title",
-                                email="ceo@keep.com",
-                                title="Intern")]
+        records = [
+            ImportRecord(first_name="Has", last_name="Title", email="ceo@keep.com", title="Intern")
+        ]
         preview = funnel.analyze(records)
         funnel.commit(preview)
         p = db.get_prospect(pid)
@@ -455,10 +452,15 @@ class TestNewRecordCreation:
     def test_new_record_with_email_and_phone_is_unengaged(self, db):
         """Complete data = UNENGAGED."""
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="New", last_name="Person",
-                                email="new@test.com",
-                                phone="5551234567",
-                                company_name="New Co")]
+        records = [
+            ImportRecord(
+                first_name="New",
+                last_name="Person",
+                email="new@test.com",
+                phone="5551234567",
+                company_name="New Co",
+            )
+        ]
         preview = funnel.analyze(records)
         result = funnel.commit(preview)
         assert result.imported_count == 1
@@ -467,9 +469,14 @@ class TestNewRecordCreation:
     def test_new_record_email_only_is_broken(self, db):
         """Missing phone = BROKEN."""
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Broken", last_name="Person",
-                                email="broken@test.com",
-                                company_name="Broken Co")]
+        records = [
+            ImportRecord(
+                first_name="Broken",
+                last_name="Person",
+                email="broken@test.com",
+                company_name="Broken Co",
+            )
+        ]
         preview = funnel.analyze(records)
         result = funnel.commit(preview)
         assert result.imported_count == 1
@@ -478,8 +485,7 @@ class TestNewRecordCreation:
     def test_new_record_no_company_creates_unknown(self, db):
         """Record without company creates 'Unknown' company."""
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="No", last_name="Company",
-                                email="nocompany@test.com")]
+        records = [ImportRecord(first_name="No", last_name="Company", email="nocompany@test.com")]
         preview = funnel.analyze(records)
         result = funnel.commit(preview)
         assert result.imported_count == 1
@@ -505,8 +511,9 @@ class TestNewRecordCreation:
     def test_import_creates_research_task_for_broken(self, db):
         """Broken records should get research tasks queued."""
         funnel = IntakeFunnel(db)
-        records = [ImportRecord(first_name="Research", last_name="Me",
-                                email="research@test.com")]  # No phone = broken
+        records = [
+            ImportRecord(first_name="Research", last_name="Me", email="research@test.com")
+        ]  # No phone = broken
         preview = funnel.analyze(records)
         funnel.commit(preview)
         tasks = db.get_research_tasks()

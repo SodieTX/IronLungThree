@@ -54,7 +54,6 @@ from src.engine.scoring import (
     rescore_all,
 )
 
-
 # =========================================================================
 # FIXTURES
 # =========================================================================
@@ -130,8 +129,11 @@ class TestScoringEdgeCases:
     def test_score_with_zero_weights(self):
         """All weights = 0 should give score 0."""
         weights = ScoreWeights(
-            company_fit=0, contact_quality=0,
-            engagement_signals=0, timing_signals=0, source_quality=0,
+            company_fit=0,
+            contact_quality=0,
+            engagement_signals=0,
+            timing_signals=0,
+            source_quality=0,
         )
         score = calculate_score(Prospect(), Company(), weights)
         assert score == 0
@@ -139,8 +141,11 @@ class TestScoringEdgeCases:
     def test_score_with_extreme_weights(self):
         """Extreme weights that don't sum to 100."""
         weights = ScoreWeights(
-            company_fit=1000, contact_quality=1000,
-            engagement_signals=1000, timing_signals=1000, source_quality=1000,
+            company_fit=1000,
+            contact_quality=1000,
+            engagement_signals=1000,
+            timing_signals=1000,
+            source_quality=1000,
         )
         score = calculate_score(
             Prospect(
@@ -209,6 +214,7 @@ class TestScoringEdgeCases:
     def test_every_source_quality_keyword(self):
         """Test every source quality keyword gives expected score."""
         from src.engine.scoring import SOURCE_QUALITY
+
         for source_name in SOURCE_QUALITY:
             score = calculate_score(
                 Prospect(source=source_name),
@@ -227,6 +233,7 @@ class TestScoringEdgeCases:
     def test_every_size_scores(self):
         """Test every company size keyword."""
         from src.engine.scoring import SIZE_SCORES
+
         for size in SIZE_SCORES:
             score = calculate_score(
                 Prospect(),
@@ -382,13 +389,22 @@ class TestCadenceStress:
         """Find engaged prospects with no follow-up."""
         cid = _company(db)
         # Engaged with follow-up
-        _prospect(db, cid, population=Population.ENGAGED,
-                  engagement_stage=EngagementStage.PRE_DEMO,
-                  follow_up_date=datetime(2026, 3, 1))
+        _prospect(
+            db,
+            cid,
+            population=Population.ENGAGED,
+            engagement_stage=EngagementStage.PRE_DEMO,
+            follow_up_date=datetime(2026, 3, 1),
+        )
         # Engaged WITHOUT follow-up (orphan)
-        _prospect(db, cid, first="Orphan", last="Smith",
-                  population=Population.ENGAGED,
-                  engagement_stage=EngagementStage.PRE_DEMO)
+        _prospect(
+            db,
+            cid,
+            first="Orphan",
+            last="Smith",
+            population=Population.ENGAGED,
+            engagement_stage=EngagementStage.PRE_DEMO,
+        )
         orphans = get_orphaned_engaged(db)
         assert len(orphans) >= 1
 
@@ -411,15 +427,25 @@ class TestCadenceStress:
         """Queue with both engaged and unengaged prospects."""
         cid = _company(db)
         # Engaged with today's follow-up
-        _prospect(db, cid, first="Engaged", last="Today",
-                  population=Population.ENGAGED,
-                  engagement_stage=EngagementStage.CLOSING,
-                  follow_up_date=datetime.now(),
-                  prospect_score=90)
+        _prospect(
+            db,
+            cid,
+            first="Engaged",
+            last="Today",
+            population=Population.ENGAGED,
+            engagement_stage=EngagementStage.CLOSING,
+            follow_up_date=datetime.now(),
+            prospect_score=90,
+        )
         # Unengaged with no follow-up
-        _prospect(db, cid, first="Unengaged", last="Ready",
-                  population=Population.UNENGAGED,
-                  prospect_score=80)
+        _prospect(
+            db,
+            cid,
+            first="Unengaged",
+            last="Ready",
+            population=Population.UNENGAGED,
+            prospect_score=80,
+        )
         queue = get_todays_queue(db)
         assert len(queue) >= 1
         # Engaged should come first
@@ -438,9 +464,9 @@ class TestPopulationTransitionWarfare:
     def test_all_valid_transitions_accepted(self):
         """Every transition in VALID_TRANSITIONS should be allowed."""
         for from_pop, to_pop in VALID_TRANSITIONS:
-            assert can_transition(from_pop, to_pop), (
-                f"Valid transition {from_pop} -> {to_pop} was rejected"
-            )
+            assert can_transition(
+                from_pop, to_pop
+            ), f"Valid transition {from_pop} -> {to_pop} was rejected"
 
     def test_same_population_always_allowed(self):
         """Staying in same population is always allowed."""
@@ -452,18 +478,16 @@ class TestPopulationTransitionWarfare:
         for target in Population:
             if target == Population.DEAD_DNC:
                 continue
-            assert not can_transition(Population.DEAD_DNC, target), (
-                f"DNC -> {target} was allowed!"
-            )
+            assert not can_transition(Population.DEAD_DNC, target), f"DNC -> {target} was allowed!"
 
     def test_closed_won_is_terminal(self):
         """CLOSED_WON cannot transition to anything else."""
         for target in Population:
             if target == Population.CLOSED_WON:
                 continue
-            assert not can_transition(Population.CLOSED_WON, target), (
-                f"CLOSED_WON -> {target} was allowed!"
-            )
+            assert not can_transition(
+                Population.CLOSED_WON, target
+            ), f"CLOSED_WON -> {target} was allowed!"
 
     def test_all_invalid_transitions_rejected(self):
         """Every non-valid transition should be rejected."""
@@ -478,8 +502,7 @@ class TestPopulationTransitionWarfare:
                     expected = False
                 actual = can_transition(from_pop, to_pop)
                 assert actual == expected, (
-                    f"Transition {from_pop} -> {to_pop}: "
-                    f"expected {expected}, got {actual}"
+                    f"Transition {from_pop} -> {to_pop}: " f"expected {expected}, got {actual}"
                 )
 
     def test_transition_prospect_from_dnc_raises(self, db):
@@ -554,15 +577,9 @@ class TestPopulationTransitionWarfare:
 
     def test_invalid_stage_transitions(self):
         """Backwards stage transitions should be rejected."""
-        assert not can_transition_stage(
-            EngagementStage.CLOSING, EngagementStage.PRE_DEMO
-        )
-        assert not can_transition_stage(
-            EngagementStage.POST_DEMO, EngagementStage.PRE_DEMO
-        )
-        assert not can_transition_stage(
-            EngagementStage.DEMO_SCHEDULED, EngagementStage.PRE_DEMO
-        )
+        assert not can_transition_stage(EngagementStage.CLOSING, EngagementStage.PRE_DEMO)
+        assert not can_transition_stage(EngagementStage.POST_DEMO, EngagementStage.PRE_DEMO)
+        assert not can_transition_stage(EngagementStage.DEMO_SCHEDULED, EngagementStage.PRE_DEMO)
 
     def test_stage_same_is_noop(self):
         """Same stage transition is always valid."""
@@ -638,8 +655,14 @@ class TestRescoreAll:
     def test_rescore_updates_scores(self, db):
         """Rescore should actually update prospect_score."""
         cid = _company(db, state="TX", size="enterprise")
-        pid = _prospect(db, cid, population=Population.UNENGAGED,
-                        title="CEO", source="referral", prospect_score=0)
+        pid = _prospect(
+            db,
+            cid,
+            population=Population.UNENGAGED,
+            title="CEO",
+            source="referral",
+            prospect_score=0,
+        )
         rescore_all(db)
         p = db.get_prospect(pid)
         # With CEO title and referral source, score should be > 0
@@ -649,8 +672,9 @@ class TestRescoreAll:
         """Rescore should not process DEAD_DNC, CLOSED_WON, LOST, PARKED."""
         cid = _company(db)
         _prospect(db, cid, population=Population.DEAD_DNC, prospect_score=0)
-        _prospect(db, cid, first="Won", last="Deal",
-                  population=Population.CLOSED_WON, prospect_score=0)
+        _prospect(
+            db, cid, first="Won", last="Deal", population=Population.CLOSED_WON, prospect_score=0
+        )
         count = rescore_all(db)
         # Neither should be rescored
         assert count == 0
