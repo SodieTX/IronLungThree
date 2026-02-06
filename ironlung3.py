@@ -13,6 +13,7 @@ The Iron Lung breathes.
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -47,6 +48,7 @@ def main() -> int:
         help="Show service readiness report and exit",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--setup", action="store_true", help="Re-run the install wizard")
 
     args = parser.parse_args()
 
@@ -55,12 +57,14 @@ def main() -> int:
         return 0
 
     # Initialize logging
-    setup_logging()
+    setup_logging(console_level=logging.DEBUG if args.debug else logging.INFO)
     logger = get_logger("main")
     logger.info(f"IronLung 3 v{__version__} starting...")
 
     # Load and validate configuration
     config = get_config()
+    if args.debug:
+        config.debug = True
     issues = validate_config(config)
     if issues:
         for issue in issues:
@@ -68,6 +72,26 @@ def main() -> int:
                 logger.error(f"Configuration: {issue}")
             else:
                 logger.warning(f"Configuration issue: {issue}")
+
+    # First-run install wizard (or --setup to re-run)
+    from src.core.setup_wizard import SetupWizard
+
+    data_dir = config.db_path.parent
+    setup = SetupWizard(data_dir=data_dir)
+
+    if args.setup or setup.needs_setup():
+        logger.info("Launching install wizard...")
+        from src.gui.install_wizard import InstallWizard
+
+        wizard = InstallWizard(data_dir=data_dir)
+        result = wizard.run()
+        if result is None:
+            logger.info("Install wizard cancelled")
+            return 0
+        logger.info("Install wizard completed, reloading config...")
+        from src.core.config import reset_config
+
+        config = get_config()
 
     # Initialize service registry and log what's available
     from src.core.services import get_service_registry

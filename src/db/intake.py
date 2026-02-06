@@ -274,8 +274,8 @@ class IntakeFunnel:
             company_id = self._get_or_create_company(record)
 
             # Determine population based on completeness
-            has_email = record.email is not None and record.email != ""
-            has_phone = record.phone is not None and record.phone != ""
+            has_email = record.email is not None and record.email.strip() != ""
+            has_phone = record.phone is not None and record.phone.strip() != ""
             population = Population.UNENGAGED if (has_email and has_phone) else Population.BROKEN
 
             is_broken = population == Population.BROKEN
@@ -367,11 +367,14 @@ class IntakeFunnel:
             existing_emails = {
                 m.value.lower() for m in existing_methods if m.type == ContactMethodType.EMAIL
             }
-            existing_phones = {
-                "".join(c for c in m.value if c.isdigit())
-                for m in existing_methods
-                if m.type == ContactMethodType.PHONE
-            }
+            # Normalize phone numbers: strip to digits, then strip leading '1' if 11 digits
+            existing_phones = set()
+            for m in existing_methods:
+                if m.type == ContactMethodType.PHONE:
+                    phone_digits = "".join(c for c in m.value if c.isdigit())
+                    if len(phone_digits) == 11 and phone_digits.startswith("1"):
+                        phone_digits = phone_digits[1:]
+                    existing_phones.add(phone_digits)
 
             if record.email and record.email.lower() not in existing_emails:
                 self.db.create_contact_method(
@@ -385,6 +388,9 @@ class IntakeFunnel:
 
             if record.phone:
                 phone_digits = "".join(c for c in record.phone if c.isdigit())
+                # Strip leading '1' if 11-digit US number
+                if len(phone_digits) == 11 and phone_digits.startswith("1"):
+                    phone_digits = phone_digits[1:]
                 if phone_digits not in existing_phones:
                     self.db.create_contact_method(
                         ContactMethod(
@@ -518,12 +524,16 @@ class IntakeFunnel:
 
     @staticmethod
     def normalize_phone(phone: str) -> str:
-        """Normalize phone to digits only.
+        """Normalize phone to digits only, stripping US country code if present.
 
         Args:
             phone: Phone number in any format
 
         Returns:
-            Digits only (e.g., "7135551234")
+            Digits only (e.g., "7135551234"), with leading '1' removed if 11 digits
         """
-        return "".join(c for c in phone if c.isdigit())
+        digits = "".join(c for c in phone if c.isdigit())
+        # Strip leading '1' if it's an 11-digit US number
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
+        return digits

@@ -590,8 +590,8 @@ def assess_completeness(
     Returns:
         Population.UNENGAGED if complete, Population.BROKEN if missing data
     """
-    has_email = any(m.type == ContactMethodType.EMAIL for m in contact_methods)
-    has_phone = any(m.type == ContactMethodType.PHONE for m in contact_methods)
+    has_email = any(m.type == ContactMethodType.EMAIL and m.value.strip() for m in contact_methods)
+    has_phone = any(m.type == ContactMethodType.PHONE and m.value.strip() for m in contact_methods)
 
     if has_email and has_phone:
         return Population.UNENGAGED

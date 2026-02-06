@@ -630,14 +630,14 @@ class TestLookupEdgeCases:
         assert found == pid
 
     def test_phone_lookup_country_code_mismatch(self, db):
-        """BUG FOUND: Phone with country code (+1) doesn't match stored 10-digit.
+        """Phone lookup correctly handles country code normalization.
 
-        find_prospect_by_phone compares digits exactly.
-        '+1 713 555 1234' -> '17135551234' (11 digits)
+        find_prospect_by_phone now strips country codes.
+        '+1 713 555 1234' -> '17135551234' -> '7135551234' (11 digits stripped to 10)
         '(713) 555-1234' -> '7135551234' (10 digits)
-        These don't match, so the lookup fails.
+        These now match after normalization.
 
-        This means DNC checks can be bypassed by adding a country code prefix.
+        DNC checks can no longer be bypassed by adding a country code prefix.
         """
         cid = _make_company(db)
         pid = _make_prospect(db, cid)
@@ -649,8 +649,8 @@ class TestLookupEdgeCases:
             )
         )
         found = db.find_prospect_by_phone("+1 713 555 1234")
-        # BUG: This returns None because 11 digits != 10 digits
-        assert found is None  # Documenting the bug
+        # Bug is now fixed!
+        assert found == pid
 
 
 # =========================================================================
