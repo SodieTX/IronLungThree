@@ -102,7 +102,7 @@ class TestInstallWizardFinish:
     @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_persists_config(
-        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock, 
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
         data_dir: Path, mock_tk_vars
     ) -> None:
         mock_root = MagicMock()
