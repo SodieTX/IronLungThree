@@ -44,6 +44,10 @@ class MorningBrief:
     broken_count: int = 0
     total_prospects: int = 0
 
+    # Phase 7: Proactive interrogation findings
+    interrogation_text: str = ""
+    interrogation_total: int = 0
+
 
 def generate_morning_brief(db: Database) -> MorningBrief:
     """Generate morning brief content.
@@ -201,6 +205,16 @@ def generate_morning_brief(db: Database) -> MorningBrief:
         full_lines.append(overnight_changes)
         full_lines.append("")
 
+    # Phase 7: Proactive card interrogation
+    from src.ai.proactive_interrogation import interrogate_cards
+
+    interrogation = interrogate_cards(db)
+    interrogation_text = interrogation.findings_text
+    if interrogation_text:
+        full_lines.append("--- ANNE'S CARD REVIEW ---")
+        full_lines.append(interrogation_text)
+        full_lines.append("")
+
     total_today = engaged_follow_ups + overdue_count
     if total_today > 0:
         full_lines.append(f"You have {total_today} cards waiting. Ready? Let's go.")
@@ -223,4 +237,6 @@ def generate_morning_brief(db: Database) -> MorningBrief:
         unengaged_queue_size=unengaged_count,
         broken_count=broken_count,
         total_prospects=total,
+        interrogation_text=interrogation_text,
+        interrogation_total=interrogation.total_findings,
     )
