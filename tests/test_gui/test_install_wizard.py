@@ -20,7 +20,7 @@ except ImportError:
     HAS_TKINTER = False
 
 if HAS_TKINTER:
-    from src.gui.install_wizard import InstallWizard, _NUM_STEPS
+    from src.gui.install_wizard import _NUM_STEPS, InstallWizard
 
 pytestmark = pytest.mark.skipif(not HAS_TKINTER, reason="tkinter not available")
 
@@ -79,9 +79,7 @@ class TestInstallWizardFinish:
     """Test that finish persists config correctly."""
 
     @patch("src.gui.install_wizard.tk.Tk")
-    def test_finish_persists_config(
-        self, mock_tk: MagicMock, data_dir: Path
-    ) -> None:
+    def test_finish_persists_config(self, mock_tk: MagicMock, data_dir: Path) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
         wiz = InstallWizard(data_dir=data_dir)
@@ -174,9 +172,7 @@ class TestInstallWizardOutlook:
         assert wiz.setup_wizard.get_config().outlook_configured is True
 
     @patch("src.gui.install_wizard.tk.Tk")
-    def test_outlook_not_configured_when_empty(
-        self, mock_tk: MagicMock, data_dir: Path
-    ) -> None:
+    def test_outlook_not_configured_when_empty(self, mock_tk: MagicMock, data_dir: Path) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
         wiz = InstallWizard(data_dir=data_dir)

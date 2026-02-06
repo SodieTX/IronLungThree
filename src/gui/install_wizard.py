@@ -11,8 +11,8 @@ Backed by SetupWizard for persistence and Config for env-file generation.
 """
 
 import tkinter as tk
-from tkinter import filedialog, ttk
 from pathlib import Path
+from tkinter import filedialog, ttk
 from typing import Callable, Optional
 
 from src.core.config import (
@@ -244,6 +244,7 @@ class InstallWizard:
             fg=_FG,
             anchor=tk.W,
         ).pack(fill=tk.X, pady=(0, 4))
+        assert self._var_name is not None
         name_entry = ttk.Entry(parent, textvariable=self._var_name, width=_FIELD_WIDTH)
         name_entry.pack(anchor=tk.W, pady=(0, 16))
         name_entry.focus_set()
@@ -367,12 +368,14 @@ class InstallWizard:
             anchor=tk.W,
         ).pack(fill=tk.X, pady=(0, 16))
 
+        assert self._var_sounds is not None
         ttk.Checkbutton(
             parent,
             text="Enable sounds (streaks, celebrations, alerts)",
             variable=self._var_sounds,
         ).pack(anchor=tk.W, pady=(0, 8))
 
+        assert self._var_dry_run is not None
         ttk.Checkbutton(
             parent,
             text="Dry-run mode (emails logged but never sent)",
@@ -480,7 +483,10 @@ class InstallWizard:
         )
         row = ttk.Frame(parent)
         row.pack(fill=tk.X, pady=(0, 10))
-        ttk.Entry(row, textvariable=var, width=_FIELD_WIDTH).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        assert var is not None
+        ttk.Entry(row, textvariable=var, width=_FIELD_WIDTH).pack(
+            side=tk.LEFT, fill=tk.X, expand=True
+        )
         ttk.Button(
             row,
             text="Browse…",
@@ -498,6 +504,7 @@ class InstallWizard:
         tk.Label(parent, text=label, font=_FONT, bg=_BG, fg=_FG, anchor=tk.W).pack(
             fill=tk.X, pady=(0, 2)
         )
+        assert var is not None
         ttk.Entry(parent, textvariable=var, width=_FIELD_WIDTH, show=show).pack(
             anchor=tk.W, pady=(0, 8)
         )
