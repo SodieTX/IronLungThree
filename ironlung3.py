@@ -13,6 +13,7 @@ The Iron Lung breathes.
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -55,12 +56,14 @@ def main() -> int:
         return 0
 
     # Initialize logging
-    setup_logging()
+    setup_logging(console_level=logging.DEBUG if args.debug else logging.INFO)
     logger = get_logger("main")
     logger.info(f"IronLung 3 v{__version__} starting...")
 
     # Load and validate configuration
     config = get_config()
+    if args.debug:
+        config.debug = True
     issues = validate_config(config)
     if issues:
         for issue in issues:

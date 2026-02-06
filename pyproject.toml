@@ -50,8 +50,8 @@ phase4 = [
 ironlung3 = "ironlung3:main"
 
 [project.urls]
-Homepage = "https://github.com/jsoderstrom/ironlung3"
-Documentation = "https://github.com/jsoderstrom/ironlung3/docs"
+Homepage = "https://github.com/SodieTX/IronLungThree"
+Documentation = "https://github.com/SodieTX/IronLungThree/docs"
 
 [tool.setuptools.packages.find]
 where = ["."]

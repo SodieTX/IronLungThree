@@ -890,19 +890,26 @@ class Database:
         """Find prospect ID by phone (digits-only match).
 
         Strips non-digit characters from both the input and stored values
-        before comparing.
+        before comparing. Also normalizes US country code (+1) by removing
+        leading '1' if the result is 11 digits.
         """
         conn = self._get_connection()
         # Normalize input to digits only
         digits = "".join(c for c in phone if c.isdigit())
         if not digits:
             return None
+        # Strip leading '1' if it's an 11-digit US number
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
         # SQLite doesn't have a regex replace, so we fetch phone methods and compare in Python
         rows = conn.execute(
             "SELECT prospect_id, value FROM contact_methods WHERE type = 'phone'"
         ).fetchall()
         for row in rows:
             stored_digits = "".join(c for c in row["value"] if c.isdigit())
+            # Strip leading '1' if it's an 11-digit US number
+            if len(stored_digits) == 11 and stored_digits.startswith("1"):
+                stored_digits = stored_digits[1:]
             if stored_digits == digits:
                 return int(row["prospect_id"])
         return None

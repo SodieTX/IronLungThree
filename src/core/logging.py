@@ -17,7 +17,7 @@ Usage:
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
@@ -36,7 +36,7 @@ class JSONFormatter(logging.Formatter):
             JSON string with timestamp, level, module, message, and context
         """
         log_data: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "module": record.name,
             "message": record.getMessage(),
