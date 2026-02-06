@@ -73,7 +73,9 @@ class TestInterrogationReport:
     def test_findings_text_includes_sections(self):
         """Findings text includes orphan, overdue, stale, and data quality sections."""
         report = InterrogationReport(
-            orphans=[CardFinding(1, "Alice", "Corp", "orphan", "desc", suggested_action="Set date")],
+            orphans=[
+                CardFinding(1, "Alice", "Corp", "orphan", "desc", suggested_action="Set date")
+            ],
             overdue_followups=[CardFinding(2, "Bob", "Corp", "overdue", "3 days ago")],
             stale_leads=[CardFinding(3, "Charlie", "Corp", "stale", "No activity 14d")],
             data_concerns=[CardFinding(4, "Dave", "Corp", "dq", "Score 80 confidence 30")],

@@ -31,7 +31,7 @@ class PartnershipsTab(TabBase):
 
     def _build_ui(self) -> None:
         """Build the partnerships tab UI."""
-        self.frame = ttk.Frame(self.parent)
+        self.frame = ttk.Frame(self.parent)  # type: ignore[assignment]
 
         # Header
         header = ttk.Frame(self.frame)
@@ -42,9 +42,9 @@ class PartnershipsTab(TabBase):
         btn_frame = ttk.Frame(header)
         btn_frame.pack(side=tk.RIGHT)
 
-        ttk.Button(
-            btn_frame, text="Promote to Prospect", command=self._promote_selected
-        ).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Promote to Prospect", command=self._promote_selected).pack(
+            side=tk.LEFT, padx=5
+        )
         ttk.Button(btn_frame, text="Refresh", command=self.refresh).pack(side=tk.LEFT)
 
         # Separator
@@ -93,7 +93,9 @@ class PartnershipsTab(TabBase):
         for p in self._partners:
             company = self.db.get_company(p.company_id)
             company_name = company.name if company else "Unknown"
-            notes_preview = (p.notes[:80] + "...") if p.notes and len(p.notes) > 80 else (p.notes or "")
+            notes_preview = (
+                (p.notes[:80] + "...") if p.notes and len(p.notes) > 80 else (p.notes or "")
+            )
 
             self._tree.insert(
                 "",

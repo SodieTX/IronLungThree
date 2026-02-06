@@ -260,7 +260,9 @@ class TestGetSuggestionsForProspect:
 
         engine = LearningEngine(db)
         suggestions = engine.get_suggestions_for_prospect(pid)
-        intel_suggestions = [s for s in suggestions if "intel" in s.lower() or "competitor" in s.lower()]
+        intel_suggestions = [
+            s for s in suggestions if "intel" in s.lower() or "competitor" in s.lower()
+        ]
         assert len(intel_suggestions) >= 1
 
 
@@ -275,9 +277,7 @@ class TestPatternExtraction:
     def test_extract_win_patterns_deduplicates(self, db):
         """Same keyword in one note only counts once."""
         engine = LearningEngine(db)
-        patterns = engine._extract_win_patterns(
-            ["Great portal, amazing portal, loved the portal"]
-        )
+        patterns = engine._extract_win_patterns(["Great portal, amazing portal, loved the portal"])
         portal_patterns = [p for p in patterns if "portal" in p.pattern.lower()]
         # Should only count once per note
         for p in portal_patterns:
@@ -290,7 +290,9 @@ class TestPatternExtraction:
             ["Lost on price, they went with loanpro because it was cheaper"]
         )
         assert len(patterns) >= 1
-        price_patterns = [p for p in patterns if "pricing" in p.pattern.lower() or "cost" in p.pattern.lower()]
+        price_patterns = [
+            p for p in patterns if "pricing" in p.pattern.lower() or "cost" in p.pattern.lower()
+        ]
         assert len(price_patterns) >= 1
 
     def test_find_competitor_mentions(self, db):

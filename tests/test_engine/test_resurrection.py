@@ -12,9 +12,9 @@ from src.db.models import (
 )
 from src.engine.resurrection import (
     ResurrectionCandidate,
+    _generate_rationale,
     find_resurrection_candidates,
     generate_resurrection_report,
-    _generate_rationale,
 )
 
 
@@ -33,9 +33,17 @@ def company_id(db):
     return db.create_company(Company(name="Lost Corp", state="TX"))
 
 
-def _create_lost_prospect(db, company_id, first_name, last_name, months_ago=14,
-                           score=50, lost_reason=None, lost_competitor=None,
-                           population=Population.LOST):
+def _create_lost_prospect(
+    db,
+    company_id,
+    first_name,
+    last_name,
+    months_ago=14,
+    score=50,
+    lost_reason=None,
+    lost_competitor=None,
+    population=Population.LOST,
+):
     """Helper to create a lost prospect with a lost_date in the past."""
     lost_date = (datetime.now() - timedelta(days=months_ago * 30)).strftime("%Y-%m-%d")
     pid = db.create_prospect(
@@ -92,7 +100,12 @@ class TestFindResurrectionCandidates:
     def test_never_resurrects_dnc(self, db, company_id):
         """NEVER includes DNC contacts — absolute and permanent."""
         _create_lost_prospect(
-            db, company_id, "Dead", "DNC", months_ago=24, score=90,
+            db,
+            company_id,
+            "Dead",
+            "DNC",
+            months_ago=24,
+            score=90,
             population=Population.DEAD_DNC,
         )
 
@@ -113,7 +126,12 @@ class TestFindResurrectionCandidates:
     def test_includes_lost_reason(self, db, company_id):
         """Candidate includes the lost reason."""
         _create_lost_prospect(
-            db, company_id, "Budget", "Lost", months_ago=14, score=50,
+            db,
+            company_id,
+            "Budget",
+            "Lost",
+            months_ago=14,
+            score=50,
             lost_reason="budget",
         )
 
@@ -124,8 +142,14 @@ class TestFindResurrectionCandidates:
     def test_includes_competitor_info(self, db, company_id):
         """Candidate includes competitor information in reason."""
         _create_lost_prospect(
-            db, company_id, "Comp", "Lost", months_ago=14, score=50,
-            lost_reason="lost_to_competitor", lost_competitor="LoanPro",
+            db,
+            company_id,
+            "Comp",
+            "Lost",
+            months_ago=14,
+            score=50,
+            lost_reason="lost_to_competitor",
+            lost_competitor="LoanPro",
         )
 
         candidates = find_resurrection_candidates(db)
@@ -201,8 +225,13 @@ class TestGenerateResurrectionReport:
     def test_report_with_candidates(self, db, company_id):
         """Report includes candidate details."""
         _create_lost_prospect(
-            db, company_id, "Revival", "Candidate", months_ago=14,
-            score=65, lost_reason="timing",
+            db,
+            company_id,
+            "Revival",
+            "Candidate",
+            months_ago=14,
+            score=65,
+            lost_reason="timing",
         )
 
         report = generate_resurrection_report(db)

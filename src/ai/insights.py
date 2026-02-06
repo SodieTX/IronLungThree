@@ -205,8 +205,7 @@ def _identify_objections(prospect, nuggets, activities) -> list[str]:
     competitors = [n for n in nuggets if n.category == IntelCategory.COMPETITOR]
     if competitors:
         objections.append(
-            f"Competitor in play: {competitors[0].content}. "
-            f"Expect comparison objections."
+            f"Competitor in play: {competitors[0].content}. " f"Expect comparison objections."
         )
 
     # Timeline pressure

@@ -29,7 +29,7 @@ class AnalyticsTab(TabBase):
 
     def _build_ui(self) -> None:
         """Build the analytics tab UI."""
-        self.frame = ttk.Frame(self.parent)
+        self.frame = ttk.Frame(self.parent)  # type: ignore[assignment]
 
         # Header with month selector
         header = ttk.Frame(self.frame)
@@ -46,7 +46,9 @@ class AnalyticsTab(TabBase):
         month_entry = ttk.Entry(month_frame, textvariable=self._month_var, width=10)
         month_entry.pack(side=tk.LEFT, padx=(0, 5))
 
-        ttk.Button(month_frame, text="Load", command=self._load_month).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(month_frame, text="Load", command=self._load_month).pack(
+            side=tk.LEFT, padx=(0, 5)
+        )
         ttk.Button(month_frame, text="Export CSV", command=self._export_csv).pack(side=tk.LEFT)
 
         # Separator

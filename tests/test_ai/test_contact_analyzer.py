@@ -112,7 +112,9 @@ class TestAnalyzeCompany:
             )
 
         analysis = analyze_company(db, company_id)
-        assert any("coordinate" in r.lower() or "multiple" in r.lower() for r in analysis.recommendations)
+        assert any(
+            "coordinate" in r.lower() or "multiple" in r.lower() for r in analysis.recommendations
+        )
 
     def test_excludes_terminal_states(self, db, company_id):
         """DNC and closed-won contacts are excluded from analysis."""

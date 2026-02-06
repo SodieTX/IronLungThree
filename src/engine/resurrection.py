@@ -144,7 +144,9 @@ def _generate_rationale(
     if months_dormant >= 24:
         parts.append(f"Dormant {months_dormant} months — a lot can change in 2+ years.")
     elif months_dormant >= 18:
-        parts.append(f"Dormant {months_dormant} months — budget cycles and contracts may have reset.")
+        parts.append(
+            f"Dormant {months_dormant} months — budget cycles and contracts may have reset."
+        )
     else:
         parts.append(f"Dormant {months_dormant} months.")
 
@@ -191,7 +193,9 @@ def generate_resurrection_report(db: Database) -> str:
 
     for c in candidates:
         lines.append(f"  {c.prospect_name} ({c.company_name})")
-        lines.append(f"    Score: {c.original_score} | Dormant: {c.months_dormant} months | Reason: {c.reason}")
+        lines.append(
+            f"    Score: {c.original_score} | Dormant: {c.months_dormant} months | Reason: {c.reason}"
+        )
         lines.append(f"    {c.rationale}")
         lines.append("")
 

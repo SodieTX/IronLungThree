@@ -266,7 +266,9 @@ class InterventionEngine:
             except (ValueError, TypeError):
                 days_stale = self.unworked_days
 
-            severity = "high" if row["prospect_score"] >= 70 else "medium" if days_stale >= 60 else "low"
+            severity = (
+                "high" if row["prospect_score"] >= 70 else "medium" if days_stale >= 60 else "low"
+            )
 
             name = f"{row['first_name']} {row['last_name']}".strip()
             items.append(

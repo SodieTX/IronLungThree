@@ -227,4 +227,7 @@ class TestGenerateInsights:
             )
 
         insights = generate_insights(db, pid)
-        assert "different" in insights.best_approach.lower() or "linkedin" in insights.best_approach.lower()
+        assert (
+            "different" in insights.best_approach.lower()
+            or "linkedin" in insights.best_approach.lower()
+        )

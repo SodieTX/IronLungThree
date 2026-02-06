@@ -97,8 +97,7 @@ class Copilot:
             return self._pipeline_response()
 
         if any(
-            kw in question_lower
-            for kw in ("story", "what about", "tell me about", "status of")
+            kw in question_lower for kw in ("story", "what about", "tell me about", "status of")
         ):
             return self._entity_lookup(question)
 
@@ -111,10 +110,7 @@ class Copilot:
         ):
             return self._decay_report()
 
-        if any(
-            kw in question_lower
-            for kw in ("win", "loss", "pattern", "learning", "trend")
-        ):
+        if any(kw in question_lower for kw in ("win", "loss", "pattern", "learning", "trend")):
             return self._learning_report()
 
         # If AI is available, use it for open-ended questions
@@ -197,20 +193,21 @@ class Copilot:
         for p in prospects:
             stage_str = f" ({p.engagement_stage.value})" if p.engagement_stage else ""
             lines.append(
-                f"  {p.full_name} — {p.population.value}{stage_str}, "
-                f"score {p.prospect_score}"
+                f"  {p.full_name} — {p.population.value}{stage_str}, " f"score {p.prospect_score}"
             )
 
             # Get recent activity
+            if p.id is None:
+                continue
             activities = self.db.get_activities(p.id, limit=3)
             for act in activities:
                 act_date = str(act.created_at)[:10] if act.created_at else "unknown"
                 notes_preview = ""
                 if act.notes:
-                    notes_preview = f": {act.notes[:60]}..." if len(act.notes) > 60 else f": {act.notes}"
-                lines.append(
-                    f"    {act_date} — {act.activity_type.value}{notes_preview}"
-                )
+                    notes_preview = (
+                        f": {act.notes[:60]}..." if len(act.notes) > 60 else f": {act.notes}"
+                    )
+                lines.append(f"    {act_date} — {act.activity_type.value}{notes_preview}")
 
         return "\n".join(lines)
 
@@ -350,7 +347,9 @@ class Copilot:
             transition_prospect(
                 self.db, prospect.id, target, reason=f"Copilot: moved to {target.value}"
             )
-            action = f"Moved {prospect.full_name} from {prospect.population.value} to {target.value}"
+            action = (
+                f"Moved {prospect.full_name} from {prospect.population.value} to {target.value}"
+            )
             return CopilotResponse(
                 message=f"Done. {action}.",
                 action_taken=action,
@@ -429,16 +428,20 @@ class Copilot:
     def _entity_lookup(self, question: str) -> CopilotResponse:
         """Look up a company or prospect mentioned in the question."""
         # Strip common prefixes
-        cleaned = re.sub(
-            r"^(what'?s?\s+the\s+story\s+with|tell\s+me\s+about|what\s+about|status\s+of)\s+",
-            "",
-            question.strip(),
-            flags=re.IGNORECASE,
-        ).strip().rstrip("?")
+        cleaned = (
+            re.sub(
+                r"^(what'?s?\s+the\s+story\s+with|tell\s+me\s+about|what\s+about|status\s+of)\s+",
+                "",
+                question.strip(),
+                flags=re.IGNORECASE,
+            )
+            .strip()
+            .rstrip("?")
+        )
 
         # Try company search first
         companies = self.db.search_companies(cleaned, limit=3)
-        if companies:
+        if companies and companies[0].id is not None:
             story = self.company_story(companies[0].id)
             return CopilotResponse(message=story)
 
@@ -446,10 +449,11 @@ class Copilot:
         prospects = self.db.get_prospects(search_query=cleaned, limit=3)
         if prospects:
             p = prospects[0]
-            full = self.db.get_prospect_full(p.id)
-            if full and full.company:
-                story = self.company_story(full.company.id)
-                return CopilotResponse(message=story)
+            if p.id is not None:
+                full = self.db.get_prospect_full(p.id)
+                if full and full.company and full.company.id is not None:
+                    story = self.company_story(full.company.id)
+                    return CopilotResponse(message=story)
             return CopilotResponse(
                 message=f"{p.full_name}: {p.population.value}, score {p.prospect_score}"
             )
@@ -459,14 +463,18 @@ class Copilot:
     def _demo_prep(self, question: str) -> CopilotResponse:
         """Generate demo briefing from question context."""
         # Extract name from question
-        cleaned = re.sub(
-            r"^(i'?(?:ve\s+)?(?:got|have)\s+a?\s*demo\s+(?:with|for)|"
-            r"prepare\s+(?:for|me\s+for)\s+(?:a?\s*)?(?:demo|meeting)\s+with|"
-            r"briefing\s+(?:for|on))\s+",
-            "",
-            question.strip(),
-            flags=re.IGNORECASE,
-        ).strip().rstrip("?")
+        cleaned = (
+            re.sub(
+                r"^(i'?(?:ve\s+)?(?:got|have)\s+a?\s*demo\s+(?:with|for)|"
+                r"prepare\s+(?:for|me\s+for)\s+(?:a?\s*)?(?:demo|meeting)\s+with|"
+                r"briefing\s+(?:for|on))\s+",
+                "",
+                question.strip(),
+                flags=re.IGNORECASE,
+            )
+            .strip()
+            .rstrip("?")
+        )
 
         # Remove trailing temporal phrases
         cleaned = re.sub(r"\s+(tomorrow|today|next\s+\w+|this\s+\w+)$", "", cleaned).strip()
@@ -475,6 +483,8 @@ class Copilot:
         if not prospects:
             return CopilotResponse(message=f"No prospect found matching '{cleaned}'.")
 
+        if prospects[0].id is None:
+            return CopilotResponse(message=f"No prospect found matching '{cleaned}'.")
         briefing = self.demo_briefing(prospects[0].id)
         return CopilotResponse(message=briefing)
 
@@ -594,7 +604,9 @@ class Copilot:
                 "Copilot AI call failed",
                 extra={"context": {"error": str(e)}},
             )
-            return CopilotResponse(message=f"AI response failed: {e}. Try a specific query instead.")
+            return CopilotResponse(
+                message=f"AI response failed: {e}. Try a specific query instead."
+            )
 
     # =========================================================================
     # UTILITY
@@ -627,8 +639,13 @@ class Copilot:
 
         # "next [day]"
         day_names = {
-            "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-            "friday": 4, "saturday": 5, "sunday": 6,
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
         }
         next_match = re.match(r"next\s+(\w+)", text)
         if next_match:
@@ -659,12 +676,29 @@ class Copilot:
             return text
 
         month_names = {
-            "january": 1, "february": 2, "march": 3, "april": 4,
-            "may": 5, "june": 6, "july": 7, "august": 8,
-            "september": 9, "october": 10, "november": 11, "december": 12,
-            "jan": 1, "feb": 2, "mar": 3, "apr": 4,
-            "jun": 6, "jul": 7, "aug": 8, "sep": 9,
-            "oct": 10, "nov": 11, "dec": 12,
+            "january": 1,
+            "february": 2,
+            "march": 3,
+            "april": 4,
+            "may": 5,
+            "june": 6,
+            "july": 7,
+            "august": 8,
+            "september": 9,
+            "october": 10,
+            "november": 11,
+            "december": 12,
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
         }
 
         # "March" or "March 2025"

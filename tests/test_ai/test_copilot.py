@@ -131,7 +131,9 @@ class TestAsk:
         """Pipeline-related questions return pipeline summary."""
         response = copilot.ask("What's our pipeline looking like?")
         assert isinstance(response, CopilotResponse)
-        assert "total prospects" in response.message.lower() or "pipeline" in response.message.lower()
+        assert (
+            "total prospects" in response.message.lower() or "pipeline" in response.message.lower()
+        )
 
     def test_story_question(self, copilot, company_id):
         """Story questions trigger entity lookup."""
@@ -153,7 +155,11 @@ class TestAsk:
         response = copilot.ask("Any problems I should know about?")
         assert isinstance(response, CopilotResponse)
         # Either clean or has issues
-        assert "clean" in response.message.lower() or "issues" in response.message.lower() or "found" in response.message.lower()
+        assert (
+            "clean" in response.message.lower()
+            or "issues" in response.message.lower()
+            or "found" in response.message.lower()
+        )
 
     def test_learning_question(self, copilot):
         """Win/loss pattern questions trigger learning report."""

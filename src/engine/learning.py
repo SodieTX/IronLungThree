@@ -330,21 +330,16 @@ class LearningEngine:
 
         # Check prospect-specific intel
         nuggets = self.db.get_intel_nuggets(prospect_id)
-        competitor_nuggets = [
-            n for n in nuggets if n.category.value == "competitor"
-        ]
+        competitor_nuggets = [n for n in nuggets if n.category.value == "competitor"]
         if competitor_nuggets:
             comp_content = competitor_nuggets[0].content
             suggestions.append(
-                f"Intel shows competitor involvement: {comp_content}. "
-                f"Prepare differentiators."
+                f"Intel shows competitor involvement: {comp_content}. " f"Prepare differentiators."
             )
 
         return suggestions
 
-    def _get_activity_notes(
-        self, conn, prospect_ids: list[int]
-    ) -> dict[int, list[str]]:
+    def _get_activity_notes(self, conn, prospect_ids: list[int]) -> dict[int, list[str]]:
         """Get activity notes grouped by prospect ID."""
         if not prospect_ids:
             return {}

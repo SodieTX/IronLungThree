@@ -295,7 +295,7 @@ def get_card_findings(db: Database, prospect_id: int) -> list[CardFinding]:
     """
     conn = db._get_connection()
     today = date.today()
-    findings = []
+    findings: list[CardFinding] = []
 
     prospect = db.get_prospect(prospect_id)
     if not prospect:

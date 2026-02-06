@@ -130,9 +130,7 @@ def analyze_company(db: Database, company_id: int) -> CompanyAnalysis:
         )
 
     if len(stalling) == total:
-        recommendations.append(
-            "All contacts stalling. Consider a new angle or different champion."
-        )
+        recommendations.append("All contacts stalling. Consider a new angle or different champion.")
 
     # Multi-contact coordination
     engaged_count = sum(1 for p in prospects if p["population"] == Population.ENGAGED.value)
@@ -143,9 +141,7 @@ def analyze_company(db: Database, company_id: int) -> CompanyAnalysis:
         )
 
     if engaged_count == 0 and total > 0:
-        unengaged_count = sum(
-            1 for p in prospects if p["population"] == Population.UNENGAGED.value
-        )
+        unengaged_count = sum(1 for p in prospects if p["population"] == Population.UNENGAGED.value)
         if unengaged_count > 0:
             recommendations.append(
                 f"{unengaged_count} unengaged contacts. "
