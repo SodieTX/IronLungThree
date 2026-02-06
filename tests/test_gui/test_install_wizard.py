@@ -78,10 +78,33 @@ class TestInstallWizardNavigation:
 class TestInstallWizardFinish:
     """Test that finish persists config correctly."""
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
-    def test_finish_persists_config(self, mock_tk: MagicMock, data_dir: Path) -> None:
+    def test_finish_persists_config(
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock, data_dir: Path
+    ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
+
         wiz = InstallWizard(data_dir=data_dir)
         wiz._build()
 
@@ -101,12 +124,33 @@ class TestInstallWizardFinish:
         assert config.user_name == "Jeff"
         assert config.sounds_enabled is False
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_writes_env_file(
-        self, mock_tk: MagicMock, data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
+        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
 
         # Ensure .env goes to tmp
         monkeypatch.chdir(tmp_path)
@@ -127,12 +171,33 @@ class TestInstallWizardFinish:
         assert "IRONLUNG_DB_PATH=" in content
         assert "CLAUDE_API_KEY=sk-ant-test123" in content
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
     def test_finish_skips_existing_env(
-        self, mock_tk: MagicMock, data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
+        data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
 
         monkeypatch.chdir(tmp_path)
         env_path = tmp_path / ".env"
@@ -150,12 +215,34 @@ class TestInstallWizardFinish:
 class TestInstallWizardOutlook:
     """Test Outlook configuration detection."""
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
     def test_outlook_configured_when_all_fields_set(
-        self, mock_tk: MagicMock, data_dir: Path
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
+        data_dir: Path
     ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
+
         wiz = InstallWizard(data_dir=data_dir)
         wiz._build()
 
@@ -171,10 +258,34 @@ class TestInstallWizardOutlook:
         wiz._finish()
         assert wiz.setup_wizard.get_config().outlook_configured is True
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
-    def test_outlook_not_configured_when_empty(self, mock_tk: MagicMock, data_dir: Path) -> None:
+    def test_outlook_not_configured_when_empty(
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
+        data_dir: Path
+    ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
+
         wiz = InstallWizard(data_dir=data_dir)
         wiz._build()
         wiz._finish()
@@ -184,10 +295,34 @@ class TestInstallWizardOutlook:
 class TestInstallWizardSetupPersistence:
     """Test that setup_config.json is properly created."""
 
+    @patch("src.gui.install_wizard.tk.BooleanVar")
+    @patch("src.gui.install_wizard.tk.StringVar")
     @patch("src.gui.install_wizard.tk.Tk")
-    def test_config_json_written(self, mock_tk: MagicMock, data_dir: Path) -> None:
+    def test_config_json_written(
+        self, mock_tk: MagicMock, mock_string_var: MagicMock, mock_boolean_var: MagicMock,
+        data_dir: Path
+    ) -> None:
         mock_root = MagicMock()
         mock_tk.return_value = mock_root
+
+        # Create factory functions that return mock variables with get/set behavior
+        def make_string_var(root=None, value=""):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        def make_boolean_var(root=None, value=False):
+            var = MagicMock()
+            var._value = value
+            var.get.side_effect = lambda: var._value
+            var.set.side_effect = lambda v: setattr(var, '_value', v)
+            return var
+
+        mock_string_var.side_effect = make_string_var
+        mock_boolean_var.side_effect = make_boolean_var
+
         wiz = InstallWizard(data_dir=data_dir)
         wiz._build()
         assert wiz._var_name is not None
