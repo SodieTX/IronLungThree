@@ -7,7 +7,7 @@ This is the first place the user looks when something isn't working.
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 from typing import Optional
 
 from src.core.logging import get_logger

@@ -2,12 +2,10 @@
 
 import csv
 import tkinter as tk
-from io import StringIO
 from tkinter import filedialog, ttk
 from typing import Optional
 
 from src.core.logging import get_logger
-from src.db.models import Population
 from src.gui.tabs import TabBase
 
 logger = get_logger(__name__)
@@ -71,10 +69,8 @@ class PipelineTab(TabBase):
         if self._tree is None:
             return
         selected = self._tree.selection()
-        for item in selected:
-            values = self._tree.item(item)["values"]
-            prospect_id = values[0]
-            self.db.update_prospect(prospect_id, {"population": population})
+        prospect_ids = [self._tree.item(item)["values"][0] for item in selected]
+        self.db.bulk_update_population(prospect_ids, population)
         logger.info(f"Bulk moved {len(selected)} prospects to {population}")
         self.refresh()
 

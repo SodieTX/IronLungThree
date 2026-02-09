@@ -9,14 +9,13 @@ Understands:
     - Actions: "send intro email", "dial him"
 """
 
-import calendar
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from src.core.logging import get_logger
-from src.db.models import EngagementStage, Population
+from src.db.models import Population
 
 logger = get_logger(__name__)
 
