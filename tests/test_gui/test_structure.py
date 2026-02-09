@@ -13,7 +13,7 @@ def test_gui_app_structure():
     app_path = Path("src/gui/app.py")
     assert app_path.exists(), "app.py should exist"
 
-    with open(app_path) as f:
+    with open(app_path, encoding="utf-8") as f:
         tree = ast.parse(f.read())
 
     # Find IronLungApp class
@@ -48,7 +48,7 @@ def test_import_tab_structure():
     tab_path = Path("src/gui/tabs/import_tab.py")
     assert tab_path.exists(), "import_tab.py should exist"
 
-    with open(tab_path) as f:
+    with open(tab_path, encoding="utf-8") as f:
         tree = ast.parse(f.read())
 
     # Find ImportTab class
@@ -81,7 +81,7 @@ def test_pipeline_tab_structure():
     tab_path = Path("src/gui/tabs/pipeline.py")
     assert tab_path.exists(), "pipeline.py should exist"
 
-    with open(tab_path) as f:
+    with open(tab_path, encoding="utf-8") as f:
         tree = ast.parse(f.read())
 
     # Find PipelineTab class
@@ -115,7 +115,7 @@ def test_theme_structure():
     theme_path = Path("src/gui/theme.py")
     assert theme_path.exists(), "theme.py should exist"
 
-    with open(theme_path) as f:
+    with open(theme_path, encoding="utf-8") as f:
         tree = ast.parse(f.read())
 
     # Check for required functions
