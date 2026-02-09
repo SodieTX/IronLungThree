@@ -129,13 +129,10 @@ def main() -> int:
 
     # Launch GUI
     logger.info("Launching GUI...")
-    # TODO: Phase 1, Step 1.14 - launch main window
-    # from src.gui.app import IronLungApp
-    # app = IronLungApp(db)
-    # app.run()
-    print("GUI not yet implemented (Phase 1, Step 1.14)")
-    print(f"Database ready at: {config.db_path}")
-    print(f"Logs at: {config.log_path}")
+    from src.gui.app import IronLungApp
+
+    app = IronLungApp(db)
+    app.run()
 
     db.close()
     logger.info("IronLung 3 shutdown complete")

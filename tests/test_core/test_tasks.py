@@ -8,7 +8,6 @@ from src.core.tasks import TaskManager, run_in_background
 class TestTaskManager:
     """Test TaskManager class."""
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_submit_task(self):
         """Can submit a task."""
         manager = TaskManager()
@@ -17,20 +16,34 @@ class TestTaskManager:
         def task():
             result.append(1)
 
-        manager.submit(task)
+        future = manager.submit("test_task", task)
+        future.result()  # Wait for completion
         manager.shutdown()
         assert result == [1]
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_shutdown_waits_for_tasks(self):
         """Shutdown waits for pending tasks."""
-        pass
+        manager = TaskManager()
+        result = []
+
+        def task():
+            result.append(1)
+
+        manager.submit("test_task", task)
+        manager.shutdown(wait=True)
+        assert result == [1]
 
 
 class TestRunInBackground:
     """Test run_in_background function."""
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_run_in_background_executes(self):
         """Task executes in background."""
-        pass
+        result = []
+
+        def task():
+            result.append(1)
+
+        thread = run_in_background(task)
+        thread.join(timeout=5)
+        assert result == [1]

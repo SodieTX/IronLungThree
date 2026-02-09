@@ -102,7 +102,12 @@ class TestUtilityFunctions:
         assert normalize_company_name("Acme Corp.") == "acme"
         assert normalize_company_name("Widget LLC") == "widget"
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_assess_completeness_full_data(self):
-        """Full prospect returns 100 confidence."""
-        pass
+        """Full prospect with email and phone returns UNENGAGED."""
+        prospect = Prospect(first_name="John", last_name="Doe", company_id=1)
+        contacts = [
+            ContactMethod(prospect_id=1, type=ContactMethodType.EMAIL, value="john@test.com"),
+            ContactMethod(prospect_id=1, type=ContactMethodType.PHONE, value="5551234567"),
+        ]
+        result = assess_completeness(prospect, contacts)
+        assert result == Population.UNENGAGED

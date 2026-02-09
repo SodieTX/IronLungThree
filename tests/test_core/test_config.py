@@ -27,24 +27,22 @@ class TestConfig:
 class TestLoadConfig:
     """Test config loading."""
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_load_from_env_file(self, tmp_path: Path):
         """Should load from .env file."""
         env_file = tmp_path / ".env"
         env_file.write_text("IRONLUNG_DEBUG=true\n")
-        config = load_config(str(env_file))
-        assert config.debug_mode is True
+        config = load_config(env_file)
+        assert config.debug is True
 
 
 class TestValidateConfig:
     """Test config validation."""
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_validate_missing_path(self, mock_config: Config):
-        """Should raise for non-existent paths."""
-        mock_config.db_path = "/nonexistent/path/db.sqlite"
-        with pytest.raises(Exception):
-            validate_config(mock_config)
+        """Should flag non-writable paths."""
+        mock_config.db_path = Path("/nonexistent/path/db.sqlite")
+        issues = validate_config(mock_config)
+        assert len(issues) > 0
 
     def test_partial_outlook_creds_flagged_critical(self, tmp_path: Path):
         """Partial Outlook credentials should produce CRITICAL issue."""
