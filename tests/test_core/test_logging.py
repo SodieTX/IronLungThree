@@ -21,8 +21,12 @@ class TestLogging:
         logger2 = get_logger("test.module")
         assert logger1 is logger2
 
-    @pytest.mark.skip(reason="Stub not implemented")
     def test_setup_logging_creates_handlers(self, tmp_path):
         """setup_logging creates file and console handlers."""
-        setup_logging(log_path=str(tmp_path / "logs"))
-        # Verify handlers exist
+        import src.core.logging as log_module
+
+        log_module._logging_initialized = False
+        setup_logging(log_dir=tmp_path / "logs")
+        root_logger = logging.getLogger("ironlung")
+        assert len(root_logger.handlers) >= 2
+        log_module._logging_initialized = False

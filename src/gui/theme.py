@@ -31,9 +31,44 @@ FONTS = {
 
 def apply_theme(root: tk.Tk) -> None:
     """Apply theme to application."""
-    raise NotImplementedError("Phase 1, Step 1.14")
+    root.configure(bg=COLORS["bg"])
+    configure_styles()
+    logger.info("Theme applied")
 
 
 def configure_styles() -> None:
     """Configure ttk styles."""
-    raise NotImplementedError("Phase 1, Step 1.14")
+    style = ttk.Style()
+    style.theme_use("clam")
+
+    style.configure("TFrame", background=COLORS["bg"])
+    style.configure(
+        "TLabel",
+        background=COLORS["bg"],
+        foreground=COLORS["fg"],
+        font=FONTS["default"],
+    )
+    style.configure(
+        "TButton",
+        font=FONTS["default"],
+        padding=6,
+    )
+    style.configure(
+        "TNotebook",
+        background=COLORS["bg"],
+    )
+    style.configure(
+        "TNotebook.Tab",
+        font=FONTS["default"],
+        padding=(12, 4),
+    )
+    style.configure(
+        "Treeview",
+        font=FONTS["default"],
+        rowheight=28,
+    )
+    style.configure(
+        "Treeview.Heading",
+        font=FONTS["default"],
+    )
+    logger.info("TTK styles configured")

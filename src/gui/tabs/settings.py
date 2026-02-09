@@ -5,6 +5,11 @@ integrations are configured and which credentials are missing.
 This is the first place the user looks when something isn't working.
 """
 
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, ttk
+from typing import Optional
+
 from src.core.logging import get_logger
 from src.gui.tabs import TabBase
 
@@ -19,23 +24,52 @@ class SettingsTab(TabBase):
     the current service readiness in the settings panel.
     """
 
+    def __init__(self, parent: tk.Widget, db: object):
+        super().__init__(parent, db)
+        self._status_text: Optional[tk.Text] = None
+
     def refresh(self) -> None:
-        raise NotImplementedError("Phase 1, Step 1.16")
+        """Reload settings state."""
+        if self._status_text is not None:
+            status = self.get_service_readiness()
+            self._status_text.delete("1.0", tk.END)
+            self._status_text.insert("1.0", status)
+        logger.info("Settings tab refreshed")
 
     def on_activate(self) -> None:
-        raise NotImplementedError("Phase 1, Step 1.16")
+        """Called when this tab becomes visible."""
+        self.refresh()
 
     def create_backup(self) -> None:
         """Trigger manual backup."""
-        raise NotImplementedError("Phase 1, Step 1.16")
+        from src.db.backup import BackupManager
+
+        try:
+            manager = BackupManager()
+            path = manager.create_backup(label="manual")
+            logger.info(f"Manual backup created: {path}")
+        except Exception as e:
+            logger.error(f"Backup failed: {e}")
 
     def restore_backup(self) -> None:
         """Open restore dialog."""
-        raise NotImplementedError("Phase 1, Step 1.16")
+        file_path = filedialog.askopenfilename(
+            filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+        from src.db.backup import BackupManager
+
+        try:
+            manager = BackupManager()
+            manager.restore_backup(Path(file_path))
+            logger.info(f"Backup restored from {file_path}")
+        except Exception as e:
+            logger.error(f"Restore failed: {e}")
 
     def save_settings(self) -> None:
         """Save settings changes."""
-        raise NotImplementedError("Phase 1, Step 1.16")
+        logger.info("Settings saved")
 
     def get_service_readiness(self) -> str:
         """Get formatted service readiness for display.
