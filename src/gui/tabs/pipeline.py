@@ -388,11 +388,27 @@ class PipelineTab(TabBase):
         columns = ["ID", "Name", "Population", "Title", "Score"]
         col_index = columns.index(col)
         
-        # Sort items
-        try:
-            items.sort(key=lambda x: int(x[0][col_index]) if col in ["ID", "Score"] and x[0][col_index] else x[0][col_index])
-        except (ValueError, TypeError):
-            items.sort(key=lambda x: str(x[0][col_index]))
+        # Sort items with proper handling of empty values
+        def sort_key(item):
+            value = item[0][col_index]
+            
+            # Handle empty or None values
+            if value is None or value == "":
+                # Empty values sort last
+                return (1, "")
+            
+            # Try numeric sort for ID and Score
+            if col in ["ID", "Score"]:
+                try:
+                    return (0, int(value))
+                except (ValueError, TypeError):
+                    # If conversion fails, treat as string
+                    return (0, str(value))
+            
+            # Text columns sort alphabetically
+            return (0, str(value).lower())
+        
+        items.sort(key=sort_key)
         
         # Rearrange items
         for index, (values, item) in enumerate(items):

@@ -198,7 +198,18 @@ class ImportTab(TabBase):
             
             # Auto-select matching column if found
             for header in self._parse_result.headers:
-                if field_label.lower() in header.lower() or field_key in header.lower():
+                header_lower = header.lower().strip()
+                field_lower = field_label.lower()
+                field_key_lower = field_key.lower()
+                
+                # Try exact match first
+                if header_lower == field_lower or header_lower == field_key_lower:
+                    var.set(header)
+                    break
+                    
+                # Try word boundary match for multi-word fields
+                # e.g., "first_name" matches "First Name" but not "company_first_name"
+                if field_lower in header_lower.split() or field_key_lower in header_lower.replace('_', ' ').split():
                     var.set(header)
                     break
         
