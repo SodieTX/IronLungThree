@@ -17,8 +17,11 @@ class IronLungApp:
         self.db = db
         self.root: Optional[tk.Tk] = None
         self._notebook: Optional[ttk.Notebook] = None
+        self._today_tab: Any = None
         self._import_tab: Any = None
         self._pipeline_tab: Any = None
+        self._calendar_tab: Any = None
+        self._broken_tab: Any = None
         self._settings_tab: Any = None
         self._status_label: Optional[ttk.Label] = None
 
@@ -52,6 +55,15 @@ class IronLungApp:
         self._notebook = ttk.Notebook(self.root)
         self._notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=(4, 0))
 
+        # Today tab (primary work surface)
+        from src.gui.tabs.today import TodayTab
+
+        today_frame: tk.Widget = ttk.Frame(self._notebook)
+        today_tab = TodayTab(today_frame, self.db)
+        today_tab.frame = today_frame  # type: ignore[assignment]
+        self._notebook.add(today_frame, text="Today")
+        self._today_tab = today_tab
+
         # Import tab
         from src.gui.tabs.import_tab import ImportTab
 
@@ -70,7 +82,25 @@ class IronLungApp:
         self._notebook.add(pipeline_frame, text="Pipeline")
         self._pipeline_tab = pipeline_tab
 
-        # Settings tab (placeholder for Phase 1)
+        # Calendar tab
+        from src.gui.tabs.calendar import CalendarTab
+
+        calendar_frame: tk.Widget = ttk.Frame(self._notebook)
+        calendar_tab = CalendarTab(calendar_frame, self.db)
+        calendar_tab.frame = calendar_frame  # type: ignore[assignment]
+        self._notebook.add(calendar_frame, text="Calendar")
+        self._calendar_tab = calendar_tab
+
+        # Broken tab
+        from src.gui.tabs.broken import BrokenTab
+
+        broken_frame: tk.Widget = ttk.Frame(self._notebook)
+        broken_tab = BrokenTab(broken_frame, self.db)
+        broken_tab.frame = broken_frame  # type: ignore[assignment]
+        self._notebook.add(broken_frame, text="Broken")
+        self._broken_tab = broken_tab
+
+        # Settings tab
         from src.gui.tabs.settings import SettingsTab
 
         settings_frame: tk.Widget = ttk.Frame(self._notebook)
@@ -82,7 +112,9 @@ class IronLungApp:
         # Bind tab change event
         self._notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-        logger.info("Tab notebook created with Import, Pipeline, and Settings tabs")
+        logger.info(
+            "Tab notebook created with Today, Import, Pipeline, Calendar, Broken, and Settings tabs"
+        )
 
     def _create_status_bar(self) -> None:
         """Create status bar."""
@@ -99,16 +131,36 @@ class IronLungApp:
         """Bind keyboard shortcuts."""
         if not self.root:
             return
+        from src.gui.shortcuts import bind_shortcuts
+
+        handlers = {
+            "quick_lookup": self._focus_search,
+        }
+        bind_shortcuts(self.root, handlers)
         self.root.bind("<Control-q>", lambda e: self.close())
         self.root.bind("<Control-w>", lambda e: self.close())
         logger.info("Keyboard shortcuts bound")
+
+    def _focus_search(self) -> None:
+        """Focus the Today tab search field (Ctrl+F)."""
+        if self._notebook and self._today_tab:
+            self._notebook.select(0)  # Switch to Today tab
+            if hasattr(self._today_tab, "_search_var"):
+                self._today_tab._search_var.set("")
 
     def _on_tab_changed(self, event: object) -> None:
         """Handle tab change event."""
         if not self._notebook:
             return
         current_tab = self._notebook.index(self._notebook.select())
-        tabs = [self._import_tab, self._pipeline_tab, self._settings_tab]
+        tabs = [
+            self._today_tab,
+            self._import_tab,
+            self._pipeline_tab,
+            self._calendar_tab,
+            self._broken_tab,
+            self._settings_tab,
+        ]
         if current_tab < len(tabs) and tabs[current_tab]:
             tabs[current_tab].on_activate()
         self._update_status_bar()
