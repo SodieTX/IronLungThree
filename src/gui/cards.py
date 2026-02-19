@@ -102,8 +102,6 @@ class ProspectCard(tk.Frame):
         if p is None:
             return
 
-        pad = {"padx": 12, "pady": 2}
-
         # Name + title
         name_text = p.full_name
         if p.title:
@@ -123,7 +121,7 @@ class ProspectCard(tk.Frame):
             self, text=company_text, font=FONTS["default"],
             bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w",
         )
-        comp_lbl.pack(fill=tk.X, **pad)
+        comp_lbl.pack(fill=tk.X, padx=12, pady=2)
         self._widgets.append(comp_lbl)
 
         # Phone number
@@ -133,7 +131,7 @@ class ProspectCard(tk.Frame):
                 self, text=f"Phone: {phone}", font=FONTS["default"],
                 bg=COLORS["bg_alt"], fg=COLORS["accent"], anchor="w", cursor="hand2",
             )
-            phone_lbl.pack(fill=tk.X, **pad)
+            phone_lbl.pack(fill=tk.X, padx=12, pady=2)
             self._widgets.append(phone_lbl)
 
         # Separator
@@ -147,7 +145,7 @@ class ProspectCard(tk.Frame):
             self, text=why_text, font=("Segoe UI", 10, "italic"),
             bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w", wraplength=450,
         )
-        why_lbl.pack(fill=tk.X, **pad)
+        why_lbl.pack(fill=tk.X, padx=12, pady=2)
         self._widgets.append(why_lbl)
 
         # Last interaction
@@ -157,7 +155,7 @@ class ProspectCard(tk.Frame):
                 self, text=last, font=FONTS["small"],
                 bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w", wraplength=450,
             )
-            last_lbl.pack(fill=tk.X, **pad)
+            last_lbl.pack(fill=tk.X, padx=12, pady=2)
             self._widgets.append(last_lbl)
 
         # Scores row

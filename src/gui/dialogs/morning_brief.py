@@ -29,7 +29,7 @@ class MorningBriefDialog:
         self._dialog = tk.Toplevel(self.parent)
         self._dialog.title("Morning Brief")
         self._dialog.geometry("600x500")
-        self._dialog.transient(self.parent)
+        self._dialog.transient(self.parent.winfo_toplevel())
         self._dialog.grab_set()
 
         main = ttk.Frame(self._dialog, padding=16)

@@ -43,7 +43,7 @@ class EditProspectDialog:
         self._dialog = tk.Toplevel(self.parent)
         self._dialog.title(f"Edit: {self.prospect.full_name}")
         self._dialog.geometry("500x550")
-        self._dialog.transient(self.parent)
+        self._dialog.transient(self.parent.winfo_toplevel())
         self._dialog.grab_set()
 
         main = ttk.Frame(self._dialog, padding=12)
@@ -169,11 +169,12 @@ class EditProspectDialog:
 
     def _on_save(self) -> None:
         """Handle save button."""
+        parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
         if not self._first_name_var.get().strip():
-            messagebox.showwarning("Validation", "First name is required.", parent=self._dialog)
+            messagebox.showwarning("Validation", "First name is required.", parent=parent)
             return
         if not self._last_name_var.get().strip():
-            messagebox.showwarning("Validation", "Last name is required.", parent=self._dialog)
+            messagebox.showwarning("Validation", "Last name is required.", parent=parent)
             return
         self._saved = True
         if self._dialog:

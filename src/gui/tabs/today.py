@@ -315,7 +315,7 @@ class TodayTab(TabBase):
 
         results = self.db.get_prospects(search_query=query, limit=10)
         if not results:
-            messagebox.showinfo("Search", f"No prospects found for '{query}'", parent=self.frame)
+            messagebox.showinfo("Search", f"No prospects found for '{query}'", parent=self.frame.winfo_toplevel())
             return
 
         if len(results) == 1:
@@ -344,7 +344,7 @@ class TodayTab(TabBase):
         dialog = tk.Toplevel(self.frame)
         dialog.title("Search Results")
         dialog.geometry("400x300")
-        dialog.transient(self.frame)
+        dialog.transient(self.frame.winfo_toplevel())
         dialog.grab_set()
 
         tree = ttk.Treeview(

@@ -258,7 +258,7 @@ class BrokenTab(TabBase):
             return
         selected = self._confirm_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record to confirm.", parent=self.frame)
+            messagebox.showinfo("Info", "Select a record to confirm.", parent=self.frame.winfo_toplevel())
             return
 
         for item in selected:
@@ -281,7 +281,7 @@ class BrokenTab(TabBase):
             return
         selected = self._confirm_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record to reject.", parent=self.frame)
+            messagebox.showinfo("Info", "Select a record to reject.", parent=self.frame.winfo_toplevel())
             return
 
         # Move back to manual research needed
@@ -310,7 +310,7 @@ class BrokenTab(TabBase):
             return
         selected = self._manual_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record first.", parent=self.frame)
+            messagebox.showinfo("Info", "Select a record first.", parent=self.frame.winfo_toplevel())
             return
 
         for item in selected:
@@ -337,7 +337,7 @@ class BrokenTab(TabBase):
                     f"{' and ' if not has_email and not has_phone else ''}"
                     f"{'phone' if not has_phone else ''}.\n\n"
                     "Add contact methods first, then try again.",
-                    parent=self.frame,
+                    parent=self.frame.winfo_toplevel(),
                 )
 
         self.refresh()

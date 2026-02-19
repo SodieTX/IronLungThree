@@ -58,7 +58,7 @@ class QuickActionDialog:
         self._dialog = tk.Toplevel(self.parent)
         self._dialog.title("Quick Action")
         self._dialog.geometry("420x480")
-        self._dialog.transient(self.parent)
+        self._dialog.transient(self.parent.winfo_toplevel())
         self._dialog.grab_set()
 
         main = ttk.Frame(self._dialog, padding=12)
@@ -161,7 +161,8 @@ class QuickActionDialog:
                 target = Population(self._pop_var.get())
                 transition_prospect(self.db, self.prospect_id, target, reason="Quick action")
             except Exception as e:
-                messagebox.showerror("Error", str(e), parent=self._dialog)
+                parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+                messagebox.showerror("Error", str(e), parent=parent)
                 return
 
         # Update attempt count
