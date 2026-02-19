@@ -8,9 +8,9 @@
 
 This is the build sequence for IronLung 3, broken into steps where each one produces something you can run, test, and verify before touching the next.
 
-**Parent document:** `IRONLUNG3-BLUEPRINT-v3.md` is the architectural source of truth. This document tells you the order to build it in and how to prove each piece works.
+**Parent document:** `docs/BLUEPRINT.md` is the architectural source of truth. This document tells you the order to build it in and how to prove each piece works.
 
-**Each phase gets its own build spec.** This document is the overview — the map of the whole journey. Before construction begins on any phase, a detailed Phase Build Specification is written with exact function signatures, exact DDL statements, exact test cases. The Phase 1 Build Spec (`IRONLUNG3-PHASE1-BUILD-SPEC.md`) is the template for how detailed those documents are.
+**Each phase gets its own build spec.** This document is the overview — the map of the whole journey. Before construction begins on any phase, a detailed Phase Build Specification is written with exact function signatures, exact DDL statements, exact test cases. The Phase 1 Build Spec (`docs/build/PHASE-1-BUILD-SPEC.md`) is the template for how detailed those documents are.
 
 ---
 
@@ -156,7 +156,7 @@ Every phase ends the same way:
 
 **Goal:** Database with contacts in it. Import works. Backup works. Basic GUI shows data.
 
-**Detailed spec:** `IRONLUNG3-PHASE1-BUILD-SPEC.md`
+**Detailed spec:** `docs/build/PHASE-1-BUILD-SPEC.md`
 
 **Prerequisites:** Python 3.11+, pip, git. Nothing else.
 
@@ -852,7 +852,7 @@ Each step: build, test, commit. Each phase: milestone test, handoff, sign-off, t
 
 **Version:** 2.2
 **Date:** February 4, 2026
-**Parent Document:** IRONLUNG3-BLUEPRINT-v3.2.md
+**Parent Document:** docs/BLUEPRINT.md
 **Status:** World-class construction sequence. Testing framework, version control, performance targets, error recovery, and formal handoffs built into every step.
 
 **v2.1 changes:** Normalize test expectation updated (Holdings preserved). Lifecycle test clarified (two axes). Parent document reference updated to v3.1.

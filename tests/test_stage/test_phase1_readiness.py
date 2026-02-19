@@ -14,10 +14,7 @@ REQUIRED_DOCS = [
     "COMPACT-GUIDE.md",
     "docs/BLUEPRINT.md",
     "docs/BUILD-SEQUENCE.md",
-    "docs/PHASE1-CHECKLIST.md",
     "docs/build/PHASE-1-BUILD-SPEC.md",
-    "IRONLUNG3-BLUEPRINT-v3.md",
-    "IRONLUNG3-PHASE1-BUILD-SPEC.md",
 ]
 
 

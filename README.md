@@ -85,7 +85,7 @@ IronLung 3 is built in 7 phases. Each phase produces a working tool.
 | 6 | The Soul | ADHD-specific UX enhancements |
 | 7 | The Weapons | Strategic AI + analytics |
 
-**Current Status:** Scaffolding complete, Phase 1 in progress.
+**Current Status:** Phase 6 complete, Phase 7 scaffolded.
 
 ## Documentation
 
@@ -97,7 +97,6 @@ IronLung 3 is built in 7 phases. Each phase produces a working tool.
 - `docs/build/` — Phase build specifications
 - `docs/adr/` — Architecture decision records
 - `docs/patterns/` — Engineering patterns
-- `docs/PHASE1-CHECKLIST.md` — Phase 1 sign-off checklist
 
 ## Testing
 
