@@ -268,7 +268,7 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
             for month_name, month_num in _MONTH_NAMES.items():
                 if month_name in text_lower:
                     year = date.today().year
-                    if month_num <= date.today().month:
+                    if month_num < date.today().month:
                         year += 1
                     parked_month = f"{year}-{month_num:02d}"
                     break
@@ -322,7 +322,7 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
     for month_name, month_num in _MONTH_NAMES.items():
         if re.search(rf"\b(?:in|til|till|until)\s+{month_name}\b", text_lower):
             year = date.today().year
-            if month_num <= date.today().month:
+            if month_num < date.today().month:
                 year += 1
             return ParseResult(
                 action="park",
@@ -367,17 +367,9 @@ def parse_relative_date(text: str) -> Optional[date]:
     if "in a couple days" in text_lower or "in a couple of days" in text_lower:
         return today + timedelta(days=2)
 
-    # "next <day>" pattern
+    # Day name pattern: "next tuesday", "tuesday", or standalone day reference
     for day_name, weekday_num in _DAY_NAMES.items():
-        if f"next {day_name}" in text_lower or text_lower.endswith(day_name):
-            days_ahead = weekday_num - today.weekday()
-            if days_ahead <= 0:
-                days_ahead += 7
-            return today + timedelta(days=days_ahead)
-
-    # "<day>" standalone (e.g., "wednesday")
-    for day_name, weekday_num in _DAY_NAMES.items():
-        if re.search(rf"\b{day_name}\b", text_lower):
+        if re.search(rf"\b(?:next\s+)?{day_name}\b", text_lower):
             days_ahead = weekday_num - today.weekday()
             if days_ahead <= 0:
                 days_ahead += 7
@@ -406,11 +398,7 @@ def parse_population_signal(text: str) -> Optional[Population]:
     """
     text_lower = text.lower().strip()
 
-    for signal in _DNC_SIGNALS:
-        if signal in text_lower:
-            return Population.DEAD_DNC
-
-    for signal in _DEAD_SIGNALS:
+    for signal in (*_DNC_SIGNALS, *_DEAD_SIGNALS):
         if signal in text_lower:
             return Population.DEAD_DNC
 

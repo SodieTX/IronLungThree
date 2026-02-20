@@ -84,7 +84,7 @@ def analyze_style(examples: list[str]) -> dict:
     avg_length = sum(word_counts) // len(word_counts)
 
     # Detect tone from word choice
-    casual_markers = ["hey", "hi ", "thanks", "cheers", "!", "appreciate"]
+    casual_markers = ["hey", "hi,", "hi!", "hi\n", "thanks", "cheers", "!", "appreciate"]
     formal_markers = ["dear", "regards", "sincerely", "pursuant", "herewith"]
 
     casual_count = sum(1 for ex in examples for marker in casual_markers if marker in ex.lower())

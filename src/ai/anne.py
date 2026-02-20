@@ -721,7 +721,13 @@ class Anne:
 
         from src.engine.cadence import set_follow_up
 
-        follow_up_dt = datetime.fromisoformat(date_str)
+        # Handle both date-only ("2026-01-15") and datetime strings
+        try:
+            follow_up_dt = datetime.fromisoformat(date_str)
+        except ValueError:
+            from datetime import date as date_cls
+
+            follow_up_dt = datetime.combine(date_cls.fromisoformat(date_str), datetime.min.time())
         set_follow_up(self.db, prospect_id, follow_up_dt, reason="Anne: follow-up set")
 
     def _execute_park(self, action: dict) -> None:

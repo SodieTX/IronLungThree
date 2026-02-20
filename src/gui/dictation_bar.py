@@ -142,6 +142,7 @@ class DictationBar(tk.Frame):
             return
 
         self._entry.delete(0, tk.END)
+        self._show_placeholder()
 
         if self._on_submit:
             self._on_submit(text)
