@@ -14,6 +14,7 @@ from decimal import Decimal
 from typing import Optional
 
 from src.core.logging import get_logger
+from src.db.database import Database
 from src.db.models import LostReason, Population
 
 logger = get_logger(__name__)
@@ -156,6 +157,118 @@ def validate_disposition(disposition: Disposition) -> tuple[bool, list[str]]:
     return is_valid, issues
 
 
-def apply_disposition(db: object, prospect_id: int, disposition: Disposition) -> bool:
-    """Apply disposition to prospect."""
-    raise NotImplementedError("Phase 4, Step 4.6")
+def apply_disposition(db: Database, prospect_id: int, disposition: Disposition) -> bool:
+    """Apply disposition to prospect.
+
+    Executes the WON/OUT/ALIVE outcome:
+    - WON: Sets deal_value, close_date, close_notes, moves to CLOSED_WON
+    - OUT: Moves to DEAD_DNC, LOST, or PARKED with appropriate fields
+    - ALIVE: Updates follow_up_date, ensures no orphans
+
+    Returns True if applied successfully.
+    """
+    from src.db.models import Activity, ActivityType, DeadReason
+    from src.engine.populations import transition_prospect
+
+    prospect = db.get_prospect(prospect_id)
+    if prospect is None:
+        logger.error(f"Cannot apply disposition: prospect {prospect_id} not found")
+        return False
+
+    old_pop = prospect.population
+
+    try:
+        if disposition.outcome == "WON":
+            # Convert Decimal to float for SQLite compatibility
+            if disposition.deal_value is not None and isinstance(disposition.deal_value, Decimal):
+                prospect.deal_value = float(disposition.deal_value)  # type: ignore[assignment]
+            else:
+                prospect.deal_value = disposition.deal_value
+            prospect.close_date = disposition.close_date or date.today()
+            prospect.close_notes = disposition.close_notes
+            db.update_prospect(prospect)
+            transition_prospect(
+                db,
+                prospect_id,
+                Population.CLOSED_WON,
+                reason="Deal closed (WON)",
+            )
+
+        elif disposition.outcome == "OUT":
+            if disposition.population == Population.DEAD_DNC:
+                prospect.dead_reason = DeadReason.DNC
+                prospect.dead_date = date.today()
+                db.update_prospect(prospect)
+                transition_prospect(
+                    db,
+                    prospect_id,
+                    Population.DEAD_DNC,
+                    reason=disposition.reason or "DNC",
+                )
+
+            elif disposition.population == Population.LOST:
+                prospect.lost_reason = disposition.lost_reason
+                prospect.lost_competitor = disposition.lost_competitor
+                prospect.lost_date = date.today()
+                db.update_prospect(prospect)
+                transition_prospect(
+                    db,
+                    prospect_id,
+                    Population.LOST,
+                    reason=disposition.reason or "Lost",
+                )
+
+            elif disposition.population == Population.PARKED:
+                prospect.parked_month = disposition.parked_month
+                db.update_prospect(prospect)
+                transition_prospect(
+                    db,
+                    prospect_id,
+                    Population.PARKED,
+                    reason=f"Parked until {disposition.parked_month}",
+                )
+
+            else:
+                transition_prospect(
+                    db,
+                    prospect_id,
+                    disposition.population,
+                    reason=disposition.reason or "Out",
+                )
+
+        elif disposition.outcome == "ALIVE":
+            if disposition.follow_up_date:
+                prospect.follow_up_date = disposition.follow_up_date
+            prospect.last_contact_date = date.today()
+            db.update_prospect(prospect)
+
+            if disposition.population != old_pop:
+                transition_prospect(
+                    db,
+                    prospect_id,
+                    disposition.population,
+                    reason="Alive - still in play",
+                )
+
+        # Log the disposition as an activity
+        activity = Activity(
+            prospect_id=prospect_id,
+            activity_type=ActivityType.STATUS_CHANGE,
+            population_before=old_pop,
+            population_after=disposition.population,
+            notes=disposition.notes or f"Disposition: {disposition.outcome}",
+            created_by="anne",
+        )
+        db.create_activity(activity)
+        logger.info(
+            f"Disposition applied: {disposition.outcome}",
+            extra={"context": {"prospect_id": prospect_id, "outcome": disposition.outcome}},
+        )
+        return True
+
+    except Exception as e:
+        logger.error(
+            f"Failed to apply disposition: {e}",
+            extra={"context": {"prospect_id": prospect_id}},
+        )
+        return False

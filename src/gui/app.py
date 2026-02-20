@@ -25,13 +25,18 @@ class IronLungApp:
         self._broken_tab: Any = None
         self._settings_tab: Any = None
         self._status_label: Optional[ttk.Label] = None
+        self._dictation_bar: Any = None
+        self._anne: Any = None
+        self._anne_context: Any = None
 
     def run(self) -> None:
         """Start the application."""
         self._create_window()
         self._create_tabs()
+        self._create_dictation_bar()
         self._create_status_bar()
         self._bind_shortcuts()
+        self._init_anne()
         logger.info("IronLung 3 GUI launched")
         if self.root:
             self.root.mainloop()
@@ -125,6 +130,63 @@ class IronLungApp:
         logger.info(
             "Tab notebook created with Today, Import, Pipeline, Calendar, Demos, Broken, and Settings tabs"
         )
+
+    def _create_dictation_bar(self) -> None:
+        """Create the dictation bar (Anne's input interface)."""
+        if not self.root:
+            return
+        from src.gui.dictation_bar import DictationBar
+
+        self._dictation_bar = DictationBar(
+            self.root,
+            on_submit=self._on_dictation_submit,
+        )
+        self._dictation_bar.pack(fill=tk.X, side=tk.BOTTOM, before=None)
+        logger.info("Dictation bar created")
+
+    def _init_anne(self) -> None:
+        """Initialize Anne (conversational AI)."""
+        try:
+            from src.ai.anne import Anne, ConversationContext
+
+            self._anne = Anne(self.db)
+            self._anne_context = ConversationContext()
+
+            if not self._anne.is_available():
+                if self._dictation_bar:
+                    self._dictation_bar.set_manual_mode(True)
+                logger.info("Anne offline — manual mode active")
+            else:
+                logger.info("Anne online")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Anne: {e}")
+
+    def _on_dictation_submit(self, text: str) -> None:
+        """Handle dictation bar input."""
+        if not self._anne or not self._dictation_bar:
+            return
+
+        try:
+            response = self._anne.respond(text, self._anne_context)
+            self._dictation_bar.show_response(response.message)
+
+            # Track conversation
+            self._anne_context.recent_messages.append({"role": "user", "content": text})
+            self._anne_context.recent_messages.append(
+                {"role": "assistant", "content": response.message}
+            )
+
+            # Auto-execute non-confirmation actions
+            if response.suggested_actions and not response.requires_confirmation:
+                prospect_id = self._anne_context.current_prospect_id
+                if prospect_id:
+                    for action in response.suggested_actions:
+                        action["prospect_id"] = prospect_id
+                    self._anne.execute_actions(response.suggested_actions)
+
+        except Exception as e:
+            logger.error(f"Dictation processing failed: {e}")
+            self._dictation_bar.show_response(f"Error: {e}")
 
     def _create_status_bar(self) -> None:
         """Create status bar."""
