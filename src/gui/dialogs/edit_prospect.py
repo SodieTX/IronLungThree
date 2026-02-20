@@ -78,8 +78,11 @@ class EditProspectDialog:
         valid_targets = get_available_transitions(current_pop) if current_pop else []
         pop_values = [current_pop.value] + [p.value for p in valid_targets] if current_pop else []
         ttk.Combobox(
-            main, textvariable=self._population_var, values=pop_values,
-            state="readonly", width=28,
+            main,
+            textvariable=self._population_var,
+            values=pop_values,
+            state="readonly",
+            width=28,
         ).grid(row=row, column=1, sticky="w", padx=4, pady=4)
         row += 1
 
@@ -87,8 +90,11 @@ class EditProspectDialog:
         ttk.Label(main, text="Stage:").grid(row=row, column=0, sticky="e", padx=4, pady=4)
         stage_values = [s.value for s in EngagementStage]
         ttk.Combobox(
-            main, textvariable=self._stage_var, values=stage_values,
-            state="readonly", width=28,
+            main,
+            textvariable=self._stage_var,
+            values=stage_values,
+            state="readonly",
+            width=28,
         ).grid(row=row, column=1, sticky="w", padx=4, pady=4)
         row += 1
 

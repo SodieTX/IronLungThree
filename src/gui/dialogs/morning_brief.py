@@ -37,8 +37,11 @@ class MorningBriefDialog:
 
         # Header
         header = tk.Label(
-            main, text="IRONLUNG 3 — MORNING BRIEF",
-            font=("Segoe UI", 16, "bold"), bg=COLORS["bg"], fg=COLORS["accent"],
+            main,
+            text="IRONLUNG 3 — MORNING BRIEF",
+            font=("Segoe UI", 16, "bold"),
+            bg=COLORS["bg"],
+            fg=COLORS["accent"],
         )
         header.pack(pady=(0, 12))
 
@@ -47,9 +50,14 @@ class MorningBriefDialog:
         text_frame.pack(fill=tk.BOTH, expand=True)
 
         text = tk.Text(
-            text_frame, wrap=tk.WORD, font=FONTS["default"],
-            bg=COLORS["bg_alt"], fg=COLORS["fg"],
-            padx=16, pady=12, relief="flat",
+            text_frame,
+            wrap=tk.WORD,
+            font=FONTS["default"],
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            padx=16,
+            pady=12,
+            relief="flat",
         )
         scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text.yview)
         text.configure(yscrollcommand=scrollbar.set)
@@ -62,10 +70,18 @@ class MorningBriefDialog:
 
         # "Ready? Let's go." button
         btn = tk.Button(
-            main, text="Ready?  Let's go.", font=("Segoe UI", 14, "bold"),
-            bg=COLORS["accent"], fg="#ffffff", activebackground="#004c99",
-            activeforeground="#ffffff", relief="flat", cursor="hand2",
-            command=self.close, padx=24, pady=8,
+            main,
+            text="Ready?  Let's go.",
+            font=("Segoe UI", 14, "bold"),
+            bg=COLORS["accent"],
+            fg="#ffffff",
+            activebackground="#004c99",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            command=self.close,
+            padx=24,
+            pady=8,
         )
         btn.pack(pady=(16, 0))
 
