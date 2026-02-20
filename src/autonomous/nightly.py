@@ -78,17 +78,32 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         result.errors.append(f"Step 1 (Backup): {e}")
         logger.error(f"Nightly step 1 failed: {e}")
 
-    # Step 2: Pull from ActiveCampaign
+    # Step 2: Pull from ActiveCampaign (threshold-gated)
     logger.info("Nightly step 2/11: ActiveCampaign pull")
     try:
+        from src.core.config import get_config
         from src.integrations.activecampaign import ActiveCampaignClient
 
         ac = ActiveCampaignClient()
         if ac.is_configured():
-            contacts = ac.get_contacts(limit=100)
-            imported = _import_ac_contacts(db, contacts)
-            result.prospects_imported = imported
-            logger.info(f"Nightly step 2 complete: {imported} contacts imported")
+            config = get_config()
+            threshold = config.ac_replenish_threshold
+            pop_counts = db.get_population_counts()
+            unengaged_count = pop_counts.get(Population.UNENGAGED, 0)
+
+            if unengaged_count < threshold:
+                contacts = ac.get_contacts(limit=100)
+                imported = _import_ac_contacts(db, contacts)
+                result.prospects_imported = imported
+                logger.info(
+                    f"Nightly step 2 complete: {imported} contacts imported "
+                    f"(unengaged {unengaged_count} < threshold {threshold})"
+                )
+            else:
+                logger.info(
+                    f"Nightly step 2 skipped: unengaged count {unengaged_count} "
+                    f">= threshold {threshold}"
+                )
         else:
             logger.info("Nightly step 2 skipped: ActiveCampaign not configured")
     except Exception as e:
@@ -251,9 +266,9 @@ def run_condensed_cycle(db: Database) -> NightlyCycleResult:
     except Exception as e:
         result.errors.append(f"Backup: {e}")
 
-    # Step 2: Monthly bucket activation
+    # Step 2: Monthly bucket activation (force=True for catch-up)
     try:
-        activated = _activate_monthly_buckets(db)
+        activated = _activate_monthly_buckets(db, force=True)
         result.buckets_activated = activated
     except Exception as e:
         result.errors.append(f"Buckets: {e}")
@@ -321,18 +336,56 @@ def _record_cycle_run(db: Database) -> None:
         logger.warning(f"Failed to record cycle run: {e}")
 
 
-def _activate_monthly_buckets(db: Database) -> int:
+def _is_first_business_day(today: Optional[date] = None) -> bool:
+    """Check if today is the first business day of the month.
+
+    The first business day is the earliest weekday (Mon-Fri) in the month.
+    For months starting on Saturday, that's the 3rd. For Sunday, the 2nd.
+
+    Args:
+        today: Date to check (defaults to today)
+
+    Returns:
+        True if today is the first business day of the month
+    """
+    if today is None:
+        today = date.today()
+
+    if today.day > 3:
+        return False
+
+    # Walk from day 1 forward to find the first weekday
+    first_of_month = today.replace(day=1)
+    day = first_of_month
+    while day.weekday() >= 5:  # 5=Saturday, 6=Sunday
+        day = day.replace(day=day.day + 1)
+
+    return today == day
+
+
+def _activate_monthly_buckets(db: Database, force: bool = False) -> int:
     """Activate parked prospects whose month has arrived.
 
+    Only runs on the first business day of the month (unless forced).
     Checks for prospects with parked_month matching current YYYY-MM.
     Transitions them back to UNENGAGED.
+
+    Args:
+        db: Database instance
+        force: Skip first-business-day check (for condensed/catch-up cycles)
 
     Returns:
         Number of prospects activated
     """
     from src.engine.populations import transition_prospect
 
-    current_month = date.today().strftime("%Y-%m")
+    today = date.today()
+
+    if not force and not _is_first_business_day(today):
+        logger.info("Monthly bucket activation skipped: not first business day")
+        return 0
+
+    current_month = today.strftime("%Y-%m")
     parked = db.get_prospects(population=Population.PARKED, limit=500)
     activated = 0
 
