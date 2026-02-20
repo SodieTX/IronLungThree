@@ -38,8 +38,11 @@ class BrokenTab(TabBase):
 
         # Header with count
         self._header_label = tk.Label(
-            self.frame, text="Broken Records", font=("Segoe UI", 14, "bold"),
-            bg=COLORS["bg"], fg=COLORS["fg"],
+            self.frame,
+            text="Broken Records",
+            font=("Segoe UI", 14, "bold"),
+            bg=COLORS["bg"],
+            fg=COLORS["fg"],
         )
         self._header_label.pack(padx=12, pady=(8, 4), anchor="w")
 
@@ -59,20 +62,15 @@ class BrokenTab(TabBase):
 
         # Section 1: Needs Confirmation
         self._create_section(
-            scroll_frame, "NEEDS CONFIRMATION", "System found data — confirm or reject",
-            "confirm"
+            scroll_frame, "NEEDS CONFIRMATION", "System found data — confirm or reject", "confirm"
         )
 
         # Section 2: In Progress
-        self._create_section(
-            scroll_frame, "IN PROGRESS", "System is still searching",
-            "progress"
-        )
+        self._create_section(scroll_frame, "IN PROGRESS", "System is still searching", "progress")
 
         # Section 3: Manual Research Needed
         self._create_section(
-            scroll_frame, "MANUAL RESEARCH NEEDED", "System struck out — your turn",
-            "manual"
+            scroll_frame, "MANUAL RESEARCH NEEDED", "System struck out — your turn", "manual"
         )
 
     def _create_section(
@@ -83,8 +81,11 @@ class BrokenTab(TabBase):
         frame.pack(fill=tk.X, padx=4, pady=8)
 
         tk.Label(
-            frame, text=subtitle, font=FONTS["small"],
-            bg=COLORS["bg"], fg=COLORS["muted"],
+            frame,
+            text=subtitle,
+            font=FONTS["small"],
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
         ).pack(anchor="w", pady=(0, 4))
 
         columns = ("ID", "Name", "Company", "Missing")
@@ -108,11 +109,13 @@ class BrokenTab(TabBase):
         if section_key == "confirm":
             self._confirm_tree = tree
             ttk.Button(
-                btn_frame, text="Confirm Selected",
+                btn_frame,
+                text="Confirm Selected",
                 command=self._confirm_selected,
             ).pack(side=tk.LEFT, padx=4)
             ttk.Button(
-                btn_frame, text="Reject Selected",
+                btn_frame,
+                text="Reject Selected",
                 command=self._reject_selected,
             ).pack(side=tk.LEFT, padx=4)
         elif section_key == "progress":
@@ -120,7 +123,8 @@ class BrokenTab(TabBase):
         elif section_key == "manual":
             self._manual_tree = tree
             ttk.Button(
-                btn_frame, text="Mark as Researched",
+                btn_frame,
+                text="Mark as Researched",
                 command=self._mark_researched,
             ).pack(side=tk.LEFT, padx=4)
 
@@ -191,7 +195,7 @@ class BrokenTab(TabBase):
         if self._header_label:
             self._header_label.config(
                 text=f"Broken Records: {total} total — "
-                     f"{confirm_count} ready, {progress_count} in progress, {manual_count} need you"
+                f"{confirm_count} ready, {progress_count} in progress, {manual_count} need you"
             )
 
         # Populate: Needs Confirmation (completed research tasks)
@@ -258,7 +262,9 @@ class BrokenTab(TabBase):
             return
         selected = self._confirm_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record to confirm.", parent=self.frame.winfo_toplevel())
+            messagebox.showinfo(
+                "Info", "Select a record to confirm.", parent=self.frame.winfo_toplevel()
+            )
             return
 
         for item in selected:
@@ -266,7 +272,9 @@ class BrokenTab(TabBase):
             pid = int(values[0])
             try:
                 transition_prospect(
-                    self.db, pid, Population.UNENGAGED,
+                    self.db,
+                    pid,
+                    Population.UNENGAGED,
                     reason="Research confirmed — data complete",
                 )
                 logger.info(f"Confirmed broken prospect {pid} -> unengaged")
@@ -281,7 +289,9 @@ class BrokenTab(TabBase):
             return
         selected = self._confirm_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record to reject.", parent=self.frame.winfo_toplevel())
+            messagebox.showinfo(
+                "Info", "Select a record to reject.", parent=self.frame.winfo_toplevel()
+            )
             return
 
         # Move back to manual research needed
@@ -310,7 +320,9 @@ class BrokenTab(TabBase):
             return
         selected = self._manual_tree.selection()
         if not selected:
-            messagebox.showinfo("Info", "Select a record first.", parent=self.frame.winfo_toplevel())
+            messagebox.showinfo(
+                "Info", "Select a record first.", parent=self.frame.winfo_toplevel()
+            )
             return
 
         for item in selected:
@@ -324,7 +336,9 @@ class BrokenTab(TabBase):
             if has_email and has_phone:
                 try:
                     transition_prospect(
-                        self.db, pid, Population.UNENGAGED,
+                        self.db,
+                        pid,
+                        Population.UNENGAGED,
                         reason="Manual research complete — data complete",
                     )
                     logger.info(f"Manually researched prospect {pid} -> unengaged")

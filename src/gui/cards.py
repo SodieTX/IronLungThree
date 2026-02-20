@@ -107,8 +107,12 @@ class ProspectCard(tk.Frame):
         if p.title:
             name_text += f", {p.title}"
         name_lbl = tk.Label(
-            self, text=name_text, font=("Segoe UI", 14, "bold"),
-            bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
+            self,
+            text=name_text,
+            font=("Segoe UI", 14, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            anchor="w",
         )
         name_lbl.pack(fill=tk.X, padx=12, pady=(10, 0))
         self._widgets.append(name_lbl)
@@ -118,8 +122,12 @@ class ProspectCard(tk.Frame):
         if c and c.loan_types:
             company_text += f" ({c.loan_types})"
         comp_lbl = tk.Label(
-            self, text=company_text, font=FONTS["default"],
-            bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w",
+            self,
+            text=company_text,
+            font=FONTS["default"],
+            bg=COLORS["bg_alt"],
+            fg=COLORS["muted"],
+            anchor="w",
         )
         comp_lbl.pack(fill=tk.X, padx=12, pady=2)
         self._widgets.append(comp_lbl)
@@ -128,8 +136,13 @@ class ProspectCard(tk.Frame):
         phone = self._get_primary_phone()
         if phone:
             phone_lbl = tk.Label(
-                self, text=f"Phone: {phone}", font=FONTS["default"],
-                bg=COLORS["bg_alt"], fg=COLORS["accent"], anchor="w", cursor="hand2",
+                self,
+                text=f"Phone: {phone}",
+                font=FONTS["default"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["accent"],
+                anchor="w",
+                cursor="hand2",
             )
             phone_lbl.pack(fill=tk.X, padx=12, pady=2)
             self._widgets.append(phone_lbl)
@@ -142,8 +155,13 @@ class ProspectCard(tk.Frame):
         # Why up today
         why_text = self._get_why_up_today()
         why_lbl = tk.Label(
-            self, text=why_text, font=("Segoe UI", 10, "italic"),
-            bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w", wraplength=450,
+            self,
+            text=why_text,
+            font=("Segoe UI", 10, "italic"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            anchor="w",
+            wraplength=450,
         )
         why_lbl.pack(fill=tk.X, padx=12, pady=2)
         self._widgets.append(why_lbl)
@@ -152,8 +170,13 @@ class ProspectCard(tk.Frame):
         last = self._get_last_interaction()
         if last:
             last_lbl = tk.Label(
-                self, text=last, font=FONTS["small"],
-                bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w", wraplength=450,
+                self,
+                text=last,
+                font=FONTS["small"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
+                anchor="w",
+                wraplength=450,
             )
             last_lbl.pack(fill=tk.X, padx=12, pady=2)
             self._widgets.append(last_lbl)
@@ -178,7 +201,9 @@ class ProspectCard(tk.Frame):
             ctx_lbl = tk.Label(
                 self,
                 text=f"{self._company_contacts} other contact(s) at {company_name}",
-                font=FONTS["small"], bg=COLORS["bg_alt"], fg=COLORS["warning"],
+                font=FONTS["small"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["warning"],
                 anchor="w",
             )
             ctx_lbl.pack(fill=tk.X, padx=12, pady=(0, 8))
@@ -197,8 +222,12 @@ class ProspectCard(tk.Frame):
 
         # Large name for glancing while talking
         name_lbl = tk.Label(
-            self, text=p.full_name, font=("Segoe UI", 20, "bold"),
-            bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
+            self,
+            text=p.full_name,
+            font=("Segoe UI", 20, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            anchor="w",
         )
         name_lbl.pack(fill=tk.X, padx=12, pady=(12, 0))
         self._widgets.append(name_lbl)
@@ -208,8 +237,12 @@ class ProspectCard(tk.Frame):
             title_text += f" @ {c.name}" if title_text else c.name
         if title_text:
             title_lbl = tk.Label(
-                self, text=title_text, font=("Segoe UI", 14),
-                bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w",
+                self,
+                text=title_text,
+                font=("Segoe UI", 14),
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
+                anchor="w",
             )
             title_lbl.pack(fill=tk.X, padx=12, pady=(0, 4))
             self._widgets.append(title_lbl)
@@ -222,8 +255,12 @@ class ProspectCard(tk.Frame):
         recent = self._activities[:3]
         if recent:
             hdr = tk.Label(
-                self, text="RECENT INTERACTIONS", font=("Segoe UI", 9, "bold"),
-                bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w",
+                self,
+                text="RECENT INTERACTIONS",
+                font=("Segoe UI", 9, "bold"),
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
+                anchor="w",
             )
             hdr.pack(fill=tk.X, padx=12, pady=(4, 2))
             self._widgets.append(hdr)
@@ -231,8 +268,12 @@ class ProspectCard(tk.Frame):
             for act in recent:
                 line = self._format_activity_brief(act)
                 act_lbl = tk.Label(
-                    self, text=line, font=FONTS["small"],
-                    bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
+                    self,
+                    text=line,
+                    font=FONTS["small"],
+                    bg=COLORS["bg_alt"],
+                    fg=COLORS["fg"],
+                    anchor="w",
                     wraplength=450,
                 )
                 act_lbl.pack(fill=tk.X, padx=20, pady=1)
@@ -245,8 +286,12 @@ class ProspectCard(tk.Frame):
             self._widgets.append(sep2)
 
             intel_hdr = tk.Label(
-                self, text="INTEL", font=("Segoe UI", 9, "bold"),
-                bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w",
+                self,
+                text="INTEL",
+                font=("Segoe UI", 9, "bold"),
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
+                anchor="w",
             )
             intel_hdr.pack(fill=tk.X, padx=12, pady=(4, 2))
             self._widgets.append(intel_hdr)
@@ -254,9 +299,13 @@ class ProspectCard(tk.Frame):
             for nugget in self._intel[:5]:
                 cat = nugget.category.value if nugget.category else ""
                 nugget_lbl = tk.Label(
-                    self, text=f"  {cat}: {nugget.content}",
-                    font=FONTS["small"], bg=COLORS["bg_alt"], fg=COLORS["fg"],
-                    anchor="w", wraplength=450,
+                    self,
+                    text=f"  {cat}: {nugget.content}",
+                    font=FONTS["small"],
+                    bg=COLORS["bg_alt"],
+                    fg=COLORS["fg"],
+                    anchor="w",
+                    wraplength=450,
                 )
                 nugget_lbl.pack(fill=tk.X, padx=12, pady=1)
                 self._widgets.append(nugget_lbl)
@@ -317,7 +366,9 @@ class ProspectCard(tk.Frame):
                 tk.Label(
                     scroll_frame,
                     text=f"  {self._company_contacts} other contact(s) at this company",
-                    font=FONTS["small"], bg=COLORS["bg_alt"], fg=COLORS["warning"],
+                    font=FONTS["small"],
+                    bg=COLORS["bg_alt"],
+                    fg=COLORS["warning"],
                     anchor="w",
                 ).pack(fill=tk.X, padx=12, pady=2)
 
@@ -331,17 +382,26 @@ class ProspectCard(tk.Frame):
                 label = cm.label or (cm.type.value if cm.type else "")
                 line = f"  {label}: {cm.value}{primary}{verified}{suspect}"
                 tk.Label(
-                    scroll_frame, text=line, font=FONTS["small"],
-                    bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
+                    scroll_frame,
+                    text=line,
+                    font=FONTS["small"],
+                    bg=COLORS["bg_alt"],
+                    fg=COLORS["fg"],
+                    anchor="w",
                 ).pack(fill=tk.X, padx=12, pady=2)
 
         # --- Notes ---
         if p.notes:
             self._deep_section(scroll_frame, "NOTES")
             tk.Label(
-                scroll_frame, text=p.notes, font=FONTS["small"],
-                bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
-                wraplength=450, justify="left",
+                scroll_frame,
+                text=p.notes,
+                font=FONTS["small"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["fg"],
+                anchor="w",
+                wraplength=450,
+                justify="left",
             ).pack(fill=tk.X, padx=12, pady=2)
 
         # --- Intel Nuggets ---
@@ -350,9 +410,13 @@ class ProspectCard(tk.Frame):
             for nugget in self._intel:
                 cat = nugget.category.value if nugget.category else ""
                 tk.Label(
-                    scroll_frame, text=f"  {cat}: {nugget.content}",
-                    font=FONTS["small"], bg=COLORS["bg_alt"], fg=COLORS["fg"],
-                    anchor="w", wraplength=450,
+                    scroll_frame,
+                    text=f"  {cat}: {nugget.content}",
+                    font=FONTS["small"],
+                    bg=COLORS["bg_alt"],
+                    fg=COLORS["fg"],
+                    anchor="w",
+                    wraplength=450,
                 ).pack(fill=tk.X, padx=12, pady=2)
 
         # --- Activity History ---
@@ -360,9 +424,14 @@ class ProspectCard(tk.Frame):
         for act in self._activities:
             line = self._format_activity_full(act)
             tk.Label(
-                scroll_frame, text=line, font=FONTS["small"],
-                bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
-                wraplength=450, justify="left",
+                scroll_frame,
+                text=line,
+                font=FONTS["small"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["fg"],
+                anchor="w",
+                wraplength=450,
+                justify="left",
             ).pack(fill=tk.X, padx=20, pady=1)
 
     # ------------------------------------------------------------------
@@ -373,8 +442,12 @@ class ProspectCard(tk.Frame):
         """Add a section header in deep view."""
         ttk.Separator(parent, orient="horizontal").pack(fill=tk.X, padx=12, pady=(8, 2))
         tk.Label(
-            parent, text=title, font=("Segoe UI", 10, "bold"),
-            bg=COLORS["bg_alt"], fg=COLORS["accent"], anchor="w",
+            parent,
+            text=title,
+            font=("Segoe UI", 10, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["accent"],
+            anchor="w",
         ).pack(fill=tk.X, padx=12, pady=(2, 4))
 
     def _deep_field(self, parent: tk.Widget, label: str, value: Optional[str]) -> None:
@@ -384,19 +457,32 @@ class ProspectCard(tk.Frame):
         row = tk.Frame(parent, bg=COLORS["bg_alt"])
         row.pack(fill=tk.X, padx=20, pady=1)
         tk.Label(
-            row, text=f"{label}:", font=("Segoe UI", 9, "bold"),
-            bg=COLORS["bg_alt"], fg=COLORS["muted"], width=14, anchor="e",
+            row,
+            text=f"{label}:",
+            font=("Segoe UI", 9, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["muted"],
+            width=14,
+            anchor="e",
         ).pack(side=tk.LEFT)
         tk.Label(
-            row, text=value, font=FONTS["small"],
-            bg=COLORS["bg_alt"], fg=COLORS["fg"], anchor="w",
+            row,
+            text=value,
+            font=FONTS["small"],
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            anchor="w",
         ).pack(side=tk.LEFT, padx=(4, 0))
 
     def _add_badge(self, parent: tk.Frame, text: str, color: str) -> None:
         """Add a small colored badge."""
         tk.Label(
-            parent, text=f" {text} ", font=FONTS["small"],
-            bg=color, fg="#ffffff", relief="flat",
+            parent,
+            text=f" {text} ",
+            font=FONTS["small"],
+            bg=color,
+            fg="#ffffff",
+            relief="flat",
         ).pack(side=tk.LEFT, padx=(0, 6))
 
     def _get_primary_phone(self) -> Optional[str]:

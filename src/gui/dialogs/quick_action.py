@@ -70,7 +70,10 @@ class QuickActionDialog:
         )
         for label, outcome in CALL_OUTCOMES:
             ttk.Radiobutton(
-                main, text=label, variable=self._outcome_var, value=outcome.value,
+                main,
+                text=label,
+                variable=self._outcome_var,
+                value=outcome.value,
             ).pack(anchor="w", padx=12)
 
         ttk.Separator(main, orient="horizontal").pack(fill=tk.X, pady=8)
@@ -83,15 +86,16 @@ class QuickActionDialog:
         fu_frame.pack(fill=tk.X, padx=12)
         for label, days in FOLLOW_UP_PRESETS:
             ttk.Radiobutton(
-                fu_frame, text=label, variable=self._follow_up_var, value=str(days),
+                fu_frame,
+                text=label,
+                variable=self._follow_up_var,
+                value=str(days),
             ).pack(anchor="w")
 
         ttk.Separator(main, orient="horizontal").pack(fill=tk.X, pady=8)
 
         # Notes
-        ttk.Label(main, text="Notes:", font=("Segoe UI", 10, "bold")).pack(
-            anchor="w", pady=(0, 4)
-        )
+        ttk.Label(main, text="Notes:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
         self._notes_text = tk.Text(main, height=4, width=40, font=FONTS["small"])
         self._notes_text.pack(fill=tk.X, padx=12, pady=(0, 8))
 
@@ -106,9 +110,11 @@ class QuickActionDialog:
                     ttk.Label(pop_frame, text="Move to:").pack(side=tk.LEFT, padx=(0, 4))
                     self._pop_var = tk.StringVar(value="(no change)")
                     ttk.Combobox(
-                        pop_frame, textvariable=self._pop_var,
+                        pop_frame,
+                        textvariable=self._pop_var,
                         values=["(no change)"] + [p.value for p in targets],
-                        state="readonly", width=18,
+                        state="readonly",
+                        width=18,
                     ).pack(side=tk.LEFT)
 
         # Buttons

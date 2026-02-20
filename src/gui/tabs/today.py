@@ -53,8 +53,11 @@ class TodayTab(TabBase):
         top.pack(fill=tk.X, padx=8, pady=8)
 
         self._queue_label = tk.Label(
-            top, text="Queue: 0 cards", font=FONTS["large"],
-            bg=COLORS["bg"], fg=COLORS["fg"],
+            top,
+            text="Queue: 0 cards",
+            font=FONTS["large"],
+            bg=COLORS["bg"],
+            fg=COLORS["fg"],
         )
         self._queue_label.pack(side=tk.LEFT, padx=8)
 
@@ -78,7 +81,9 @@ class TodayTab(TabBase):
         self._status_label = tk.Label(
             self._card_frame,
             text="No cards queued.\nClick 'Today's Brief' to load today's queue.",
-            font=FONTS["large"], bg=COLORS["bg"], fg=COLORS["muted"],
+            font=FONTS["large"],
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
         )
         self._status_label.pack(expand=True)
 
@@ -100,18 +105,10 @@ class TodayTab(TabBase):
         ttk.Button(btn_row, text="Quick Action", command=self._quick_action).pack(
             side=tk.LEFT, padx=4
         )
-        ttk.Button(btn_row, text="Deep Dive", command=self._toggle_deep).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_row, text="Edit", command=self._edit_prospect).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_row, text="Skip", command=self._skip_card).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_row, text="Next", command=self.next_card).pack(
-            side=tk.RIGHT, padx=4
-        )
+        ttk.Button(btn_row, text="Deep Dive", command=self._toggle_deep).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_row, text="Edit", command=self._edit_prospect).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_row, text="Skip", command=self._skip_card).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_row, text="Next", command=self.next_card).pack(side=tk.RIGHT, padx=4)
 
     def refresh(self) -> None:
         """Reload queue from database."""
@@ -138,9 +135,7 @@ class TodayTab(TabBase):
             from src.content.morning_brief import generate_morning_brief
 
             brief = generate_morning_brief(self.db)
-            dialog = MorningBriefDialog(
-                self.frame, brief.full_text, on_ready=self.start_processing
-            )
+            dialog = MorningBriefDialog(self.frame, brief.full_text, on_ready=self.start_processing)
             dialog.show()
         except Exception as e:
             logger.error(f"Failed to generate morning brief: {e}")
@@ -315,7 +310,9 @@ class TodayTab(TabBase):
 
         results = self.db.get_prospects(search_query=query, limit=10)
         if not results:
-            messagebox.showinfo("Search", f"No prospects found for '{query}'", parent=self.frame.winfo_toplevel())
+            messagebox.showinfo(
+                "Search", f"No prospects found for '{query}'", parent=self.frame.winfo_toplevel()
+            )
             return
 
         if len(results) == 1:

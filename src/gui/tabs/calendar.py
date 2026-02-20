@@ -13,8 +13,8 @@ from typing import Optional
 from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import Population
-from src.gui.theme import COLORS, FONTS
 from src.gui.tabs import TabBase
+from src.gui.theme import COLORS, FONTS
 
 logger = get_logger(__name__)
 
@@ -166,7 +166,8 @@ class CalendarTab(TabBase):
             col_frame = tk.Frame(
                 self._content_frame,
                 bg=COLORS["bg_alt"] if not is_today else "#e6f0ff",
-                bd=1, relief="solid",
+                bd=1,
+                relief="solid",
             )
             col_frame.grid(row=0, column=col, sticky="nsew", padx=1, pady=1)
             self._content_frame.columnconfigure(col, weight=1)
@@ -176,8 +177,12 @@ class CalendarTab(TabBase):
             header_text = day.strftime("%a %m/%d")
             header_bg = COLORS["accent"] if is_today else COLORS["muted"]
             tk.Label(
-                col_frame, text=header_text, font=("Segoe UI", 10, "bold"),
-                bg=header_bg, fg="#ffffff", anchor="center",
+                col_frame,
+                text=header_text,
+                font=("Segoe UI", 10, "bold"),
+                bg=header_bg,
+                fg="#ffffff",
+                anchor="center",
             ).pack(fill=tk.X)
 
             # Get follow-ups for this day
@@ -199,8 +204,11 @@ class CalendarTab(TabBase):
 
             if not rows:
                 tk.Label(
-                    col_frame, text="—", font=FONTS["small"],
-                    bg=col_frame["bg"], fg=COLORS["muted"],
+                    col_frame,
+                    text="—",
+                    font=FONTS["small"],
+                    bg=col_frame["bg"],
+                    fg=COLORS["muted"],
                 ).pack(pady=8)
                 continue
 
@@ -209,7 +217,10 @@ class CalendarTab(TabBase):
             canvas.pack(fill=tk.BOTH, expand=True)
             inner = tk.Frame(canvas, bg=col_frame["bg"])
             canvas.create_window((0, 0), window=inner, anchor="nw")
-            inner.bind("<Configure>", lambda e, c=canvas: c.configure(scrollregion=c.bbox("all")))
+            inner.bind(
+                "<Configure>",
+                lambda e, c=canvas: c.configure(scrollregion=c.bbox("all")),  # type: ignore[misc]
+            )
 
             for row in rows:
                 name = f"{row['first_name']} {row['last_name']}"
@@ -225,8 +236,13 @@ class CalendarTab(TabBase):
 
                 color = COLORS["success"] if pop == "engaged" else COLORS["accent"]
                 tk.Label(
-                    inner, text=entry_text, font=FONTS["small"],
-                    bg=col_frame["bg"], fg=color, anchor="w", wraplength=140,
+                    inner,
+                    text=entry_text,
+                    font=FONTS["small"],
+                    bg=col_frame["bg"],
+                    fg=color,
+                    anchor="w",
+                    wraplength=140,
                 ).pack(fill=tk.X, padx=4, pady=1)
 
     # ------------------------------------------------------------------
@@ -263,8 +279,11 @@ class CalendarTab(TabBase):
 
         if not rows:
             tk.Label(
-                self._content_frame, text="No follow-ups scheduled for this day.",
-                font=FONTS["large"], bg=COLORS["bg_alt"], fg=COLORS["muted"],
+                self._content_frame,
+                text="No follow-ups scheduled for this day.",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
             ).pack(expand=True)
             return
 
@@ -272,7 +291,9 @@ class CalendarTab(TabBase):
         tk.Label(
             self._content_frame,
             text=f"{len(rows)} follow-up(s) scheduled",
-            font=FONTS["large"], bg=COLORS["bg_alt"], fg=COLORS["fg"],
+            font=FONTS["large"],
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
         ).pack(padx=12, pady=(8, 4), anchor="w")
 
         # Follow-up list
@@ -298,14 +319,18 @@ class CalendarTab(TabBase):
 
         for row in rows:
             name = f"{row['first_name']} {row['last_name']}"
-            tree.insert("", tk.END, values=(
-                name,
-                row["company_name"] or "",
-                row["population"] or "",
-                row["engagement_stage"] or "",
-                (row["company_tz"] or "")[:3].upper(),
-                row["prospect_score"] or "",
-            ))
+            tree.insert(
+                "",
+                tk.END,
+                values=(
+                    name,
+                    row["company_name"] or "",
+                    row["population"] or "",
+                    row["engagement_stage"] or "",
+                    (row["company_tz"] or "")[:3].upper(),
+                    row["prospect_score"] or "",
+                ),
+            )
 
         tree.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
@@ -337,15 +362,20 @@ class CalendarTab(TabBase):
 
         if not rows:
             tk.Label(
-                self._content_frame, text="No parked prospects.",
-                font=FONTS["large"], bg=COLORS["bg_alt"], fg=COLORS["muted"],
+                self._content_frame,
+                text="No parked prospects.",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
             ).pack(expand=True)
             return
 
         tk.Label(
             self._content_frame,
             text="PARKED PROSPECTS BY MONTH",
-            font=("Segoe UI", 12, "bold"), bg=COLORS["bg_alt"], fg=COLORS["accent"],
+            font=("Segoe UI", 12, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["accent"],
         ).pack(padx=12, pady=(12, 8), anchor="w")
 
         for row in rows:
@@ -366,8 +396,11 @@ class CalendarTab(TabBase):
             card.pack(fill=tk.X, padx=12, pady=4)
 
             tk.Label(
-                card, text=f"{display}: {count} prospect(s)",
-                font=("Segoe UI", 11, "bold"), bg=COLORS["bg_alt"], fg=COLORS["fg"],
+                card,
+                text=f"{display}: {count} prospect(s)",
+                font=("Segoe UI", 11, "bold"),
+                bg=COLORS["bg_alt"],
+                fg=COLORS["fg"],
                 anchor="w",
             ).pack(fill=tk.X, padx=8, pady=(6, 2))
 
@@ -377,6 +410,11 @@ class CalendarTab(TabBase):
             if count > 5:
                 preview += f" ... and {count - 5} more"
             tk.Label(
-                card, text=preview, font=FONTS["small"],
-                bg=COLORS["bg_alt"], fg=COLORS["muted"], anchor="w", wraplength=500,
+                card,
+                text=preview,
+                font=FONTS["small"],
+                bg=COLORS["bg_alt"],
+                fg=COLORS["muted"],
+                anchor="w",
+                wraplength=500,
             ).pack(fill=tk.X, padx=8, pady=(0, 6))

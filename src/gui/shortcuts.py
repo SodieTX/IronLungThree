@@ -39,6 +39,7 @@ def bind_shortcuts(root: tk.Tk, handlers: Dict[str, Callable]) -> None:
         def _make_callback(h: Callable) -> Callable[["tk.Event[tk.Misc]"], None]:
             def callback(event: "tk.Event[tk.Misc]") -> None:
                 h()
+
             return callback
 
         try:
