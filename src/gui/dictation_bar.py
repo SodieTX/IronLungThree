@@ -9,7 +9,7 @@ Phase 4.10: Manual mode toggle for offline
 
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Optional
+from typing import Callable
 
 from src.core.logging import get_logger
 
@@ -27,7 +27,7 @@ class DictationBar(tk.Frame):
 
     def __init__(
         self,
-        parent: tk.Widget,
+        parent: tk.Misc,
         on_submit: Callable[[str], None],
         placeholder: str = "Speak or type...",
     ):
@@ -144,8 +144,7 @@ class DictationBar(tk.Frame):
         self._entry.delete(0, tk.END)
         self._show_placeholder()
 
-        if self._on_submit:
-            self._on_submit(text)
+        self._on_submit(text)
 
     def get_input(self) -> str:
         """Get current input text."""

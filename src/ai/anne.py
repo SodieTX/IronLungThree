@@ -282,14 +282,14 @@ class Anne:
 
         # Handle follow-up
         if parsed.action == "set_follow_up":
-            date_str = str(parsed.date) if parsed.date else None
-            if date_str:
+            fu_date_str = str(parsed.date) if parsed.date else None
+            if fu_date_str:
                 return AnneResponse(
-                    message=f"Follow-up set for {date_str}.",
+                    message=f"Follow-up set for {fu_date_str}.",
                     suggested_actions=[
                         {
                             "action": "set_follow_up",
-                            "date": date_str,
+                            "date": fu_date_str,
                         }
                     ],
                 )
@@ -562,7 +562,7 @@ class Anne:
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        return str(response.content[0].text)
 
     def _ai_respond(self, user_input: str, context: ConversationContext) -> AnneResponse:
         """Use Claude for conversational response."""
@@ -592,7 +592,7 @@ class Anne:
             system=system,
             messages=messages,
         )
-        text = response.content[0].text
+        text = str(response.content[0].text)
 
         return AnneResponse(
             message=text,
@@ -621,7 +621,7 @@ class Anne:
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        return str(response.content[0].text)
 
     def _draft_email(self, prospect_id: int, instruction: str) -> str:
         """Draft an email using Jeff's voice."""
@@ -653,7 +653,7 @@ class Anne:
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        return str(response.content[0].text)
 
     # =========================================================================
     # PRIVATE: Local Fallback
@@ -661,7 +661,7 @@ class Anne:
 
     def _local_present_card(self, context: dict) -> str:
         """Generate local-only card presentation (no AI)."""
-        return context["story"]
+        return str(context["story"])
 
     # =========================================================================
     # PRIVATE: Action Execution
@@ -804,7 +804,7 @@ class Anne:
         if not prospect_id:
             return
 
-        from src.integrations.bria import dial
+        from src.integrations.bria import BriaDialer
 
         contact_methods = self.db.get_contact_methods(prospect_id)
         phone = next(
@@ -812,7 +812,8 @@ class Anne:
             None,
         )
         if phone:
-            dial(phone)
+            dialer = BriaDialer()
+            dialer.dial(phone)
 
     def _execute_flag_suspect(self, action: dict) -> None:
         """Flag a contact method as suspect."""
