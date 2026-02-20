@@ -147,11 +147,27 @@ class TodayTab(TabBase):
 
     def start_processing(self) -> None:
         """Start card processing loop."""
-        self._queue = get_todays_queue(self.db)
+        # Get current energy level for queue ordering
+        energy = self._get_energy_level()
+        self._queue = get_todays_queue(self.db, energy=energy)
         self._queue_index = 0
         self._update_queue_label()
         self._show_current_card()
-        logger.info(f"Processing started: {len(self._queue)} cards in queue")
+        energy_note = f" (energy: {energy})" if energy else ""
+        logger.info(f"Processing started: {len(self._queue)} cards in queue{energy_note}")
+
+    @staticmethod
+    def _get_energy_level() -> str:
+        """Get current energy level based on time of day."""
+        from datetime import datetime as dt
+
+        hour = dt.now().hour
+        if hour < 14:
+            return "HIGH"
+        elif hour < 16:
+            return "MEDIUM"
+        else:
+            return "LOW"
 
     def next_card(self) -> None:
         """Move to next card in queue."""

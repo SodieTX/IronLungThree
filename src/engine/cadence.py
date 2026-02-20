@@ -234,7 +234,7 @@ def get_todays_follow_ups(db: Database) -> list[Prospect]:
     return [db._row_to_prospect(row) for row in rows]
 
 
-def get_todays_queue(db: Database) -> list[Prospect]:
+def get_todays_queue(db: Database, energy: Optional[str] = None) -> list[Prospect]:
     """Get today's work queue.
 
     Includes:
@@ -242,10 +242,19 @@ def get_todays_queue(db: Database) -> list[Prospect]:
         - Unengaged prospects due for next attempt
 
     Ordered by:
-        1. Engaged first (closing > post-demo > demo-scheduled > pre-demo)
-        2. Overdue items within engaged group
-        3. Unengaged by score
-        4. Timezone-ordered within groups
+        Normal (HIGH energy):
+            1. Engaged first (closing > post-demo > demo-scheduled > pre-demo)
+            2. Overdue items within engaged group
+            3. Unengaged by score
+            4. Timezone-ordered within groups
+        LOW energy:
+            1. Highest-probability closes first (closing, then post-demo)
+            2. Then engaged by score descending
+            3. Unengaged deferred to end
+
+    Args:
+        db: Database instance
+        energy: Energy level ("HIGH", "MEDIUM", "LOW"). None = normal ordering.
 
     Returns:
         Ordered list of prospects for today
@@ -317,4 +326,22 @@ def get_todays_queue(db: Database) -> list[Prospect]:
     # Sort by the tuple keys
     queue.sort(key=lambda x: (x[0], x[1], x[2]))
 
-    return [item[3] for item in queue]
+    prospects = [item[3] for item in queue]
+
+    # Low energy reordering: surface highest-probability closes first,
+    # push cold prospecting to the end
+    if energy and energy.upper() == "LOW":
+        closing_stage = {"closing", "post_demo"}
+
+        def _low_energy_key(p: Prospect) -> tuple[int, int]:
+            # Engaged closing/post_demo first, then engaged by score, then rest
+            if p.population == Population.ENGAGED:
+                stage = p.engagement_stage.value if p.engagement_stage else ""
+                if stage in closing_stage:
+                    return (0, -(p.prospect_score or 0))
+                return (1, -(p.prospect_score or 0))
+            return (2, -(p.prospect_score or 0))
+
+        prospects.sort(key=_low_energy_key)
+
+    return prospects
