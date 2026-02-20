@@ -110,33 +110,111 @@ def main() -> int:
 
     if args.nightly:
         logger.info("Running nightly cycle...")
-        # TODO: Phase 5 - run nightly cycle
-        # from src.autonomous.nightly import run_nightly_cycle
-        # run_nightly_cycle(db)
-        logger.info("Nightly cycle not yet implemented (Phase 5)")
+        from src.autonomous.nightly import run_nightly_cycle
+
+        result = run_nightly_cycle(db)
+        if result.errors:
+            logger.warning(
+                f"Nightly cycle completed with {len(result.errors)} error(s)",
+                extra={"context": {"errors": result.errors}},
+            )
+        else:
+            logger.info("Nightly cycle completed successfully")
         db.close()
         return 0
 
     if args.orchestrator:
-        logger.info("Starting orchestrator...")
-        # TODO: Phase 5 - run orchestrator
-        # from src.autonomous.orchestrator import Orchestrator
-        # orchestrator = Orchestrator(db)
-        # orchestrator.run()
-        logger.info("Orchestrator not yet implemented (Phase 5)")
+        logger.info("Starting orchestrator (headless)...")
+        from src.autonomous.orchestrator import Orchestrator
+
+        orchestrator = Orchestrator()
+        _register_orchestrator_tasks(orchestrator, db)
+        orchestrator.run_headless()
         db.close()
         return 0
 
     # Launch GUI
     logger.info("Launching GUI...")
+    # Start background orchestrator alongside GUI
+    from src.autonomous.orchestrator import Orchestrator
     from src.gui.app import IronLungApp
+
+    orchestrator = Orchestrator()
+    _register_orchestrator_tasks(orchestrator, db)
+    orchestrator.start()
 
     app = IronLungApp(db)
     app.run()
 
+    orchestrator.stop()
+
     db.close()
     logger.info("IronLung 3 shutdown complete")
     return 0
+
+
+def _register_orchestrator_tasks(orchestrator, db) -> None:  # type: ignore[no-untyped-def]
+    """Register recurring background tasks with the orchestrator.
+
+    Tasks registered (per blueprint):
+        - Reply scanning: every 30 minutes
+        - Nurture sending: every 4 hours
+        - Demo prep refresh: every hour
+        - Calendar sync: every hour
+    """
+    from datetime import timedelta
+
+    from src.core.services import get_service_registry
+
+    registry = get_service_registry()
+
+    # Reply scanning — polls inbox for prospect replies
+    if registry.is_available("outlook"):
+
+        def _scan_replies() -> None:
+            from src.autonomous.reply_monitor import ReplyMonitor
+            from src.integrations.outlook import OutlookClient
+
+            outlook = OutlookClient()
+            monitor = ReplyMonitor(db=db, outlook=outlook)
+            monitor.poll_inbox()
+
+        orchestrator.register_task("reply_scan", _scan_replies, timedelta(minutes=30))
+
+        # Email sync (received) — sync inbox emails to activity history
+        def _sync_emails() -> None:
+            from src.autonomous.email_sync import EmailSync
+            from src.integrations.outlook import OutlookClient
+
+            outlook = OutlookClient()
+            sync = EmailSync(db=db, outlook=outlook)
+            sync.sync_received()
+            sync.sync_sent()
+
+        orchestrator.register_task("email_sync", _sync_emails, timedelta(hours=1))
+
+    # Nurture sending — send approved nurture drafts
+    def _send_nurture() -> None:
+        from src.engine.nurture import NurtureEngine
+
+        engine = NurtureEngine(db)
+        engine.send_approved_emails()
+
+    orchestrator.register_task("nurture_send", _send_nurture, timedelta(hours=4))
+
+    # Demo prep refresh — pre-generate prep docs for upcoming demos
+    def _refresh_demo_prep() -> None:
+        from src.engine.demo_prep import generate_prep
+
+        prospects = db.get_prospects(population="demo_scheduled", limit=20)
+        for p in prospects:
+            if p.id is not None:
+                try:
+                    generate_prep(db, p.id)
+                except Exception:
+                    pass  # Individual failure shouldn't stop batch
+
+    orchestrator.register_task("demo_prep", _refresh_demo_prep, timedelta(hours=1))
 
 
 if __name__ == "__main__":

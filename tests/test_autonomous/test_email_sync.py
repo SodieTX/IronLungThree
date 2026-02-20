@@ -4,10 +4,13 @@ Covers:
     - EmailSync.get_last_sync: sentinel lookup in data_freshness table
     - EmailSync._update_last_sync: records timestamp
     - EmailSync.sync_received: match inbox messages to prospects, create activities
-    - EmailSync.sync_sent: handles NotImplementedError gracefully
+    - EmailSync.sync_sent: retrieves sent items and creates activities
+    - EmailSync._get_sent_messages: Graph API call to sentitems folder
 """
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
+from typing import Any, Optional
 
 import pytest
 
@@ -47,14 +50,36 @@ class MockOutlookClient:
     def __init__(
         self,
         inbox_messages: list[EmailMessage] | None = None,
+        sent_messages: list[dict] | None = None,
     ):
         self._inbox = inbox_messages or []
+        self._sent = sent_messages or []
+        self._user_email = "jeff@test.com"
 
     def get_inbox(self, since=None, limit=100) -> list[EmailMessage]:
         return self._inbox
 
     def classify_reply(self, message: EmailMessage):
         raise NotImplementedError("Mock does not classify")
+
+    def _ensure_authenticated(self) -> None:
+        """No-op for tests."""
+
+    def _graph_request(
+        self,
+        method: str,
+        endpoint: str,
+        json_data: Optional[dict] = None,
+        params: Optional[dict[str, str]] = None,
+    ) -> Any:
+        """Mock Graph API request — returns sent messages for sentitems."""
+        if "sentitems" in endpoint:
+            return SimpleNamespace(
+                status_code=200,
+                json=lambda: {"value": self._sent},
+                text="",
+            )
+        return SimpleNamespace(status_code=404, json=lambda: {}, text="Not found")
 
 
 def _setup_prospect_with_email(
@@ -238,20 +263,88 @@ class TestSyncReceived:
 
 
 class TestSyncSent:
-    """Sync sent emails - currently raises NotImplementedError internally."""
+    """Sync sent emails from (mocked) Outlook sentitems folder."""
 
-    def test_handles_not_implemented_gracefully(self, memory_db: Database):
-        """sync_sent returns 0 when _get_sent_messages raises NotImplementedError."""
-        outlook = MockOutlookClient()
+    def test_creates_activity_for_matched_sent_email(self, fk_relaxed_db: Database):
+        """Sent message to a known prospect creates EMAIL_SENT activity."""
+        pid = _setup_prospect_with_email(fk_relaxed_db, "recipient@example.com", "Sent", "Test")
+
+        sent_messages = [
+            {
+                "id": "sent-msg-1",
+                "toRecipients": [{"emailAddress": {"address": "recipient@example.com"}}],
+                "subject": "Intro Email",
+                "bodyPreview": "Hi, wanted to connect.",
+                "sentDateTime": "2026-02-18T10:00:00Z",
+            },
+        ]
+        outlook = MockOutlookClient(sent_messages=sent_messages)
+        sync = EmailSync(db=fk_relaxed_db, outlook=outlook)
+
+        synced = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
+        assert synced == 1
+
+        activities = fk_relaxed_db.get_activities(pid)
+        email_sent = [a for a in activities if a.activity_type == ActivityType.EMAIL_SENT]
+        assert len(email_sent) == 1
+        assert "Intro Email" in (email_sent[0].email_subject or "")
+
+    def test_skips_unmatched_recipients(self, fk_relaxed_db: Database):
+        """Sent messages to unknown addresses are not synced."""
+        sent_messages = [
+            {
+                "id": "sent-msg-2",
+                "toRecipients": [{"emailAddress": {"address": "unknown@nowhere.com"}}],
+                "subject": "Cold Email",
+                "bodyPreview": "Hello?",
+                "sentDateTime": "2026-02-18T12:00:00Z",
+            },
+        ]
+        outlook = MockOutlookClient(sent_messages=sent_messages)
+        sync = EmailSync(db=fk_relaxed_db, outlook=outlook)
+
+        synced = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
+        assert synced == 0
+
+    def test_deduplicates_sent_by_message_id(self, fk_relaxed_db: Database):
+        """Same sent message synced twice creates only one activity."""
+        _setup_prospect_with_email(fk_relaxed_db, "dedupsent@example.com", "Dedup", "Sent")
+
+        sent_messages = [
+            {
+                "id": "sent-msg-3",
+                "toRecipients": [{"emailAddress": {"address": "dedupsent@example.com"}}],
+                "subject": "Follow Up",
+                "bodyPreview": "Just checking in.",
+                "sentDateTime": "2026-02-18T14:00:00Z",
+            },
+        ]
+        outlook = MockOutlookClient(sent_messages=sent_messages)
+        sync = EmailSync(db=fk_relaxed_db, outlook=outlook)
+
+        first = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
+        assert first == 1
+
+        second = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
+        assert second == 0
+
+    def test_returns_zero_for_empty_sentitems(self, fk_relaxed_db: Database):
+        """No sent messages -> 0 synced."""
+        outlook = MockOutlookClient(sent_messages=[])
+        sync = EmailSync(db=fk_relaxed_db, outlook=outlook)
+
+        synced = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
+        assert synced == 0
+
+    def test_handles_api_error_gracefully(self, memory_db: Database):
+        """sync_sent returns 0 if the Graph API call fails."""
+
+        class FailingOutlookClient(MockOutlookClient):
+            def _graph_request(self, *args, **kwargs):
+                raise Exception("Network error")
+
+        outlook = FailingOutlookClient()
         sync = EmailSync(db=memory_db, outlook=outlook)
 
-        result = sync.sync_sent()
-        assert result == 0
-
-    def test_returns_zero_on_error(self, memory_db: Database):
-        """sync_sent returns 0 even with explicit since parameter."""
-        outlook = MockOutlookClient()
-        sync = EmailSync(db=memory_db, outlook=outlook)
-
-        result = sync.sync_sent(since=datetime.utcnow() - timedelta(days=7))
+        result = sync.sync_sent(since=datetime.utcnow() - timedelta(days=1))
         assert result == 0

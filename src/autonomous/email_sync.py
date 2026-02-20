@@ -237,11 +237,10 @@ class EmailSync:
             )
 
     def _get_sent_messages(self, since: datetime) -> list[dict]:
-        """Retrieve sent messages from Outlook.
+        """Retrieve sent messages from Outlook via Graph API.
 
-        Since the OutlookClient does not provide a dedicated get_sent() method,
-        this attempts to use the Graph API via the client's internal methods.
-        Falls back gracefully if not available.
+        Queries the sentitems mail folder directly through the OutlookClient's
+        internal _graph_request helper, since get_inbox() only covers the inbox.
 
         Args:
             since: Only include messages sent after this time.
@@ -250,13 +249,50 @@ class EmailSync:
             List of dicts with message data (id, to_addresses, subject, body).
 
         Raises:
-            NotImplementedError: If sent mail retrieval is not available.
+            OutlookError: If the Graph API call fails.
         """
-        # The OutlookClient provides get_inbox() but not get_sent().
-        # We raise NotImplementedError to signal this limitation.
-        # In production, this would be extended with a Graph API call to
-        # /users/{email}/mailFolders/sentitems/messages
-        raise NotImplementedError(
-            "Sent email retrieval not yet available in OutlookClient. "
-            "sync_sent() will be functional once get_sent_emails() is added."
+        from src.core.exceptions import OutlookError
+
+        # Ensure the client is authenticated before making API calls
+        self.outlook._ensure_authenticated()
+
+        iso_since = since.strftime("%Y-%m-%dT%H:%M:%SZ")
+        params = {
+            "$top": "100",
+            "$orderby": "sentDateTime desc",
+            "$select": "id,toRecipients,subject,bodyPreview,sentDateTime",
+            "$filter": f"sentDateTime ge {iso_since}",
+        }
+
+        response = self.outlook._graph_request(
+            "GET",
+            f"/users/{self.outlook._user_email}/mailFolders/sentitems/messages",
+            params=params,
         )
+
+        if response.status_code != 200:
+            raise OutlookError(f"Sent mail read failed ({response.status_code}): {response.text}")
+
+        data = response.json()
+        messages: list[dict] = []
+
+        for msg in data.get("value", []):
+            to_addrs = [
+                r["emailAddress"]["address"]
+                for r in msg.get("toRecipients", [])
+                if r.get("emailAddress", {}).get("address")
+            ]
+            messages.append(
+                {
+                    "id": msg.get("id", ""),
+                    "to_addresses": to_addrs,
+                    "subject": msg.get("subject", ""),
+                    "body": msg.get("bodyPreview", ""),
+                }
+            )
+
+        logger.info(
+            "Retrieved sent messages from Outlook",
+            extra={"context": {"count": len(messages), "since": str(since)}},
+        )
+        return messages
