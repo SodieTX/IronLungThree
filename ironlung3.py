@@ -193,14 +193,16 @@ def _register_orchestrator_tasks(orchestrator, db) -> None:  # type: ignore[no-u
 
         orchestrator.register_task("email_sync", _sync_emails, timedelta(hours=1))
 
-    # Nurture sending — send approved nurture drafts
-    def _send_nurture() -> None:
-        from src.engine.nurture import NurtureEngine
+        # Nurture sending — send approved nurture drafts via Outlook
+        def _send_nurture() -> None:
+            from src.engine.nurture import NurtureEngine
+            from src.integrations.outlook import OutlookClient
 
-        engine = NurtureEngine(db)
-        engine.send_approved_emails()
+            outlook = OutlookClient()
+            engine = NurtureEngine(db, outlook=outlook)
+            engine.send_approved_emails()
 
-    orchestrator.register_task("nurture_send", _send_nurture, timedelta(hours=4))
+        orchestrator.register_task("nurture_send", _send_nurture, timedelta(hours=4))
 
     # Demo prep refresh — pre-generate prep docs for upcoming demos
     def _refresh_demo_prep() -> None:

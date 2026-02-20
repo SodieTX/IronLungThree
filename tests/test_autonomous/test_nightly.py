@@ -20,6 +20,7 @@ from src.autonomous.nightly import (
     _activate_monthly_buckets,
     _extract_intel_from_activities,
     _import_ac_contacts,
+    _is_first_business_day,
     _record_cycle_run,
     check_last_run,
     run_condensed_cycle,
@@ -191,11 +192,11 @@ class TestActivateMonthlyBuckets:
         return db.create_prospect(prospect)
 
     def test_activates_current_month(self, memory_db: Database):
-        """Prospects parked for current month are reactivated."""
+        """Prospects parked for current month are reactivated (force mode)."""
         current_month = date.today().strftime("%Y-%m")
         pid = self._create_parked_prospect(memory_db, current_month, "Alice")
 
-        activated = _activate_monthly_buckets(memory_db)
+        activated = _activate_monthly_buckets(memory_db, force=True)
         assert activated >= 1
 
         prospect = memory_db.get_prospect(pid)
@@ -207,7 +208,7 @@ class TestActivateMonthlyBuckets:
         future_month = "2099-12"
         pid = self._create_parked_prospect(memory_db, future_month, "Bob")
 
-        activated = _activate_monthly_buckets(memory_db)
+        activated = _activate_monthly_buckets(memory_db, force=True)
         assert activated == 0
 
         prospect = memory_db.get_prospect(pid)
@@ -219,7 +220,7 @@ class TestActivateMonthlyBuckets:
         past_month = "2020-01"
         pid = self._create_parked_prospect(memory_db, past_month, "Charlie")
 
-        activated = _activate_monthly_buckets(memory_db)
+        activated = _activate_monthly_buckets(memory_db, force=True)
         assert activated >= 1
 
         prospect = memory_db.get_prospect(pid)
@@ -228,8 +229,20 @@ class TestActivateMonthlyBuckets:
 
     def test_no_parked_prospects_returns_zero(self, memory_db: Database):
         """No parked prospects -> returns 0."""
-        activated = _activate_monthly_buckets(memory_db)
+        activated = _activate_monthly_buckets(memory_db, force=True)
         assert activated == 0
+
+    def test_skips_when_not_first_business_day(self, memory_db: Database):
+        """Without force, skips activation on non-first-business-day."""
+        current_month = date.today().strftime("%Y-%m")
+        self._create_parked_prospect(memory_db, current_month, "Skipped")
+
+        # Without force, result depends on whether today is actually the
+        # first business day. Use force=False and verify it returns 0 if
+        # today isn't the first business day (most days it won't be).
+        if not _is_first_business_day():
+            activated = _activate_monthly_buckets(memory_db, force=False)
+            assert activated == 0
 
 
 # ===========================================================================
@@ -432,3 +445,38 @@ class TestExtractIntelFromActivities:
         # Should have exactly the nuggets from the first run, not doubled
         pain_nuggets = [n for n in nuggets if n.category == IntelCategory.PAIN_POINT]
         assert len(pain_nuggets) == 1
+
+
+# ===========================================================================
+# _is_first_business_day
+# ===========================================================================
+
+
+class TestIsFirstBusinessDay:
+    """First-business-day detection."""
+
+    def test_monday_first_is_first_business_day(self):
+        """1st of month on Monday is the first business day."""
+        assert _is_first_business_day(date(2026, 6, 1)) is True  # Monday
+
+    def test_wednesday_first_is_first_business_day(self):
+        """1st of month on Wednesday is the first business day."""
+        assert _is_first_business_day(date(2026, 7, 1)) is True  # Wednesday
+
+    def test_saturday_first_pushes_to_monday(self):
+        """Month starts Saturday -> first business day is 3rd (Monday)."""
+        # 2026-08-01 is Saturday
+        assert _is_first_business_day(date(2026, 8, 1)) is False
+        assert _is_first_business_day(date(2026, 8, 2)) is False  # Sunday
+        assert _is_first_business_day(date(2026, 8, 3)) is True  # Monday
+
+    def test_sunday_first_pushes_to_monday(self):
+        """Month starts Sunday -> first business day is 2nd (Monday)."""
+        # 2026-03-01 is Sunday
+        assert _is_first_business_day(date(2026, 3, 1)) is False
+        assert _is_first_business_day(date(2026, 3, 2)) is True  # Monday
+
+    def test_mid_month_is_never_first_business_day(self):
+        """Day 4+ is never the first business day."""
+        assert _is_first_business_day(date(2026, 1, 15)) is False
+        assert _is_first_business_day(date(2026, 1, 4)) is False

@@ -517,3 +517,38 @@ class TestNurtureWorkflow:
         # Send (no Outlook client = testing mode, marks as sent)
         sent = engine.send_approved_emails()
         assert sent == 1
+
+    def test_send_with_outlook_client(self, nurture_db):
+        """When Outlook client is provided, send_email is called."""
+        db, cid, p1_id, p2_id, p3_id = nurture_db
+
+        # Create a mock Outlook client
+        class MockOutlook:
+            def __init__(self):
+                self.sent = []
+
+            def send_email(self, to, subject, body):
+                self.sent.append({"to": to, "subject": subject, "body": body})
+
+        mock_outlook = MockOutlook()
+        engine = NurtureEngine(db, outlook=mock_outlook)
+
+        # Generate and approve
+        batch = engine.generate_nurture_batch(limit=30)
+        assert len(batch) >= 1
+        email_id = batch[0].id
+        engine.approve_email(email_id)
+
+        # Fix timestamp format
+        conn = db._get_connection()
+        conn.execute(
+            "UPDATE nurture_queue SET approved_at = REPLACE(approved_at, 'T', ' ') WHERE id = ?",
+            (email_id,),
+        )
+        conn.commit()
+
+        # Send with Outlook client
+        sent = engine.send_approved_emails()
+        assert sent == 1
+        assert len(mock_outlook.sent) == 1
+        assert mock_outlook.sent[0]["to"] == batch[0].to_address

@@ -61,6 +61,7 @@ class Config:
     # Phase 5: ActiveCampaign
     activecampaign_api_key: Optional[str] = None
     activecampaign_url: Optional[str] = None
+    ac_replenish_threshold: int = 50  # Pull from AC when unengaged drops below this
 
     # Phase 5: Google Custom Search
     google_api_key: Optional[str] = None
@@ -146,6 +147,17 @@ def _get_bool(key: str, default: bool, env_vars: dict[str, str]) -> bool:
     return value.lower() in ("true", "1", "yes", "on")
 
 
+def _get_int(key: str, default: int, env_vars: dict[str, str]) -> int:
+    """Get integer from environment."""
+    value = os.environ.get(key) or env_vars.get(key)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 # Default paths (defined once, used by both Config and load_config)
 DEFAULT_DB_PATH = Path.home() / ".ironlung" / "ironlung3.db"
 DEFAULT_LOG_PATH = Path.home() / ".ironlung" / "logs"
@@ -186,6 +198,7 @@ def load_config(env_file: Optional[Path] = None) -> Config:
         claude_api_key=_get_str("CLAUDE_API_KEY", env_vars),
         activecampaign_api_key=_get_str("ACTIVECAMPAIGN_API_KEY", env_vars),
         activecampaign_url=_get_str("ACTIVECAMPAIGN_URL", env_vars),
+        ac_replenish_threshold=_get_int("AC_REPLENISH_THRESHOLD", 50, env_vars),
         google_api_key=_get_str("GOOGLE_API_KEY", env_vars),
         google_cx=_get_str("GOOGLE_CX", env_vars),
         debug=_get_bool("IRONLUNG_DEBUG", False, env_vars),
