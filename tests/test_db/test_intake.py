@@ -724,8 +724,8 @@ class TestPhoneNormalization:
     """Test phone normalization."""
 
     def test_normalize_with_country_code(self):
-        """Keeps all digits including country code."""
-        assert IntakeFunnel.normalize_phone("+1 (303) 555-1234") == "13035551234"
+        """Strips US country code prefix for consistent DNC matching."""
+        assert IntakeFunnel.normalize_phone("+1 (303) 555-1234") == "3035551234"
 
     def test_normalize_various_formats(self):
         """Handles various formats."""

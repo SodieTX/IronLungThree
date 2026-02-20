@@ -348,9 +348,9 @@ class TestPhoneNormalization:
         """Removes dots."""
         assert CSVImporter.normalize_phone("713.555.1234") == "7135551234"
 
-    def test_keeps_country_code(self):
-        """Preserves country code digits."""
-        assert CSVImporter.normalize_phone("+1 713 555 1234") == "17135551234"
+    def test_strips_us_country_code(self):
+        """Strips US country code prefix for consistent DNC matching."""
+        assert CSVImporter.normalize_phone("+1 713 555 1234") == "7135551234"
 
     def test_empty_string(self):
         """Empty input returns empty."""

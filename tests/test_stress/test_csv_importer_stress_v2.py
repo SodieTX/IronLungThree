@@ -269,7 +269,7 @@ class TestPhoneNormalization:
         assert CSVImporter.normalize_phone("no digits here") == ""
 
     def test_international_format(self):
-        assert CSVImporter.normalize_phone("+1 (713) 555-1234") == "17135551234"
+        assert CSVImporter.normalize_phone("+1 (713) 555-1234") == "7135551234"
 
     def test_dots_as_separator(self):
         assert CSVImporter.normalize_phone("713.555.1234") == "7135551234"

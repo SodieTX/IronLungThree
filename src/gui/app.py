@@ -21,6 +21,7 @@ class IronLungApp:
         self._import_tab: Any = None
         self._pipeline_tab: Any = None
         self._calendar_tab: Any = None
+        self._demos_tab: Any = None
         self._broken_tab: Any = None
         self._settings_tab: Any = None
         self._status_label: Optional[ttk.Label] = None
@@ -91,6 +92,15 @@ class IronLungApp:
         self._notebook.add(calendar_frame, text="Calendar")
         self._calendar_tab = calendar_tab
 
+        # Demos tab
+        from src.gui.tabs.demos import DemosTab
+
+        demos_frame: tk.Widget = ttk.Frame(self._notebook)
+        demos_tab = DemosTab(demos_frame, self.db)
+        demos_tab.frame = demos_frame  # type: ignore[assignment]
+        self._notebook.add(demos_frame, text="Demos")
+        self._demos_tab = demos_tab
+
         # Broken tab
         from src.gui.tabs.broken import BrokenTab
 
@@ -113,7 +123,7 @@ class IronLungApp:
         self._notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
         logger.info(
-            "Tab notebook created with Today, Import, Pipeline, Calendar, Broken, and Settings tabs"
+            "Tab notebook created with Today, Import, Pipeline, Calendar, Demos, Broken, and Settings tabs"
         )
 
     def _create_status_bar(self) -> None:
@@ -158,6 +168,7 @@ class IronLungApp:
             self._import_tab,
             self._pipeline_tab,
             self._calendar_tab,
+            self._demos_tab,
             self._broken_tab,
             self._settings_tab,
         ]
