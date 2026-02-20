@@ -45,3 +45,22 @@ class ClaudeClientMixin:
                     "anthropic package not installed. Install with: pip install anthropic"
                 )
         return self._client
+
+    def _track_usage(
+        self, caller: str, model: str, input_tokens: int, output_tokens: int
+    ) -> None:
+        """Record API usage to the cost tracker.
+
+        Args:
+            caller: Module name (e.g. "anne", "copilot", "email_gen")
+            model: Claude model used
+            input_tokens: Input tokens consumed
+            output_tokens: Output tokens consumed
+        """
+        try:
+            from src.utils.cost_tracking import get_cost_tracker
+
+            get_cost_tracker().record_call(caller, model, input_tokens, output_tokens)
+        except Exception:
+            # Cost tracking should never break the main flow
+            logger.debug("Cost tracking failed (non-fatal)", exc_info=True)

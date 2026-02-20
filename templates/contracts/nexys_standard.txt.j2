@@ -1,0 +1,59 @@
+================================================================================
+                        NEXYS LLC — SERVICE AGREEMENT
+================================================================================
+
+Date:           {{ today }}
+Agreement ID:   NEXYS-{{ today_iso | replace("-", "") }}-{{ prospect_name | replace(" ", "") | upper | truncate(8, True, "") }}
+
+--------------------------------------------------------------------------------
+PARTIES
+--------------------------------------------------------------------------------
+
+Provider:       Nexys LLC
+
+Client:         {{ company_name }}
+{% if prospect_title %}Contact:        {{ prospect_name }}, {{ prospect_title }}
+{% else %}Contact:        {{ prospect_name }}
+{% endif %}{% if company_state %}State:          {{ company_state }}
+{% endif %}{% if company_domain %}Website:        {{ company_domain }}
+{% endif %}
+--------------------------------------------------------------------------------
+SERVICE TERMS
+--------------------------------------------------------------------------------
+
+Service:        Loan Origination Software Platform
+Start Date:     {{ close_date_formatted }}
+{% if loan_types %}Loan Types:     {{ loan_types }}
+{% endif %}
+Monthly Fee:    ${{ deal_value }}
+Commission:     ${{ commission }} ({{ commission_rate }}%)
+
+{% if close_notes %}
+--------------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------------
+
+{{ close_notes }}
+{% endif %}
+--------------------------------------------------------------------------------
+SIGNATURES
+--------------------------------------------------------------------------------
+
+Provider (Nexys LLC):
+
+Name:       ___________________________________
+Signature:  ___________________________________
+Date:       ___________________________________
+
+
+Client ({{ company_name }}):
+
+Name:       {{ prospect_name }}
+Signature:  ___________________________________
+Date:       ___________________________________
+
+================================================================================
+Generated: {{ generated_at }}
+Template:  nexys_standard — Edit this file to update the contract format.
+           Location: templates/contracts/nexys_standard.txt.j2
+================================================================================

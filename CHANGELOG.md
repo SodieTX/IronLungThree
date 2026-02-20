@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 7: The Weapons (Strategic AI)
+- **AI Copilot** (`ai/copilot.py`) — Full pipeline strategy mode, record manipulation via natural language, analytical question routing
+- **Contact Analyzer** (`ai/contact_analyzer.py`) — Engagement pattern analysis, stalling detection, multi-contact coordination
+- **Prospect Insights** (`ai/insights.py`) — Per-prospect strategic suggestions, competitive vulnerability analysis, confidence scoring
+- **Learning Engine** (`engine/learning.py`) — Qualitative note-based pattern learning from wins/losses, competitor tracking
+- **Intervention Engine** (`engine/intervention.py`) — Pipeline decay detection: overdue follow-ups, stale leads, unworked cards, data quality
+- **Proactive Card Interrogation** (`ai/proactive_interrogation.py`) — Anne reviews cards during brief generation: orphans, stale leads, overdue, data quality; wired into morning brief
+- **Analytics Tab** (`gui/tabs/analytics.py`) — Monthly metrics display, CSV export, revenue/commission/close rate tracking
+- **Data Export** (`engine/export.py`) — Prospect CSV export, monthly summary generation and export
+- **Dead Lead Resurrection** (`engine/resurrection.py`) — 12+ month lost lead audit with smart rationale per loss reason
+- **Partnership Promotion** (`gui/tabs/partnerships.py`) — Full tab with promote-to-prospect workflow via population transitions
+- **Nexys Contract Generator** (`engine/contract_gen.py`) — Template-based contract rendering (Jinja2, no AI), editable templates, wired into Closed Won dialog with preview and clipboard copy
+- **Cost Tracking** (`utils/cost_tracking.py`) — Centralized Claude API usage tracking per module, JSONL persistence, daily/monthly/total summaries, model-aware pricing
+- Wired cost tracking into `ClaudeClientMixin` — all AI modules (Anne, Copilot, EmailGenerator) now automatically track token usage and estimated costs
+- Contract template at `templates/contracts/nexys_standard.txt.j2` — edit to customize contract format
+- 118 new tests for Phase 7 features (39 new in this PR, 79 existing)
+
 ### Added — Phase 6: The Soul (ADHD UX)
 - **Dopamine Engine** (`gui/adhd/dopamine.py`) — Streak tracking with celebrations at 5/10/20/50, 7 achievements (first call, first demo, first close, power hour, queue cleared, perfect day, streak master), persistent state
 - **Session Manager** (`gui/adhd/session.py`) — Time-blindness warnings at configurable intervals, energy levels (HIGH/MEDIUM/LOW by time of day), 5-deep undo stack, crash recovery with session state persistence
