@@ -46,9 +46,7 @@ class ClaudeClientMixin:
                 )
         return self._client
 
-    def _track_usage(
-        self, caller: str, model: str, input_tokens: int, output_tokens: int
-    ) -> None:
+    def _track_usage(self, caller: str, model: str, input_tokens: int, output_tokens: int) -> None:
         """Record API usage to the cost tracker.
 
         Args:

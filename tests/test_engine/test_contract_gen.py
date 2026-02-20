@@ -103,9 +103,7 @@ class TestRenderContract:
 
     def test_render_full_data(self, memory_db, closed_prospect, contract_template_dir, monkeypatch):
         """Contract renders with all prospect data substituted."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         contract = render_contract(memory_db, closed_prospect)
 
@@ -121,11 +119,11 @@ class TestRenderContract:
         assert "Bridge, Fix-and-Flip" in contract.content
         assert "12-month contract" in contract.content
 
-    def test_render_minimal_data(self, memory_db, minimal_prospect, contract_template_dir, monkeypatch):
+    def test_render_minimal_data(
+        self, memory_db, minimal_prospect, contract_template_dir, monkeypatch
+    ):
         """Contract renders gracefully with missing optional fields."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         contract = render_contract(memory_db, minimal_prospect)
 
@@ -133,11 +131,11 @@ class TestRenderContract:
         assert "Jane Doe" in contract.content
         assert "2,500.00" in contract.content
 
-    def test_render_returns_generated_contract(self, memory_db, closed_prospect, contract_template_dir, monkeypatch):
+    def test_render_returns_generated_contract(
+        self, memory_db, closed_prospect, contract_template_dir, monkeypatch
+    ):
         """render_contract returns a proper GeneratedContract."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         contract = render_contract(memory_db, closed_prospect)
 
@@ -148,44 +146,40 @@ class TestRenderContract:
         assert float(contract.deal_value) == 5000.00
         assert contract.generated_at  # Has a timestamp
 
-    def test_render_custom_commission_rate(self, memory_db, closed_prospect, contract_template_dir, monkeypatch):
+    def test_render_custom_commission_rate(
+        self, memory_db, closed_prospect, contract_template_dir, monkeypatch
+    ):
         """Commission rate can be overridden."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
-        contract = render_contract(
-            memory_db, closed_prospect, commission_rate=Decimal("0.08")
-        )
+        contract = render_contract(memory_db, closed_prospect, commission_rate=Decimal("0.08"))
 
         assert "400.00" in contract.content  # 5000 * 8%
         assert "8" in contract.content  # Rate
 
     def test_render_prospect_not_found(self, memory_db, contract_template_dir, monkeypatch):
         """ValueError raised for nonexistent prospect."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         with pytest.raises(ValueError, match="not found"):
             render_contract(memory_db, 99999)
 
-    def test_render_template_not_found(self, memory_db, closed_prospect, contract_template_dir, monkeypatch):
+    def test_render_template_not_found(
+        self, memory_db, closed_prospect, contract_template_dir, monkeypatch
+    ):
         """TemplateNotFound raised for missing template."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         import jinja2
 
         with pytest.raises(jinja2.TemplateNotFound):
             render_contract(memory_db, closed_prospect, template_name="nonexistent")
 
-    def test_render_no_deal_value_defaults_zero(self, memory_db, contract_template_dir, monkeypatch):
+    def test_render_no_deal_value_defaults_zero(
+        self, memory_db, contract_template_dir, monkeypatch
+    ):
         """Prospect with no deal_value gets $0.00."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         company = Company(name="Test Co", name_normalized="test")
         company_id = memory_db.create_company(company)
@@ -206,9 +200,7 @@ class TestListContractTemplates:
 
     def test_list_templates(self, contract_template_dir, monkeypatch):
         """Lists available templates."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         templates = list_contract_templates()
         assert "nexys_standard" in templates
@@ -217,9 +209,7 @@ class TestListContractTemplates:
         """Empty directory returns empty list."""
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", empty_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", empty_dir)
 
         templates = list_contract_templates()
         assert templates == []
@@ -236,9 +226,7 @@ class TestListContractTemplates:
 
     def test_list_multiple_templates(self, contract_template_dir, monkeypatch):
         """Lists multiple templates sorted alphabetically."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         # Add a second template
         (contract_template_dir / "custom.txt.j2").write_text("Custom: {{ company_name }}")
@@ -252,9 +240,7 @@ class TestGetTemplatePath:
 
     def test_get_existing_template(self, contract_template_dir, monkeypatch):
         """Returns path for existing template."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         path = get_template_path("nexys_standard")
         assert path.exists()
@@ -262,9 +248,7 @@ class TestGetTemplatePath:
 
     def test_get_nonexistent_template(self, contract_template_dir, monkeypatch):
         """FileNotFoundError for missing template."""
-        monkeypatch.setattr(
-            "src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir
-        )
+        monkeypatch.setattr("src.engine.contract_gen.CONTRACT_TEMPLATE_DIR", contract_template_dir)
 
         with pytest.raises(FileNotFoundError, match="not found"):
             get_template_path("nonexistent")

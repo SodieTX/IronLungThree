@@ -584,8 +584,10 @@ class Copilot(ClaudeClientMixin):
             text = response.content[0].text
             tokens = response.usage.input_tokens + response.usage.output_tokens
             self._track_usage(
-                "copilot", CLAUDE_MODEL,
-                response.usage.input_tokens, response.usage.output_tokens,
+                "copilot",
+                CLAUDE_MODEL,
+                response.usage.input_tokens,
+                response.usage.output_tokens,
             )
             return CopilotResponse(message=text, tokens_used=tokens)
         except Exception as e:

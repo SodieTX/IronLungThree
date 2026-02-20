@@ -551,8 +551,10 @@ class Anne(ClaudeClientMixin):
             messages=[{"role": "user", "content": prompt}],
         )
         self._track_usage(
-            "anne", CLAUDE_MODEL,
-            response.usage.input_tokens, response.usage.output_tokens,
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return str(response.content[0].text)
 
@@ -585,8 +587,10 @@ class Anne(ClaudeClientMixin):
             messages=messages,
         )
         self._track_usage(
-            "anne", CLAUDE_MODEL,
-            response.usage.input_tokens, response.usage.output_tokens,
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         text = str(response.content[0].text)
 
@@ -618,8 +622,10 @@ class Anne(ClaudeClientMixin):
             messages=[{"role": "user", "content": prompt}],
         )
         self._track_usage(
-            "anne", CLAUDE_MODEL,
-            response.usage.input_tokens, response.usage.output_tokens,
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return str(response.content[0].text)
 
@@ -654,8 +660,10 @@ class Anne(ClaudeClientMixin):
             messages=[{"role": "user", "content": prompt}],
         )
         self._track_usage(
-            "anne", CLAUDE_MODEL,
-            response.usage.input_tokens, response.usage.output_tokens,
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return str(response.content[0].text)
 

@@ -16,7 +16,7 @@ import threading
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from src.core.logging import get_logger
 
@@ -213,7 +213,7 @@ class CostTracker:
     def _summarize(
         self,
         period: str,
-        predicate: callable,  # type: ignore[type-arg]
+        predicate: Callable[[APICallRecord], bool],
     ) -> UsageSummary:
         """Build a summary from records matching the predicate."""
         records = self._read_records()

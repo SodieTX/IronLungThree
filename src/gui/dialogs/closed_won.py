@@ -218,12 +218,10 @@ class ClosedWonDialog:
 
         btn_frame = ttk.Frame(main)
         btn_frame.pack(pady=4)
-        ttk.Button(
-            btn_frame, text="Generate Contract", command=self._on_generate_contract
-        ).pack(side=tk.LEFT, padx=8)
-        ttk.Button(
-            btn_frame, text="Done", command=self._on_cancel
-        ).pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Generate Contract", command=self._on_generate_contract).pack(
+            side=tk.LEFT, padx=8
+        )
+        ttk.Button(btn_frame, text="Done", command=self._on_cancel).pack(side=tk.LEFT, padx=8)
 
     def _on_generate_contract(self) -> None:
         """Generate and display a contract."""
@@ -243,12 +241,8 @@ class ClosedWonDialog:
             text_frame = ttk.Frame(preview, padding=8)
             text_frame.pack(fill=tk.BOTH, expand=True)
 
-            text_widget = tk.Text(
-                text_frame, wrap=tk.WORD, font=("Courier New", 10)
-            )
-            scrollbar = ttk.Scrollbar(
-                text_frame, orient=tk.VERTICAL, command=text_widget.yview
-            )
+            text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Courier New", 10))
+            scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
             text_widget.configure(yscrollcommand=scrollbar.set)
 
             text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -263,16 +257,12 @@ class ClosedWonDialog:
             def copy_to_clipboard() -> None:
                 preview.clipboard_clear()
                 preview.clipboard_append(contract.content)
-                messagebox.showinfo(
-                    "Copied", "Contract copied to clipboard.", parent=preview
-                )
+                messagebox.showinfo("Copied", "Contract copied to clipboard.", parent=preview)
 
-            ttk.Button(
-                btn_frame, text="Copy to Clipboard", command=copy_to_clipboard
-            ).pack(side=tk.LEFT, padx=8)
-            ttk.Button(
-                btn_frame, text="Close", command=preview.destroy
-            ).pack(side=tk.LEFT, padx=8)
+            ttk.Button(btn_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(
+                side=tk.LEFT, padx=8
+            )
+            ttk.Button(btn_frame, text="Close", command=preview.destroy).pack(side=tk.LEFT, padx=8)
 
         except FileNotFoundError:
             parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
@@ -284,9 +274,7 @@ class ClosedWonDialog:
             )
         except Exception as e:
             parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
-            messagebox.showerror(
-                "Error", f"Failed to generate contract: {e}", parent=parent
-            )
+            messagebox.showerror("Error", f"Failed to generate contract: {e}", parent=parent)
 
         # Close the closed-won dialog
         if self._dialog:

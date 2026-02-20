@@ -68,9 +68,7 @@ _env: object | None = None
 def _get_env():
     """Get or create the Jinja2 environment for contracts."""
     if jinja2 is None:
-        raise RuntimeError(
-            "jinja2 package not installed. Install with: pip install jinja2"
-        )
+        raise RuntimeError("jinja2 package not installed. Install with: pip install jinja2")
     global _env
     if _env is None:
         CONTRACT_TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -188,10 +186,7 @@ def list_contract_templates() -> list[str]:
     if not CONTRACT_TEMPLATE_DIR.exists():
         return []
 
-    templates = [
-        p.name.replace(".txt.j2", "")
-        for p in CONTRACT_TEMPLATE_DIR.glob("*.txt.j2")
-    ]
+    templates = [p.name.replace(".txt.j2", "") for p in CONTRACT_TEMPLATE_DIR.glob("*.txt.j2")]
     return sorted(templates)
 
 

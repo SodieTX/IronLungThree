@@ -127,7 +127,8 @@ class EmailGenerator(ClaudeClientMixin):
             response.usage.input_tokens + response.usage.output_tokens  # type: ignore[attr-defined]
         )
         self._track_usage(
-            "email_gen", CLAUDE_MODEL,
+            "email_gen",
+            CLAUDE_MODEL,
             response.usage.input_tokens,  # type: ignore[attr-defined]
             response.usage.output_tokens,  # type: ignore[attr-defined]
         )
