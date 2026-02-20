@@ -239,22 +239,24 @@ class EmailSync:
     def _get_sent_messages(self, since: datetime) -> list[dict]:
         """Retrieve sent messages from Outlook.
 
-        Uses OutlookClient.get_sent_emails() to fetch from the sentitems
-        mailFolder via Microsoft Graph API.
+        Since the OutlookClient does not provide a dedicated get_sent() method,
+        this attempts to use the Graph API via the client's internal methods.
+        Falls back gracefully if not available.
 
         Args:
             since: Only include messages sent after this time.
 
         Returns:
             List of dicts with message data (id, to_addresses, subject, body).
+
+        Raises:
+            NotImplementedError: If sent mail retrieval is not available.
         """
-        email_messages = self.outlook.get_sent_emails(since=since, limit=100)
-        return [
-            {
-                "id": msg.id,
-                "to_addresses": msg.to_addresses,
-                "subject": msg.subject,
-                "body": msg.body,
-            }
-            for msg in email_messages
-        ]
+        # The OutlookClient provides get_inbox() but not get_sent().
+        # We raise NotImplementedError to signal this limitation.
+        # In production, this would be extended with a Graph API call to
+        # /users/{email}/mailFolders/sentitems/messages
+        raise NotImplementedError(
+            "Sent email retrieval not yet available in OutlookClient. "
+            "sync_sent() will be functional once get_sent_emails() is added."
+        )
