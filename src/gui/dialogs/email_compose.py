@@ -86,9 +86,9 @@ class EmailComposeDialog:
             state="readonly",
             width=30,
         ).pack(side=tk.LEFT, padx=4)
-        ttk.Button(
-            self._template_frame, text="Preview", command=self._preview_template
-        ).pack(side=tk.LEFT, padx=4)
+        ttk.Button(self._template_frame, text="Preview", command=self._preview_template).pack(
+            side=tk.LEFT, padx=4
+        )
 
         # Subject line
         subject_frame = ttk.Frame(main)
@@ -125,15 +125,9 @@ class EmailComposeDialog:
         # Buttons
         btn_frame = ttk.Frame(main)
         btn_frame.pack(pady=(8, 0))
-        ttk.Button(btn_frame, text="Send", command=self._on_send).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_frame, text="Save Draft", command=self._on_draft).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(
-            side=tk.LEFT, padx=4
-        )
+        ttk.Button(btn_frame, text="Send", command=self._on_send).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Save Draft", command=self._on_draft).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT, padx=4)
 
         self._dialog.bind("<Escape>", lambda e: self._on_cancel())
 
@@ -179,9 +173,7 @@ class EmailComposeDialog:
 
             sender = {"name": "Jeff", "title": "", "company": "Nexys", "phone": ""}
 
-            html = render_template(
-                template_name, self.prospect, self.company, sender=sender
-            )
+            html = render_template(template_name, self.prospect, self.company, sender=sender)
             subject = get_template_subject(
                 template_name, self.prospect, self.company, sender=sender
             )

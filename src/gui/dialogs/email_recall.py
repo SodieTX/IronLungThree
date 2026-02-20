@@ -88,12 +88,8 @@ class EmailRecallDialog:
         # Buttons
         btn_frame = ttk.Frame(main)
         btn_frame.pack(pady=4)
-        ttk.Button(btn_frame, text="Recall Now", command=self._on_recall).pack(
-            side=tk.LEFT, padx=8
-        )
-        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(
-            side=tk.LEFT, padx=8
-        )
+        ttk.Button(btn_frame, text="Recall Now", command=self._on_recall).pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT, padx=8)
 
         self._dialog.bind("<Escape>", lambda e: self._on_cancel())
         self._dialog.wait_window()

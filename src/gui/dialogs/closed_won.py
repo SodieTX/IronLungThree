@@ -86,26 +86,18 @@ class ClosedWonDialog:
         ttk.Label(main, text="Close Date:", font=("Segoe UI", 10, "bold")).pack(
             anchor="w", pady=(0, 4)
         )
-        ttk.Entry(main, textvariable=self._date_var, width=14).pack(
-            anchor="w", padx=4, pady=(0, 8)
-        )
+        ttk.Entry(main, textvariable=self._date_var, width=14).pack(anchor="w", padx=4, pady=(0, 8))
 
         # Notes
-        ttk.Label(main, text="Notes:", font=("Segoe UI", 10, "bold")).pack(
-            anchor="w", pady=(0, 4)
-        )
+        ttk.Label(main, text="Notes:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
         self._notes_text = tk.Text(main, height=4, width=40, font=FONTS["small"])
         self._notes_text.pack(fill=tk.X, padx=4, pady=(0, 12))
 
         # Buttons
         btn_frame = ttk.Frame(main)
         btn_frame.pack(pady=4)
-        ttk.Button(btn_frame, text="Save Deal", command=self._on_save).pack(
-            side=tk.LEFT, padx=8
-        )
-        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(
-            side=tk.LEFT, padx=8
-        )
+        ttk.Button(btn_frame, text="Save Deal", command=self._on_save).pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT, padx=8)
 
         self._dialog.bind("<Return>", lambda e: self._on_save())
         self._dialog.bind("<Escape>", lambda e: self._on_cancel())
@@ -150,9 +142,7 @@ class ClosedWonDialog:
             return
 
         # Get notes
-        self.close_notes = (
-            self._notes_text.get("1.0", tk.END).strip() if self._notes_text else None
-        )
+        self.close_notes = self._notes_text.get("1.0", tk.END).strip() if self._notes_text else None
 
         # Save to database
         if self.db:

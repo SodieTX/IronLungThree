@@ -55,9 +55,7 @@ class DemosTab(TabBase):
             fg=COLORS["fg"],
         ).pack(side=tk.LEFT, padx=8)
 
-        ttk.Button(top, text="Create Invite", command=self.create_invite).pack(
-            side=tk.LEFT, padx=8
-        )
+        ttk.Button(top, text="Create Invite", command=self.create_invite).pack(side=tk.LEFT, padx=8)
 
         # Toggle between upcoming and completed
         ttk.Button(top, text="Upcoming", command=self.show_upcoming).pack(side=tk.RIGHT, padx=4)
@@ -191,9 +189,7 @@ class DemosTab(TabBase):
                     demo_prospects.append((p, "pre_demo"))
 
         for prospect, status in demo_prospects:
-            company = (
-                self.db.get_company(prospect.company_id) if prospect.company_id else None
-            )
+            company = self.db.get_company(prospect.company_id) if prospect.company_id else None
             company_name = company.name if company else ""
             fu_date = ""
             if prospect.follow_up_date:
@@ -228,11 +224,12 @@ class DemosTab(TabBase):
 
         selection = self._tree.selection()
         if not selection:
-            messagebox.showinfo(
-                "No Selection",
-                "Select a demo first.",
-                parent=self.frame.winfo_toplevel() if self.frame else None,
-            )
+            if self.frame:
+                messagebox.showinfo(
+                    "No Selection",
+                    "Select a demo first.",
+                    parent=self.frame.winfo_toplevel(),
+                )
             return
 
         item = self._tree.item(selection[0])
@@ -308,11 +305,12 @@ class DemosTab(TabBase):
 
         selection = self._tree.selection()
         if not selection:
-            messagebox.showinfo(
-                "No Selection",
-                "Select a demo first.",
-                parent=self.frame.winfo_toplevel() if self.frame else None,
-            )
+            if self.frame:
+                messagebox.showinfo(
+                    "No Selection",
+                    "Select a demo first.",
+                    parent=self.frame.winfo_toplevel(),
+                )
             return
 
         item = self._tree.item(selection[0])
@@ -386,17 +384,13 @@ class DemoInviteDialog:
         )
         tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         self._date_var.set(tomorrow)
-        ttk.Entry(main, textvariable=self._date_var, width=20).pack(
-            anchor="w", padx=4, pady=(0, 8)
-        )
+        ttk.Entry(main, textvariable=self._date_var, width=20).pack(anchor="w", padx=4, pady=(0, 8))
 
         # Time
         ttk.Label(main, text="Time (HH:MM):", font=("Segoe UI", 10, "bold")).pack(
             anchor="w", pady=(0, 4)
         )
-        ttk.Entry(main, textvariable=self._time_var, width=10).pack(
-            anchor="w", padx=4, pady=(0, 8)
-        )
+        ttk.Entry(main, textvariable=self._time_var, width=10).pack(anchor="w", padx=4, pady=(0, 8))
 
         # Duration
         ttk.Label(main, text="Duration:", font=("Segoe UI", 10, "bold")).pack(
@@ -425,9 +419,7 @@ class DemoInviteDialog:
         ttk.Button(btn_frame, text="Create Invite", command=self._on_create).pack(
             side=tk.LEFT, padx=8
         )
-        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(
-            side=tk.LEFT, padx=8
-        )
+        ttk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT, padx=8)
 
         self._dialog.wait_window()
         return self._created
