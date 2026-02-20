@@ -122,13 +122,21 @@ class TodayTab(TabBase):
         self._show_current_card()
 
     def on_activate(self) -> None:
-        """Called when this tab becomes visible."""
+        """Called when this tab becomes visible.
+
+        Preserves queue position — re-renders the current card
+        (in case data changed while on another tab) without
+        resetting the queue index.
+        """
         if not self._brief_shown:
             self._brief_shown = True
             self.refresh()
             self.show_morning_brief()
         else:
             self._update_queue_label()
+            # Re-render current card with fresh data (position preserved)
+            if self._queue and self._queue_index < len(self._queue):
+                self._show_current_card()
 
     def show_morning_brief(self) -> None:
         """Display morning brief dialog."""
