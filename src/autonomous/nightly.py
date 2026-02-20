@@ -76,7 +76,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info("Nightly step 1 complete: backup created")
     except Exception as e:
         result.errors.append(f"Step 1 (Backup): {e}")
-        logger.error(f"Nightly step 1 failed: {e}")
+        logger.error(f"Nightly step 1 failed: {e}", exc_info=True)
 
     # Step 2: Pull from ActiveCampaign (threshold-gated)
     logger.info("Nightly step 2/11: ActiveCampaign pull")
@@ -108,7 +108,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
             logger.info("Nightly step 2 skipped: ActiveCampaign not configured")
     except Exception as e:
         result.errors.append(f"Step 2 (AC Pull): {e}")
-        logger.error(f"Nightly step 2 failed: {e}")
+        logger.error(f"Nightly step 2 failed: {e}", exc_info=True)
 
     # Step 3: Dedup (handled during import, minimal pass here)
     logger.info("Nightly step 3/11: Dedup check")
@@ -119,7 +119,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info("Nightly step 3 complete: dedup handled during import")
     except Exception as e:
         result.errors.append(f"Step 3 (Dedup): {e}")
-        logger.error(f"Nightly step 3 failed: {e}")
+        logger.error(f"Nightly step 3 failed: {e}", exc_info=True)
 
     # Step 4: Assess new records
     logger.info("Nightly step 4/11: Assess new records")
@@ -144,7 +144,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 4 complete: {assessed} records promoted from broken")
     except Exception as e:
         result.errors.append(f"Step 4 (Assess): {e}")
-        logger.error(f"Nightly step 4 failed: {e}")
+        logger.error(f"Nightly step 4 failed: {e}", exc_info=True)
 
     # Step 5: Autonomous research on Broken
     logger.info("Nightly step 5/11: Autonomous research")
@@ -157,7 +157,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 5 complete: {researched} prospects researched")
     except Exception as e:
         result.errors.append(f"Step 5 (Research): {e}")
-        logger.error(f"Nightly step 5 failed: {e}")
+        logger.error(f"Nightly step 5 failed: {e}", exc_info=True)
 
     # Step 6: Groundskeeper - flag stale data
     logger.info("Nightly step 6/11: Groundskeeper")
@@ -170,7 +170,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 6 complete: {result.stale_flagged} stale records flagged")
     except Exception as e:
         result.errors.append(f"Step 6 (Groundskeeper): {e}")
-        logger.error(f"Nightly step 6 failed: {e}")
+        logger.error(f"Nightly step 6 failed: {e}", exc_info=True)
 
     # Step 7: Re-score all active prospects
     logger.info("Nightly step 7/11: Re-scoring")
@@ -182,7 +182,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 7 complete: {scored} prospects re-scored")
     except Exception as e:
         result.errors.append(f"Step 7 (Rescore): {e}")
-        logger.error(f"Nightly step 7 failed: {e}")
+        logger.error(f"Nightly step 7 failed: {e}", exc_info=True)
 
     # Step 8: Monthly bucket auto-activation
     logger.info("Nightly step 8/11: Monthly buckets")
@@ -192,7 +192,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 8 complete: {activated} parked prospects activated")
     except Exception as e:
         result.errors.append(f"Step 8 (Buckets): {e}")
-        logger.error(f"Nightly step 8 failed: {e}")
+        logger.error(f"Nightly step 8 failed: {e}", exc_info=True)
 
     # Step 9: Draft nurture sequences
     logger.info("Nightly step 9/11: Nurture drafting")
@@ -205,7 +205,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 9 complete: {result.nurture_drafted} nurture emails drafted")
     except Exception as e:
         result.errors.append(f"Step 9 (Nurture): {e}")
-        logger.error(f"Nightly step 9 failed: {e}")
+        logger.error(f"Nightly step 9 failed: {e}", exc_info=True)
 
     # Step 10: Pre-generate morning brief
     logger.info("Nightly step 10/11: Morning brief")
@@ -217,7 +217,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 10 complete: morning brief generated")
     except Exception as e:
         result.errors.append(f"Step 10 (Brief): {e}")
-        logger.error(f"Nightly step 10 failed: {e}")
+        logger.error(f"Nightly step 10 failed: {e}", exc_info=True)
 
     # Step 11: Extract intel nuggets from recent activities
     logger.info("Nightly step 11/11: Intel extraction")
@@ -227,7 +227,7 @@ def run_nightly_cycle(db: Database) -> NightlyCycleResult:
         logger.info(f"Nightly step 11 complete: {extracted} intel nuggets extracted")
     except Exception as e:
         result.errors.append(f"Step 11 (Intel): {e}")
-        logger.error(f"Nightly step 11 failed: {e}")
+        logger.error(f"Nightly step 11 failed: {e}", exc_info=True)
 
     # Record completion
     result.completed_at = datetime.now()
@@ -300,12 +300,7 @@ def check_last_run(db: Database) -> Optional[datetime]:
     Returns:
         Datetime of last run, or None if never run
     """
-    conn = db._get_connection()
-    row = conn.execute(
-        "SELECT verified_date FROM data_freshness WHERE prospect_id = ? AND field_name = ? "
-        "ORDER BY verified_date DESC LIMIT 1",
-        (_CYCLE_SENTINEL_PROSPECT_ID, _CYCLE_SENTINEL_FIELD),
-    ).fetchone()
+    row = db.get_latest_data_freshness(_CYCLE_SENTINEL_PROSPECT_ID, _CYCLE_SENTINEL_FIELD)
 
     if row is None:
         return None
@@ -494,20 +489,10 @@ def _extract_intel_from_activities(db: Database) -> int:
     """
     from src.db.models import IntelCategory, IntelNugget
 
-    conn = db._get_connection()
     yesterday = (datetime.now()).strftime("%Y-%m-%d 00:00:00")
 
     # Get recent activities with notes
-    rows = conn.execute(
-        """SELECT id, prospect_id, notes, activity_type
-           FROM activities
-           WHERE created_at >= ?
-           AND notes IS NOT NULL
-           AND LENGTH(notes) > 20
-           ORDER BY created_at DESC
-           LIMIT 100""",
-        (yesterday,),
-    ).fetchall()
+    rows = db.get_recent_activities_with_notes(since=yesterday, limit=100)
 
     extracted = 0
     for row in rows:
@@ -589,6 +574,9 @@ def _extract_intel_from_activities(db: Database) -> int:
                     db.create_intel_nugget(nugget)
                     extracted += 1
                 except Exception:
-                    pass
+                    logger.debug(
+                        f"Failed to create intel nugget for prospect {prospect_id}",
+                        exc_info=True,
+                    )
 
     return extracted

@@ -101,11 +101,11 @@ class BackupManager:
 
         try:
             # Use SQLite backup API for consistent snapshot
-            source_conn = sqlite3.connect(str(self.db_path))
-            dest_conn = sqlite3.connect(str(dest))
-            source_conn.backup(dest_conn)
-            dest_conn.close()
-            source_conn.close()
+            with (
+                sqlite3.connect(str(self.db_path)) as source_conn,
+                sqlite3.connect(str(dest)) as dest_conn,
+            ):
+                source_conn.backup(dest_conn)
 
             logger.info(
                 "Backup created",
@@ -165,9 +165,8 @@ class BackupManager:
 
         # Validate the backup is a valid SQLite database
         try:
-            test_conn = sqlite3.connect(str(backup_path))
-            test_conn.execute("SELECT count(*) FROM sqlite_master")
-            test_conn.close()
+            with sqlite3.connect(str(backup_path)) as test_conn:
+                test_conn.execute("SELECT count(*) FROM sqlite_master")
         except sqlite3.Error as e:
             raise DatabaseError(f"Backup file is corrupt: {e}") from e
 

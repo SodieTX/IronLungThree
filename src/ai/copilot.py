@@ -16,7 +16,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from src.core.config import get_config
+from src.ai.claude_client import ClaudeClientMixin
+from src.core.config import CLAUDE_MODEL, get_config
 from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import EngagementStage, Population
@@ -39,7 +40,7 @@ class CopilotResponse:
     tokens_used: int = 0
 
 
-class Copilot:
+class Copilot(ClaudeClientMixin):
     """Strategic AI conversation mode.
 
     Provides pipeline intelligence and can manipulate records
@@ -51,24 +52,8 @@ class Copilot:
         self._config = get_config()
         self._client: Optional[object] = None
 
-    def is_available(self) -> bool:
-        """Check if Claude API is available for AI-enhanced responses."""
-        return bool(self._config.claude_api_key)
-
-    def _get_client(self):
-        """Get or create the Anthropic client."""
-        if self._client is None:
-            if not self._config.claude_api_key:
-                raise RuntimeError("CLAUDE_API_KEY not configured")
-            try:
-                import anthropic
-
-                self._client = anthropic.Anthropic(api_key=self._config.claude_api_key)
-            except ImportError:
-                raise ImportError(
-                    "anthropic package not installed. Install with: pip install anthropic"
-                )
-        return self._client
+    def _get_claude_config(self):
+        return self._config
 
     def ask(self, question: str) -> CopilotResponse:
         """Answer strategic question about pipeline.
@@ -592,7 +577,7 @@ class Copilot:
 
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=CLAUDE_MODEL,
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )

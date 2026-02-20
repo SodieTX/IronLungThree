@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Optional
 
-from src.core.config import get_config
+from src.ai.claude_client import ClaudeClientMixin
+from src.core.config import CLAUDE_MODEL, get_config
 from src.core.logging import get_logger
 from src.db.database import Database
 from src.db.models import (
@@ -96,7 +97,7 @@ class ConversationContext:
     mode: str = "processing"
 
 
-class Anne:
+class Anne(ClaudeClientMixin):
     """Anne - The conversational AI assistant."""
 
     def __init__(self, db: Database):
@@ -106,24 +107,8 @@ class Anne:
         self._client: Optional[object] = None
         self._pre_generated: dict[int, str] = {}
 
-    def is_available(self) -> bool:
-        """Check if Anne (Claude API) is available."""
-        return bool(self._config.claude_api_key)
-
-    def _get_client(self) -> Any:
-        """Get or create the Anthropic client."""
-        if self._client is None:
-            if not self._config.claude_api_key:
-                raise RuntimeError("CLAUDE_API_KEY not configured")
-            try:
-                import anthropic
-
-                self._client = anthropic.Anthropic(api_key=self._config.claude_api_key)
-            except ImportError:
-                raise ImportError(
-                    "anthropic package not installed. " "Install with: pip install anthropic"
-                )
-        return self._client
+    def _get_claude_config(self):
+        return self._config
 
     def present_card(self, prospect_id: int) -> str:
         """Generate card presentation with context and recommendation.
@@ -420,6 +405,9 @@ class Anne:
                     try:
                         presentation = self._ai_present_card(context)
                     except Exception:
+                        logger.debug(
+                            f"AI pre-generation failed for {pid}, using local", exc_info=True
+                        )
                         presentation = self._local_present_card(context)
                 else:
                     presentation = self._local_present_card(context)
@@ -557,7 +545,7 @@ class Anne:
         )
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CLAUDE_MODEL,
             max_tokens=512,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
@@ -587,7 +575,7 @@ class Anne:
                 system += f"\n\nCurrent prospect:\n{context_str}"
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CLAUDE_MODEL,
             max_tokens=512,
             system=system,
             messages=messages,
@@ -616,7 +604,7 @@ class Anne:
         )
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CLAUDE_MODEL,
             max_tokens=512,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
@@ -648,7 +636,7 @@ class Anne:
         )
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CLAUDE_MODEL,
             max_tokens=512,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],

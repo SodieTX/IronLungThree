@@ -245,10 +245,10 @@ class IronLungApp:
         try:
             from src.db.models import Population
 
-            # Get counts for each population
-            total = len(self.db.get_prospects())
-            unengaged = len(self.db.get_prospects(population=Population.UNENGAGED))
-            engaged = len(self.db.get_prospects(population=Population.ENGAGED))
+            pop_counts = self.db.get_population_counts()
+            total = sum(pop_counts.values())
+            unengaged = pop_counts.get(Population.UNENGAGED, 0)
+            engaged = pop_counts.get(Population.ENGAGED, 0)
 
             status_text = f"{total} prospects | {unengaged} unengaged | {engaged} engaged"
             self._status_label.config(text=status_text)

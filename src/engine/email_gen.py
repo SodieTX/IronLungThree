@@ -17,7 +17,8 @@ Usage:
 from dataclasses import dataclass
 from typing import Optional
 
-from src.core.config import get_config
+from src.ai.claude_client import ClaudeClientMixin
+from src.core.config import CLAUDE_MODEL, get_config
 from src.core.logging import get_logger
 from src.db.models import Company, Prospect
 
@@ -41,7 +42,7 @@ class GeneratedEmail:
     tokens_used: int = 0
 
 
-class EmailGenerator:
+class EmailGenerator(ClaudeClientMixin):
     """AI email generation with Jeff's voice.
 
     Uses Claude API with style examples to generate
@@ -58,32 +59,8 @@ class EmailGenerator:
         self._style_examples = style_examples or []
         self._client: Optional[object] = None
 
-    def is_available(self) -> bool:
-        """Check if Claude API is available."""
-        return bool(self._config.claude_api_key)
-
-    def _get_client(self) -> object:
-        """Get or create the Anthropic client.
-
-        Returns:
-            Anthropic client instance
-
-        Raises:
-            ImportError: If anthropic package not installed
-            RuntimeError: If API key not configured
-        """
-        if self._client is None:
-            if not self._config.claude_api_key:
-                raise RuntimeError("CLAUDE_API_KEY not configured")
-            try:
-                import anthropic
-
-                self._client = anthropic.Anthropic(api_key=self._config.claude_api_key)
-            except ImportError:
-                raise ImportError(
-                    "anthropic package not installed. " "Install with: pip install anthropic"
-                )
-        return self._client
+    def _get_claude_config(self):
+        return self._config
 
     def generate_email(
         self,
@@ -140,7 +117,7 @@ class EmailGenerator:
         client = self._get_client()
 
         response = client.messages.create(  # type: ignore[attr-defined]
-            model="claude-sonnet-4-20250514",
+            model=CLAUDE_MODEL,
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )

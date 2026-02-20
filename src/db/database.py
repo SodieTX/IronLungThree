@@ -1024,6 +1024,46 @@ class Database:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def get_latest_data_freshness(
+        self, prospect_id: int, field_name: str
+    ) -> Optional[dict[str, Any]]:
+        """Get the most recent data-freshness record for a specific field.
+
+        Used by the nightly cycle to check last-run timestamps.
+        """
+        conn = self._get_connection()
+        row = conn.execute(
+            "SELECT * FROM data_freshness WHERE prospect_id = ? AND field_name = ? "
+            "ORDER BY verified_date DESC LIMIT 1",
+            (prospect_id, field_name),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_recent_activities_with_notes(
+        self, since: str, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """Get recent activities that have meaningful notes.
+
+        Args:
+            since: ISO datetime string lower-bound for created_at
+            limit: Max rows to return
+
+        Returns:
+            List of row dicts with id, prospect_id, notes, activity_type
+        """
+        conn = self._get_connection()
+        rows = conn.execute(
+            """SELECT id, prospect_id, notes, activity_type
+               FROM activities
+               WHERE created_at >= ?
+               AND notes IS NOT NULL
+               AND LENGTH(notes) > 20
+               ORDER BY created_at DESC
+               LIMIT ?""",
+            (since, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def create_import_source(self, source: ImportSource) -> int:
         """Create an import source record."""
         conn = self._get_connection()
