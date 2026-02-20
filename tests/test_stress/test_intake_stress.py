@@ -123,23 +123,20 @@ class TestDNCEvasion:
         preview = funnel.analyze(records)
         assert len(preview.blocked_dnc) == 1
 
-    def test_phone_with_country_code_bypasses_dnc(self, db):
-        """BUG FOUND: Country code prefix bypasses DNC phone check!
+    def test_phone_with_country_code_blocked_by_dnc(self, db):
+        """FIX: Country code prefix is now stripped, DNC check catches it.
 
         Stored phone: '5559999999' (10 digits)
-        Import phone: '+15559999999' -> '15559999999' (11 digits)
-        find_prospect_by_phone does exact digit comparison, so
-        '15559999999' != '5559999999' and the DNC check passes.
-
-        This is a real DNC protection gap.
+        Import phone: '+15559999999' -> normalized to '5559999999' (stripped '1' prefix)
+        Now matches correctly and is blocked by DNC.
         """
         _setup_dnc_prospect(db)
         funnel = IntakeFunnel(db)
         records = [ImportRecord(first_name="Intl", last_name="Caller", phone="+15559999999")]
         preview = funnel.analyze(records)
-        # BUG: This should be blocked but isn't
-        assert len(preview.blocked_dnc) == 0  # Documenting the bug
-        assert len(preview.new_records) == 1  # Sneaks through as new
+        # FIX: Now correctly blocked by DNC
+        assert len(preview.blocked_dnc) == 1
+        assert len(preview.new_records) == 0
 
     def test_different_name_same_email_still_blocked(self, db):
         """Even with a different name, DNC email blocks the record."""
