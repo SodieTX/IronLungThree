@@ -2,6 +2,7 @@
 
 Produces a 60-second readable memo with:
     - Pipeline summary (counts by population)
+    - Today's calendar (meetings, demos, open calling windows)
     - Today's work queue (engaged follow-ups, unengaged queue)
     - Overdue items
     - Orphaned engaged (no follow-up date)
@@ -15,7 +16,7 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
 from src.core.logging import get_logger
 from src.db.database import Database
@@ -44,9 +45,96 @@ class MorningBrief:
     broken_count: int = 0
     total_prospects: int = 0
 
+    # Calendar awareness
+    calendar_text: str = ""
+    calendar_events: int = 0
+    demos_today: int = 0
+    open_calling_minutes: int = 0
+
     # Phase 7: Proactive interrogation findings
     interrogation_text: str = ""
     interrogation_total: int = 0
+
+
+def _get_calendar_section(today: date) -> tuple[str, int, int, int]:
+    """Fetch today's calendar events and build the calendar brief section.
+
+    Returns:
+        (calendar_text, event_count, demo_count, open_calling_minutes)
+    """
+    try:
+        from src.integrations.offline import get_outlook_client
+
+        outlook = get_outlook_client()
+
+        # Fetch events for today (8 AM to 6 PM local-ish window)
+        start = datetime(today.year, today.month, today.day, 0, 0, 0, tzinfo=timezone.utc)
+        end = datetime(today.year, today.month, today.day, 23, 59, 59, tzinfo=timezone.utc)
+        events = outlook.get_events(start=start, end=end)
+
+        if not events:
+            return "No meetings on your calendar today.", 0, 0, 480  # 8 hrs
+
+        lines: list[str] = []
+        demo_count = 0
+        total_meeting_minutes = 0
+
+        for evt in events:
+            # Handle both CalendarEvent dataclass and raw dict
+            subject = getattr(evt, "subject", "") or ""
+            evt_start = getattr(evt, "start", None)
+            evt_end = getattr(evt, "end", None)
+            attendees = getattr(evt, "attendees", []) or []
+            teams_link = getattr(evt, "teams_link", None)
+
+            # Format time
+            time_str = ""
+            duration_min = 0
+            if evt_start and evt_end:
+                if isinstance(evt_start, datetime):
+                    time_str = evt_start.strftime("%I:%M %p")
+                    duration_min = int((evt_end - evt_start).total_seconds() / 60)
+                elif isinstance(evt_start, str):
+                    try:
+                        s = datetime.fromisoformat(evt_start)
+                        e = datetime.fromisoformat(evt_end)
+                        time_str = s.strftime("%I:%M %p")
+                        duration_min = int((e - s).total_seconds() / 60)
+                    except ValueError:
+                        pass
+
+            total_meeting_minutes += duration_min
+
+            # Detect demos
+            is_demo = "demo" in subject.lower()
+            if is_demo:
+                demo_count += 1
+
+            dur_str = f" ({duration_min} min)" if duration_min else ""
+            teams_str = " [Teams]" if teams_link else ""
+            prefix = "DEMO" if is_demo else "Meeting"
+            lines.append(f"  {time_str} — {prefix}: {subject}{dur_str}{teams_str}")
+
+            # Show attendees for demos
+            if is_demo and attendees:
+                att_str = ", ".join(a[:30] for a in attendees[:3])
+                lines.append(f"           with {att_str}")
+
+        # Calculate open calling time (assume 8hr workday)
+        workday_minutes = 480
+        open_minutes = max(0, workday_minutes - total_meeting_minutes)
+
+        summary = f"{len(events)} event(s) today"
+        if demo_count:
+            summary += f" ({demo_count} demo{'s' if demo_count > 1 else ''})"
+        summary += f". ~{open_minutes // 60}h {open_minutes % 60}m open for calls."
+        lines.insert(0, summary)
+
+        return "\n".join(lines), len(events), demo_count, open_minutes
+
+    except Exception as e:
+        logger.debug(f"Calendar fetch skipped: {e}")
+        return "", 0, 0, 0
 
 
 def generate_morning_brief(db: Database) -> MorningBrief:
@@ -181,6 +269,9 @@ def generate_morning_brief(db: Database) -> MorningBrief:
 
     overnight_changes = "\n".join(overnight_lines)
 
+    # Calendar awareness
+    calendar_text, calendar_events, demos_today, open_calling_minutes = _get_calendar_section(today)
+
     # Compose full text
     full_lines = [
         "IRONLUNG 3 - MORNING BRIEF",
@@ -189,10 +280,16 @@ def generate_morning_brief(db: Database) -> MorningBrief:
         "--- PIPELINE ---",
         pipeline_summary,
         "",
-        "--- TODAY'S WORK ---",
-        todays_work,
-        "",
     ]
+
+    if calendar_text:
+        full_lines.append("--- TODAY'S CALENDAR ---")
+        full_lines.append(calendar_text)
+        full_lines.append("")
+
+    full_lines.append("--- TODAY'S WORK ---")
+    full_lines.append(todays_work)
+    full_lines.append("")
 
     if warnings:
         full_lines.append("--- WARNINGS ---")
@@ -239,4 +336,8 @@ def generate_morning_brief(db: Database) -> MorningBrief:
         total_prospects=total,
         interrogation_text=interrogation_text,
         interrogation_total=interrogation.total_findings,
+        calendar_text=calendar_text,
+        calendar_events=calendar_events,
+        demos_today=demos_today,
+        open_calling_minutes=open_calling_minutes,
     )

@@ -22,7 +22,7 @@ Usage:
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from src.core.logging import get_logger
@@ -71,6 +71,82 @@ class DemoInvite:
     email_sent: bool = False
     teams_link: Optional[str] = None
     activity_id: Optional[int] = None
+    conflicts: list[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.conflicts is None:
+            self.conflicts = []
+
+
+@dataclass
+class CalendarConflict:
+    """A scheduling conflict with an existing calendar event."""
+
+    subject: str
+    start: str
+    end: str
+
+
+def check_calendar_conflicts(
+    outlook: object,
+    demo_datetime: datetime,
+    duration_minutes: int,
+) -> list[CalendarConflict]:
+    """Check for calendar conflicts at the proposed demo time.
+
+    Args:
+        outlook: OutlookClient or OfflineOutlookClient
+        demo_datetime: Proposed demo start time
+        duration_minutes: Demo duration in minutes
+
+    Returns:
+        List of conflicting events (empty if no conflicts)
+    """
+    try:
+        # Check events in a window around the proposed demo time
+        start = demo_datetime - timedelta(minutes=30)
+        end = demo_datetime + timedelta(minutes=duration_minutes + 30)
+
+        events = outlook.get_events(start=start, end=end)  # type: ignore[attr-defined]
+        if not events:
+            return []
+
+        demo_end = demo_datetime + timedelta(minutes=duration_minutes)
+        conflicts: list[CalendarConflict] = []
+
+        for evt in events:
+            evt_start = getattr(evt, "start", None)
+            evt_end = getattr(evt, "end", None)
+            subject = getattr(evt, "subject", "Unknown event")
+
+            if not evt_start or not evt_end:
+                continue
+
+            # Parse datetimes if they're strings
+            if isinstance(evt_start, str):
+                try:
+                    evt_start = datetime.fromisoformat(evt_start)
+                except ValueError:
+                    continue
+            if isinstance(evt_end, str):
+                try:
+                    evt_end = datetime.fromisoformat(evt_end)
+                except ValueError:
+                    continue
+
+            # Check overlap: events overlap if one starts before the other ends
+            if evt_start < demo_end and evt_end > demo_datetime:
+                conflicts.append(CalendarConflict(
+                    subject=subject,
+                    start=evt_start.strftime("%I:%M %p") if isinstance(evt_start, datetime) else str(evt_start),
+                    end=evt_end.strftime("%I:%M %p") if isinstance(evt_end, datetime) else str(evt_end),
+                ))
+
+        return conflicts
+
+    except Exception as e:
+        logger.debug(f"Calendar conflict check skipped: {e}")
+        return []
 
 
 def create_demo_invite(
@@ -137,6 +213,17 @@ def create_demo_invite(
         if cm.type.value == "email":
             prospect_email = cm.value
             break
+
+    # Check for calendar conflicts (informational, does not block)
+    if outlook is not None:
+        conflicts = check_calendar_conflicts(outlook, demo_datetime, duration_minutes)
+        if conflicts:
+            conflict_descs = [f"{c.subject} ({c.start} - {c.end})" for c in conflicts]
+            invite.conflicts = conflict_descs
+            logger.warning(
+                f"Calendar conflicts detected for demo at {demo_datetime}: {conflict_descs}",
+                extra={"context": {"conflicts": conflict_descs}},
+            )
 
     # 2. Create calendar event (if Outlook available)
     if outlook is not None:

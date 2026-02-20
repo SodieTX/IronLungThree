@@ -454,6 +454,24 @@ class DemoInviteDialog:
 
         duration = int(self._duration_var.get())
 
+        # Check for calendar conflicts
+        try:
+            from src.engine.demo_invite import check_calendar_conflicts
+            from src.integrations.offline import get_outlook_client
+
+            outlook = get_outlook_client()
+            conflicts = check_calendar_conflicts(outlook, demo_dt, duration)
+            if conflicts:
+                conflict_msg = "You have conflicting events:\n\n"
+                for c in conflicts:
+                    conflict_msg += f"  {c.subject} ({c.start} - {c.end})\n"
+                conflict_msg += "\nSchedule anyway?"
+                parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+                if not messagebox.askyesno("Calendar Conflict", conflict_msg, parent=parent):
+                    return
+        except Exception as e:
+            logger.debug(f"Calendar conflict check skipped: {e}")
+
         # Update prospect: set engagement stage and follow-up date
         prospect = self.db.get_prospect(prospect_id)
         if prospect:
