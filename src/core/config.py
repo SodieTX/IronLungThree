@@ -158,6 +158,9 @@ def _get_int(key: str, default: int, env_vars: dict[str, str]) -> int:
         return default
 
 
+# Default Claude model (single source of truth for all AI calls)
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
+
 # Default paths (defined once, used by both Config and load_config)
 DEFAULT_DB_PATH = Path.home() / ".ironlung" / "ironlung3.db"
 DEFAULT_LOG_PATH = Path.home() / ".ironlung" / "logs"

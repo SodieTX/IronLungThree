@@ -256,9 +256,13 @@ class EmailComposeDialog:
                 )
 
         except Exception as e:
-            logger.error(f"Email send failed: {e}")
+            logger.error(f"Email send failed: {e}", exc_info=True)
             parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
-            messagebox.showerror("Error", str(e), parent=parent)
+            messagebox.showerror(
+                "Error",
+                f"Failed to send email: {type(e).__name__}. Check logs for details.",
+                parent=parent,
+            )
 
     def _on_cancel(self) -> None:
         """Cancel dialog."""

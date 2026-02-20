@@ -520,17 +520,8 @@ class IntakeFunnel:
     def normalize_phone(phone: str) -> str:
         """Normalize phone to 10-digit US format.
 
-        Strips non-digits, then removes leading '1' country code
-        if the result is 11 digits starting with '1'.
-
-        Args:
-            phone: Phone number in any format
-
-        Returns:
-            10-digit US phone (e.g., "7135551234") or raw digits for non-US
+        Delegates to :func:`src.core.phone.normalize_phone`.
         """
-        digits = "".join(c for c in phone if c.isdigit())
-        # Strip US country code prefix
-        if len(digits) == 11 and digits.startswith("1"):
-            digits = digits[1:]
-        return digits
+        from src.core.phone import normalize_phone as _normalize
+
+        return _normalize(phone)

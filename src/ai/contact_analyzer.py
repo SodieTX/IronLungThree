@@ -92,7 +92,7 @@ def analyze_company(db: Database, company_id: int) -> CompanyAnalysis:
                 act_date = date.fromisoformat(act_str)
                 has_recent_activity = act_date >= date.fromisoformat(stale_cutoff)
             except (ValueError, TypeError):
-                pass
+                logger.debug("Failed to parse activity date", exc_info=True)
 
         # Check stage progression (any stage change in last 30 days)
         stage_changes = conn.execute(
@@ -240,7 +240,7 @@ def find_stalling_patterns(db: Database) -> list[dict]:
                 if fu_date < today:
                     issue += f", follow-up overdue since {fu_str}"
             except (ValueError, TypeError):
-                pass
+                logger.debug("Failed to parse follow-up date", exc_info=True)
 
         stalling.append(
             {

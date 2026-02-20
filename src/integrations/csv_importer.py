@@ -411,14 +411,11 @@ class CSVImporter:
     def normalize_phone(phone: str) -> str:
         """Normalize phone to 10-digit US format.
 
-        "(713) 555-1234" -> "7135551234"
-        "+1-713-555-1234" -> "7135551234"
+        Delegates to :func:`src.core.phone.normalize_phone`.
         """
-        digits = "".join(c for c in phone if c.isdigit())
-        # Strip US country code prefix
-        if len(digits) == 11 and digits.startswith("1"):
-            digits = digits[1:]
-        return digits
+        from src.core.phone import normalize_phone as _normalize
+
+        return _normalize(phone)
 
     @staticmethod
     def normalize_email(email: str) -> str:

@@ -167,8 +167,13 @@ class QuickActionDialog:
                 target = Population(self._pop_var.get())
                 transition_prospect(self.db, self.prospect_id, target, reason="Quick action")
             except Exception as e:
+                logger.error(f"Population change failed: {e}", exc_info=True)
                 parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
-                messagebox.showerror("Error", str(e), parent=parent)
+                messagebox.showerror(
+                    "Error",
+                    f"Could not change population: {type(e).__name__}",
+                    parent=parent,
+                )
                 return
 
         # Update attempt count
