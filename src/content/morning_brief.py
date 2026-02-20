@@ -291,6 +291,26 @@ def generate_morning_brief(db: Database) -> MorningBrief:
     full_lines.append(todays_work)
     full_lines.append("")
 
+    # Deal momentum
+    try:
+        from src.engine.engagement_velocity import EngagementVelocity
+
+        velocity = EngagementVelocity(db)
+        vel_report = velocity.analyze()
+        if vel_report.decelerating or vel_report.stalled:
+            full_lines.append("--- DEAL MOMENTUM ---")
+            full_lines.append(vel_report.summary)
+            for deal in vel_report.stalled[:3]:
+                full_lines.append(f"  ! {deal.prospect_name} ({deal.company_name}): {deal.detail}")
+            for deal in vel_report.decelerating[:3]:
+                full_lines.append(f"  ~ {deal.prospect_name} ({deal.company_name}): {deal.detail}")
+            if vel_report.accelerating:
+                for deal in vel_report.accelerating[:2]:
+                    full_lines.append(f"  + {deal.prospect_name} ({deal.company_name}): {deal.detail}")
+            full_lines.append("")
+    except Exception as e:
+        logger.debug(f"Velocity analysis skipped: {e}")
+
     if warnings:
         full_lines.append("--- WARNINGS ---")
         for w in warnings:
