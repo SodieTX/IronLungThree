@@ -468,13 +468,13 @@ class TestIsFirstBusinessDay:
         # 2026-08-01 is Saturday
         assert _is_first_business_day(date(2026, 8, 1)) is False
         assert _is_first_business_day(date(2026, 8, 2)) is False  # Sunday
-        assert _is_first_business_day(date(2026, 8, 3)) is True   # Monday
+        assert _is_first_business_day(date(2026, 8, 3)) is True  # Monday
 
     def test_sunday_first_pushes_to_monday(self):
         """Month starts Sunday -> first business day is 2nd (Monday)."""
         # 2026-03-01 is Sunday
         assert _is_first_business_day(date(2026, 3, 1)) is False
-        assert _is_first_business_day(date(2026, 3, 2)) is True   # Monday
+        assert _is_first_business_day(date(2026, 3, 2)) is True  # Monday
 
     def test_mid_month_is_never_first_business_day(self):
         """Day 4+ is never the first business day."""
