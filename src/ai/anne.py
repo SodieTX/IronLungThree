@@ -232,10 +232,29 @@ class Anne(ClaudeClientMixin):
                 suggested_actions=[{"action": "dial"}],
             )
 
-        # Handle park
+        # Handle park — with potential disagreement
         if parsed.action == "park":
             parked_month = parsed.parameters.get("parked_month")
             if parked_month:
+                # Check if Anne should push back
+                disagreement = self._should_disagree_with_park(context.current_prospect_id)
+                if disagreement:
+                    return AnneResponse(
+                        message=(
+                            f"{disagreement['reason']}\n\n"
+                            f"Instead of parking, I'd suggest: {disagreement['alternative']}\n\n"
+                            f"Say 'park anyway' to park until {parked_month}, "
+                            f"or 'ok' to try my suggestion."
+                        ),
+                        suggested_actions=[
+                            {
+                                "action": "park",
+                                "parked_month": parked_month,
+                            }
+                        ],
+                        requires_confirmation=True,
+                        disposition="OUT",
+                    )
                 return AnneResponse(
                     message=f"Parking until {parked_month}. Confirm?",
                     suggested_actions=[
@@ -670,6 +689,80 @@ class Anne(ClaudeClientMixin):
     # =========================================================================
     # PRIVATE: Local Fallback
     # =========================================================================
+
+    def _should_disagree_with_park(self, prospect_id: Optional[int]) -> Optional[dict]:
+        """Check if Anne should push back on parking this prospect.
+
+        Returns a dict with 'reason' and 'alternative' if she disagrees, else None.
+        """
+        if not prospect_id:
+            return None
+
+        prospect = self.db.get_prospect(prospect_id)
+        if not prospect:
+            return None
+
+        signals: list[str] = []
+
+        # High score = promising prospect
+        if prospect.prospect_score >= 60:
+            signals.append(f"score is {prospect.prospect_score}/100")
+
+        # Already engaged = deal in progress
+        if prospect.population == Population.ENGAGED:
+            signals.append("they're in your engaged pipeline")
+
+        # Recent activity = momentum
+        if prospect.id:
+            activities = self.db.get_activities(prospect.id, limit=5)
+            recent_positive = [
+                a for a in activities
+                if a.activity_type.value in ("email_received", "demo", "demo_completed")
+                and a.created_at
+            ]
+            if recent_positive:
+                signals.append("they've had recent positive activity")
+
+            # Check for interested replies
+            interested_replies = [
+                a for a in activities
+                if a.activity_type.value == "email_received"
+                and a.outcome
+                and a.outcome.value in ("interested", "replied")
+            ]
+            if interested_replies:
+                signals.append("they replied showing interest")
+
+        if len(signals) < 2:
+            return None  # Not enough to disagree
+
+        reason = f"Hold on — {', '.join(signals)}. This one's still warm."
+
+        # Generate alternative based on context
+        if prospect.population == Population.ENGAGED:
+            alternative = (
+                "Send a quick check-in email this week. "
+                "If no response in 7 days, then park."
+            )
+        else:
+            alternative = (
+                "Call them one more time before parking. "
+                "If you get voicemail, then park."
+            )
+
+        # If AI is available, try to generate a draft email as the alternative
+        if self.is_available() and prospect.id:
+            try:
+                draft = self._draft_email(
+                    prospect.id,
+                    "Write a short, casual check-in. Don't be pushy. "
+                    "Just asking if they had any questions or if timing is better now.",
+                )
+                alternative = f"Here's a quick check-in I'd send:\n\n{draft}"
+            except Exception:
+                pass  # Fall back to the text suggestion above
+
+        return {"reason": reason, "alternative": alternative}
 
     def _local_present_card(self, context: dict) -> str:
         """Generate local-only card presentation (no AI)."""
