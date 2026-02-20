@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Feedback Capture** (`core/feedback.py`) — Bug/suggestion JSONL log with persistence
 - **Setup Wizard** (`core/setup_wizard.py`) — First-run config (name, paths, sounds, Outlook) with persistence
 - Updated `gui/tabs/troubled.py` and `gui/tabs/intel_gaps.py` to wire to service layer
-- 163 new tests (890 total passing, 61 skipped)
+- 163 new tests for Phase 6 features
 
 ### Added — Phases 1–5
 - Complete project scaffolding with all 60+ source files

@@ -123,7 +123,7 @@ IronLung 3 is built in phases, where each phase produces a usable tool:
 6. **Phase 6: The Soul** — ADHD UX features
 7. **Phase 7: The Weapons** — Strategic AI, analytics
 
-See `docs/SCAFFOLDING-PLAN.md` and the Build Sequence for details.
+See `docs/BUILD-SEQUENCE.md` for details.
 
 ## Questions?
 

@@ -15,13 +15,12 @@ pytest -m phase1_ready -q
 
 ## Current Stage
 
-- Stage: Pre-coding / early Phase 1 foundation
-- Goal: Establish a stable, verifiable baseline before broader feature implementation
+- Stage: Phase 6 complete (The Soul — ADHD UX), scaffolding through Phase 7
+- Goal: Continue implementation through Build Sequence phases
 
 ## Key Documents
 
 - `docs/BLUEPRINT.md`
 - `docs/BUILD-SEQUENCE.md`
-- `docs/PHASE1-CHECKLIST.md`
-- `docs/REPO-GRADE.md`
+- `docs/ARCHITECTURE-OVERVIEW.md`
 - `docs/build/PHASE-1-BUILD-SPEC.md`
