@@ -184,6 +184,99 @@ class ClosedWonDialog:
                 )
 
         self._captured = True
+
+        # After saving, offer to generate a contract
+        self._show_contract_option()
+
+    def _show_contract_option(self) -> None:
+        """Show contract generation option after deal is saved."""
+        if not self._dialog or not self.db:
+            if self._dialog:
+                self._dialog.destroy()
+            return
+
+        # Clear the dialog and show contract option
+        for widget in self._dialog.winfo_children():
+            widget.destroy()
+
+        self._dialog.geometry("400x200")
+        main = ttk.Frame(self._dialog, padding=16)
+        main.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            main,
+            text="Deal Saved!",
+            font=("Segoe UI", 14, "bold"),
+            fg="#28a745",
+        ).pack(pady=(0, 12))
+
+        tk.Label(
+            main,
+            text="Would you like to generate a contract?",
+            font=("Segoe UI", 10),
+        ).pack(pady=(0, 16))
+
+        btn_frame = ttk.Frame(main)
+        btn_frame.pack(pady=4)
+        ttk.Button(btn_frame, text="Generate Contract", command=self._on_generate_contract).pack(
+            side=tk.LEFT, padx=8
+        )
+        ttk.Button(btn_frame, text="Done", command=self._on_cancel).pack(side=tk.LEFT, padx=8)
+
+    def _on_generate_contract(self) -> None:
+        """Generate and display a contract."""
+        if not self.db or not self._dialog:
+            return
+
+        try:
+            from src.engine.contract_gen import render_contract
+
+            contract = render_contract(self.db, self.prospect_id)
+
+            # Show contract in a new window
+            preview = tk.Toplevel(self._dialog)
+            preview.title(f"Contract — {contract.prospect_name}")
+            preview.geometry("700x600")
+
+            text_frame = ttk.Frame(preview, padding=8)
+            text_frame.pack(fill=tk.BOTH, expand=True)
+
+            text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Courier New", 10))
+            scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+            text_widget.insert("1.0", contract.content)
+
+            # Copy and close buttons
+            btn_frame = ttk.Frame(preview, padding=8)
+            btn_frame.pack(fill=tk.X)
+
+            def copy_to_clipboard() -> None:
+                preview.clipboard_clear()
+                preview.clipboard_append(contract.content)
+                messagebox.showinfo("Copied", "Contract copied to clipboard.", parent=preview)
+
+            ttk.Button(btn_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(
+                side=tk.LEFT, padx=8
+            )
+            ttk.Button(btn_frame, text="Close", command=preview.destroy).pack(side=tk.LEFT, padx=8)
+
+        except FileNotFoundError:
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showwarning(
+                "Template Missing",
+                "No contract template found.\n\n"
+                "Create one at: templates/contracts/nexys_standard.txt.j2",
+                parent=parent,
+            )
+        except Exception as e:
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showerror("Error", f"Failed to generate contract: {e}", parent=parent)
+
+        # Close the closed-won dialog
         if self._dialog:
             self._dialog.destroy()
 

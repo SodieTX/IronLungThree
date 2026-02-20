@@ -550,6 +550,12 @@ class Anne(ClaudeClientMixin):
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
+        self._track_usage(
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
         return str(response.content[0].text)
 
     def _ai_respond(self, user_input: str, context: ConversationContext) -> AnneResponse:
@@ -580,6 +586,12 @@ class Anne(ClaudeClientMixin):
             system=system,
             messages=messages,
         )
+        self._track_usage(
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
         text = str(response.content[0].text)
 
         return AnneResponse(
@@ -608,6 +620,12 @@ class Anne(ClaudeClientMixin):
             max_tokens=512,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
+        )
+        self._track_usage(
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return str(response.content[0].text)
 
@@ -640,6 +658,12 @@ class Anne(ClaudeClientMixin):
             max_tokens=512,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
+        )
+        self._track_usage(
+            "anne",
+            CLAUDE_MODEL,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return str(response.content[0].text)
 
