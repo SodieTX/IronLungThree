@@ -127,10 +127,11 @@ class OfflineOutlookClient:
         attendees: Optional[list[str]] = None,
         teams_meeting: bool = False,
         body: Optional[str] = None,
-    ) -> str:
+    ) -> tuple[str, Optional[str]]:
         """Simulate calendar event creation."""
         self._event_count += 1
         event_id = f"{_SIM_PREFIX}-event-{self._event_count}"
+        teams_link = f"https://teams.microsoft.com/l/meetup-join/{event_id}" if teams_meeting else None
         logger.info(
             f"OFFLINE: Would create event: {subject}",
             extra={
@@ -142,7 +143,7 @@ class OfflineOutlookClient:
                 }
             },
         )
-        return event_id
+        return event_id, teams_link
 
     def get_events(
         self,

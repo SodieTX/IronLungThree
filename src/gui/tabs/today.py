@@ -17,6 +17,8 @@ from src.db.models import (
     Prospect,
 )
 from src.engine.cadence import get_todays_queue
+from src.gui.adhd.audio import AudioManager, Sound
+from src.gui.adhd.dopamine import DopamineEngine, WinType
 from src.gui.cards import ProspectCard
 from src.gui.dialogs.morning_brief import MorningBriefDialog
 from src.gui.dialogs.quick_action import QuickActionDialog
@@ -41,6 +43,8 @@ class TodayTab(TabBase):
         self._notes_text: Optional[tk.Text] = None
         self._search_var = tk.StringVar()
         self._brief_shown = False
+        self._audio = AudioManager()
+        self._dopamine = DopamineEngine()
         self._create_ui()
 
     def _create_ui(self) -> None:
@@ -154,6 +158,13 @@ class TodayTab(TabBase):
         # Save any notes for the current card
         self._save_current_notes()
 
+        # Record the win and play audio feedback
+        milestone = self._dopamine.record_win(WinType.CARD_PROCESSED)
+        if milestone:
+            self._audio.play_sound(Sound.STREAK)
+        else:
+            self._audio.play_sound(Sound.CARD_DONE)
+
         self._queue_index += 1
         if self._queue_index >= len(self._queue):
             self._show_queue_complete()
@@ -215,10 +226,17 @@ class TodayTab(TabBase):
         if self._card:
             self._card.destroy()
             self._card = None
+
+        self._audio.play_sound(Sound.DEAL_CLOSED)
+        self._dopamine.check_achievement("queue_cleared")
+
         if self._status_label:
-            self._status_label.config(
-                text="Queue complete! Great work.\n\nCheck the Calendar or Pipeline tabs."
-            )
+            streak = self._dopamine.get_streak()
+            msg = "Queue complete! Great work."
+            if streak >= 5:
+                msg += f"\n\nStreak: {streak} cards processed."
+            msg += "\n\nCheck the Calendar or Pipeline tabs."
+            self._status_label.config(text=msg)
             self._status_label.pack(expand=True)
         self._update_queue_label()
 
@@ -300,7 +318,18 @@ class TodayTab(TabBase):
                 created_by="user",
             )
             self.db.create_activity(activity)
-        self.next_card()
+
+        # Skip breaks the streak — no reward sound
+        self._dopamine.break_streak()
+
+        # Advance without calling next_card (which would record a win)
+        self._save_current_notes()
+        self._queue_index += 1
+        if self._queue_index >= len(self._queue):
+            self._show_queue_complete()
+            return
+        self._update_queue_label()
+        self._show_current_card()
 
     def _quick_search(self) -> None:
         """Quick search for a prospect by name."""

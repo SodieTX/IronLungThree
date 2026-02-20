@@ -538,7 +538,7 @@ class OutlookClient(IntegrationBase):
         attendees: Optional[list[str]] = None,
         teams_meeting: bool = False,
         body: Optional[str] = None,
-    ) -> str:
+    ) -> tuple[str, Optional[str]]:
         """Create a calendar event via Graph API.
 
         Args:
@@ -550,7 +550,8 @@ class OutlookClient(IntegrationBase):
             body: Event description
 
         Returns:
-            Event ID
+            Tuple of (event_id, teams_join_url). teams_join_url is None
+            when teams_meeting is False or the API doesn't return one.
 
         Raises:
             OutlookError: If event creation fails
@@ -599,6 +600,10 @@ class OutlookClient(IntegrationBase):
             if response.status_code == 201:
                 data = response.json()
                 event_id: str = data.get("id", "")
+                teams_link: Optional[str] = None
+                online = data.get("onlineMeeting")
+                if online and isinstance(online, dict):
+                    teams_link = online.get("joinUrl")
                 logger.info(
                     f"Calendar event created: {subject}",
                     extra={
@@ -606,10 +611,11 @@ class OutlookClient(IntegrationBase):
                             "subject": subject,
                             "start": str(start),
                             "teams": teams_meeting,
+                            "teams_link": teams_link,
                         }
                     },
                 )
-                return event_id
+                return event_id, teams_link
             else:
                 raise OutlookError(
                     f"Event creation failed ({response.status_code}): {response.text}"

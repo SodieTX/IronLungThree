@@ -8,6 +8,8 @@ Tests Step 2.1: Population Manager
     - Full lifecycle walk-through
 """
 
+from datetime import date, timedelta
+
 import pytest
 
 from src.core.exceptions import DNCViolationError, PipelineError
@@ -240,8 +242,10 @@ class TestTransitionProspect:
 
     def test_transition_updates_prospect(self, db, unengaged_prospect_id):
         """Transition updates prospect population."""
+        fu = date.today() + timedelta(days=3)
         result = transition_prospect(
-            db, unengaged_prospect_id, Population.ENGAGED, reason="Showed interest"
+            db, unengaged_prospect_id, Population.ENGAGED,
+            reason="Showed interest", follow_up_date=fu,
         )
         assert result is True
 
@@ -250,7 +254,11 @@ class TestTransitionProspect:
 
     def test_transition_logs_activity(self, db, unengaged_prospect_id):
         """Transition creates an activity record."""
-        transition_prospect(db, unengaged_prospect_id, Population.ENGAGED, reason="Showed interest")
+        fu = date.today() + timedelta(days=3)
+        transition_prospect(
+            db, unengaged_prospect_id, Population.ENGAGED,
+            reason="Showed interest", follow_up_date=fu,
+        )
 
         activities = db.get_activities(unengaged_prospect_id)
         assert len(activities) >= 1
@@ -262,22 +270,56 @@ class TestTransitionProspect:
 
     def test_transition_to_engaged_sets_pre_demo(self, db, unengaged_prospect_id):
         """Transitioning to ENGAGED defaults to PRE_DEMO stage."""
-        transition_prospect(db, unengaged_prospect_id, Population.ENGAGED)
+        fu = date.today() + timedelta(days=3)
+        transition_prospect(db, unengaged_prospect_id, Population.ENGAGED, follow_up_date=fu)
 
         prospect = db.get_prospect(unengaged_prospect_id)
         assert prospect.engagement_stage == EngagementStage.PRE_DEMO
 
     def test_transition_to_engaged_with_stage(self, db, unengaged_prospect_id):
         """Transitioning to ENGAGED with explicit stage."""
+        fu = date.today() + timedelta(days=3)
         transition_prospect(
             db,
             unengaged_prospect_id,
             Population.ENGAGED,
             to_stage=EngagementStage.DEMO_SCHEDULED,
+            follow_up_date=fu,
         )
 
         prospect = db.get_prospect(unengaged_prospect_id)
         assert prospect.engagement_stage == EngagementStage.DEMO_SCHEDULED
+
+    def test_transition_to_engaged_without_follow_up_raises(self, db, unengaged_prospect_id):
+        """Transitioning to ENGAGED without follow-up date raises PipelineError."""
+        with pytest.raises(PipelineError, match="follow-up date"):
+            transition_prospect(
+                db, unengaged_prospect_id, Population.ENGAGED, reason="Showed interest"
+            )
+
+    def test_transition_to_engaged_with_existing_follow_up(self, db, company_id):
+        """Prospect with existing follow_up_date can transition to ENGAGED."""
+        fu = date.today() + timedelta(days=5)
+        prospect = Prospect(
+            company_id=company_id,
+            first_name="Has",
+            last_name="FollowUp",
+            population=Population.UNENGAGED,
+            follow_up_date=fu,
+        )
+        pid = db.create_prospect(prospect)
+        result = transition_prospect(db, pid, Population.ENGAGED, reason="Had date already")
+        assert result is True
+
+    def test_transition_to_engaged_sets_follow_up_date(self, db, unengaged_prospect_id):
+        """Follow-up date passed to transition is set on the prospect."""
+        fu = date.today() + timedelta(days=7)
+        transition_prospect(
+            db, unengaged_prospect_id, Population.ENGAGED,
+            reason="Interest", follow_up_date=fu,
+        )
+        prospect = db.get_prospect(unengaged_prospect_id)
+        assert prospect.follow_up_date is not None
 
     def test_transition_away_from_engaged_clears_stage(self, db, engaged_prospect_id):
         """Leaving ENGAGED clears engagement stage."""
@@ -410,7 +452,8 @@ class TestFullLifecycle:
         assert p.population == Population.UNENGAGED
 
         # unengaged -> engaged (showed interest)
-        transition_prospect(db, pid, Population.ENGAGED, reason="Replied to email")
+        fu = date.today() + timedelta(days=5)
+        transition_prospect(db, pid, Population.ENGAGED, reason="Replied to email", follow_up_date=fu)
         p = db.get_prospect(pid)
         assert p.population == Population.ENGAGED
         assert p.engagement_stage == EngagementStage.PRE_DEMO

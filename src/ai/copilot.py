@@ -329,14 +329,27 @@ class Copilot(ClaudeClientMixin):
             )
 
         try:
+            # ENGAGED requires a follow-up date — default to 3 business days
+            follow_up = None
+            if target == Population.ENGAGED:
+                follow_up = date.today() + timedelta(days=3)
+                # Skip weekends
+                while follow_up.weekday() >= 5:
+                    follow_up += timedelta(days=1)
+
             transition_prospect(
-                self.db, prospect.id, target, reason=f"Copilot: moved to {target.value}"
+                self.db, prospect.id, target,
+                reason=f"Copilot: moved to {target.value}",
+                follow_up_date=follow_up,
             )
             action = (
                 f"Moved {prospect.full_name} from {prospect.population.value} to {target.value}"
             )
+            msg = f"Done. {action}."
+            if follow_up:
+                msg += f" Follow-up set to {follow_up.strftime('%Y-%m-%d')}."
             return CopilotResponse(
-                message=f"Done. {action}.",
+                message=msg,
                 action_taken=action,
             )
         except Exception as e:

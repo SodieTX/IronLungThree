@@ -69,11 +69,22 @@ class TestOfflineOutlookClient:
 
     def test_create_event_returns_sim_id(self):
         client = OfflineOutlookClient()
-        event_id = client.create_event(
+        event_id, teams_link = client.create_event(
             subject="Meeting",
             start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
         )
         assert event_id.startswith("sim-event-")
+        assert teams_link is None  # No Teams meeting requested
+
+    def test_create_event_with_teams_returns_link(self):
+        client = OfflineOutlookClient()
+        event_id, teams_link = client.create_event(
+            subject="Demo",
+            start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
+            teams_meeting=True,
+        )
+        assert event_id.startswith("sim-event-")
+        assert teams_link is not None
 
     def test_get_events_returns_empty_list(self):
         client = OfflineOutlookClient()
