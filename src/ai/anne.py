@@ -309,7 +309,8 @@ class Anne(ClaudeClientMixin):
         if parsed.action == "flag_suspect":
             field_name = parsed.parameters.get("field", "unknown")
             return AnneResponse(
-                message=f"Flagging {field_name} as suspect. I'll mark it.",
+                message=f"Flagging {field_name} as suspect. Confirm?",
+                requires_confirmation=True,
                 suggested_actions=[
                     {
                         "action": "flag_suspect",

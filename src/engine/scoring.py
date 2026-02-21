@@ -29,6 +29,7 @@ from src.db.models import (
     EngagementStage,
     Population,
     Prospect,
+    parse_iso_date,
 )
 
 logger = get_logger(__name__)
@@ -362,11 +363,13 @@ def _score_timing(prospect: Prospect) -> int:
 
     # Recency of last contact
     if prospect.last_contact_date:
-        if isinstance(prospect.last_contact_date, str):
-            # Handle string dates
-            score += 30
-        else:
-            days_since = (date.today() - prospect.last_contact_date).days
+        try:
+            contact_date = parse_iso_date(prospect.last_contact_date)
+        except ValueError:
+            contact_date = None
+
+        if contact_date is not None:
+            days_since = (date.today() - contact_date).days
             if days_since <= 7:
                 score += 50  # Hot - contacted this week
             elif days_since <= 14:

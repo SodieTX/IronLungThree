@@ -9,6 +9,7 @@ This module defines:
     - Utility functions (normalization, timezone lookup, completeness)
 """
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -596,3 +597,46 @@ def assess_completeness(
     if has_email and has_phone:
         return Population.UNENGAGED
     return Population.BROKEN
+
+
+# =============================================================================
+# VALIDATION HELPERS
+# =============================================================================
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+
+def parse_iso_date(value: Any) -> Optional[date]:
+    """Parse a value into a date, accepting date objects and ISO 8601 strings.
+
+    Returns None for None/empty values.  Raises ValueError for unparseable strings.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        # Accept "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS..." (ISO 8601)
+        if not _ISO_DATE_RE.match(text):
+            raise ValueError(f"Not a valid ISO 8601 date: {text!r}")
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+    raise ValueError(f"Cannot parse date from {type(value).__name__}")
+
+
+def validate_json_string(value: Optional[str], field_name: str = "custom_fields") -> Optional[str]:
+    """Validate that a string is valid JSON (or None/empty).
+
+    Returns the value unchanged, or raises ValueError.
+    """
+    if value is None or value == "":
+        return value
+    try:
+        json.loads(value)
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(f"{field_name} is not valid JSON: {e}") from e
+    return value

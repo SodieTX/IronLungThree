@@ -391,14 +391,12 @@ class TestDetermineSequence:
         engine = NurtureEngine(db)
 
         # Insert a sent warm_touch step 1 into nurture_queue
-        conn = db._get_connection()
-        conn.execute(
+        db.execute_sql(
             """INSERT INTO nurture_queue
                (prospect_id, sequence, sequence_step, subject, body, status)
                VALUES (?, ?, ?, ?, ?, 'sent')""",
             (p1_id, NurtureSequence.WARM_TOUCH.value, 1, "test", "test"),
         )
-        conn.commit()
 
         prospect = db.get_prospect(p1_id)
         sequence, step = engine._determine_sequence(prospect)
@@ -507,12 +505,10 @@ class TestNurtureWorkflow:
         # Fix the approved_at timestamp format for SQLite compatibility.
         # approve_email() stores isoformat (with 'T'), but SQLite's
         # PARSE_DECLTYPES expects space-separated datetime strings.
-        conn = db._get_connection()
-        conn.execute(
+        db.execute_sql(
             "UPDATE nurture_queue SET approved_at = REPLACE(approved_at, 'T', ' ') WHERE id = ?",
             (email_id,),
         )
-        conn.commit()
 
         # Send (no Outlook client = testing mode, marks as sent)
         sent = engine.send_approved_emails()
@@ -540,12 +536,10 @@ class TestNurtureWorkflow:
         engine.approve_email(email_id)
 
         # Fix timestamp format
-        conn = db._get_connection()
-        conn.execute(
+        db.execute_sql(
             "UPDATE nurture_queue SET approved_at = REPLACE(approved_at, 'T', ' ') WHERE id = ?",
             (email_id,),
         )
-        conn.commit()
 
         # Send with Outlook client
         sent = engine.send_approved_emails()

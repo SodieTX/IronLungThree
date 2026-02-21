@@ -212,6 +212,21 @@ class TestRecordManipulation:
         response = copilot.ask("Move Nonexistent Person to engaged")
         assert "no prospect" in response.message.lower()
 
+    def test_move_to_lost_requires_confirmation(self, copilot, company_id):
+        """Moving to lost requires confirmation (destructive action)."""
+        copilot.db.create_prospect(
+            Prospect(
+                company_id=company_id,
+                first_name="Gone",
+                last_name="Person",
+                population=Population.ENGAGED,
+            )
+        )
+
+        response = copilot.ask("Move Gone Person to lost")
+        assert response.requires_confirmation is True
+        assert "lost" in response.message.lower()
+
     def test_set_followup(self, copilot, company_id):
         """'Set follow-up for [name] to tomorrow' works."""
         copilot.db.create_prospect(

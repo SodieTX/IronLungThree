@@ -46,6 +46,7 @@ from src.db.models import (
     ResearchTask,
     normalize_company_name,
     timezone_from_state,
+    validate_json_string,
 )
 
 logger = get_logger(__name__)
@@ -109,6 +110,39 @@ class Database:
         row_id = cursor.lastrowid
         assert row_id is not None, "lastrowid was None after INSERT"
         return row_id
+
+    # =========================================================================
+    # PUBLIC SQL EXECUTION (for modules that manage their own tables)
+    # =========================================================================
+
+    def execute_sql(
+        self, sql: str, params: tuple[Any, ...] = (), *, commit: bool = True
+    ) -> sqlite3.Cursor:
+        """Execute a SQL statement through the managed connection.
+
+        Use this instead of accessing _get_connection() directly so that
+        all SQL flows through the Database abstraction.
+        """
+        conn = self._get_connection()
+        cursor = conn.execute(sql, params)
+        if commit:
+            conn.commit()
+        return cursor
+
+    def executescript_sql(self, sql: str) -> None:
+        """Execute a multi-statement SQL script."""
+        conn = self._get_connection()
+        conn.executescript(sql)
+
+    def fetchone_sql(self, sql: str, params: tuple[Any, ...] = ()) -> Optional[sqlite3.Row]:
+        """Execute a query and return a single row (or None)."""
+        conn = self._get_connection()
+        return conn.execute(sql, params).fetchone()
+
+    def fetchall_sql(self, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+        """Execute a query and return all rows."""
+        conn = self._get_connection()
+        return conn.execute(sql, params).fetchall()
 
     def close(self) -> None:
         """Close database connection."""
@@ -550,6 +584,7 @@ class Database:
 
     def create_prospect(self, prospect: Prospect) -> int:
         """Create a prospect record."""
+        validate_json_string(prospect.custom_fields)
         conn = self._get_connection()
         try:
             cursor = conn.execute(
@@ -639,6 +674,7 @@ class Database:
         """Update prospect. Returns True if updated."""
         if prospect.id is None:
             return False
+        validate_json_string(prospect.custom_fields)
         conn = self._get_connection()
         try:
             cursor = conn.execute(

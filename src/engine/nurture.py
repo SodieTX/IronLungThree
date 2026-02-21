@@ -173,8 +173,7 @@ class NurtureEngine:
 
     def _ensure_nurture_table(self) -> None:
         """Create the nurture_queue table if it doesn't exist."""
-        conn = self.db._get_connection()
-        conn.executescript("""
+        self.db.executescript_sql("""
             CREATE TABLE IF NOT EXISTS nurture_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 prospect_id INTEGER NOT NULL,
@@ -220,8 +219,7 @@ class NurtureEngine:
                 email = self._generate_email(prospect, sequence, step)
 
                 # Insert into nurture_queue
-                conn = self.db._get_connection()
-                cursor = conn.execute(
+                cursor = self.db.execute_sql(
                     """INSERT INTO nurture_queue
                        (prospect_id, prospect_name, company_name, sequence,
                         sequence_step, subject, body, to_address, status)
@@ -237,7 +235,6 @@ class NurtureEngine:
                         email.to_address,
                     ),
                 )
-                conn.commit()
                 email.id = cursor.lastrowid
                 email.queued_at = datetime.now()
                 generated.append(email)
@@ -276,10 +273,9 @@ class NurtureEngine:
         Returns:
             Emails awaiting approval
         """
-        conn = self.db._get_connection()
-        rows = conn.execute("""SELECT * FROM nurture_queue
+        rows = self.db.fetchall_sql("""SELECT * FROM nurture_queue
                WHERE status = 'pending'
-               ORDER BY queued_at ASC""").fetchall()
+               ORDER BY queued_at ASC""")
         return [self._row_to_nurture_email(row) for row in rows]
 
     def approve_email(self, email_id: int) -> bool:
@@ -291,15 +287,13 @@ class NurtureEngine:
         Returns:
             True if approved
         """
-        conn = self.db._get_connection()
         now = datetime.now().isoformat()
-        cursor = conn.execute(
+        cursor = self.db.execute_sql(
             """UPDATE nurture_queue
                SET status = 'approved', approved_at = ?
                WHERE id = ? AND status = 'pending'""",
             (now, email_id),
         )
-        conn.commit()
         if cursor.rowcount > 0:
             logger.info(
                 "Nurture email approved",
@@ -318,14 +312,12 @@ class NurtureEngine:
         Returns:
             True if rejected
         """
-        conn = self.db._get_connection()
-        cursor = conn.execute(
+        cursor = self.db.execute_sql(
             """UPDATE nurture_queue
                SET status = 'rejected', rejected_reason = ?
                WHERE id = ? AND status = 'pending'""",
             (reason, email_id),
         )
-        conn.commit()
         if cursor.rowcount > 0:
             logger.info(
                 "Nurture email rejected",
@@ -343,15 +335,13 @@ class NurtureEngine:
         Returns:
             Number of emails sent
         """
-        conn = self.db._get_connection()
-
         # Count emails already sent today
         today_str = datetime.now().strftime("%Y-%m-%d")
-        row = conn.execute(
+        row = self.db.fetchone_sql(
             """SELECT COUNT(*) as cnt FROM nurture_queue
                WHERE status = 'sent' AND date(sent_at) = ?""",
             (today_str,),
-        ).fetchone()
+        )
         already_sent_today = row["cnt"] if row else 0
         remaining_cap = max(0, self.daily_send_cap - already_sent_today)
 
@@ -360,13 +350,13 @@ class NurtureEngine:
             return 0
 
         # Fetch approved emails up to remaining cap
-        rows = conn.execute(
+        rows = self.db.fetchall_sql(
             """SELECT * FROM nurture_queue
                WHERE status = 'approved'
                ORDER BY approved_at ASC
                LIMIT ?""",
             (remaining_cap,),
-        ).fetchall()
+        )
 
         sent_count = 0
         for row in rows:
@@ -394,11 +384,12 @@ class NurtureEngine:
 
             # Mark as sent
             now = datetime.now().isoformat()
-            conn.execute(
+            self.db.execute_sql(
                 """UPDATE nurture_queue
                    SET status = 'sent', sent_at = ?
                    WHERE id = ?""",
                 (now, email.id),
+                commit=False,
             )
 
             # Log as automated attempt activity
@@ -426,7 +417,7 @@ class NurtureEngine:
                 },
             )
 
-        conn.commit()
+        self.db.execute_sql("SELECT 1", commit=True)  # flush pending writes
 
         logger.info(
             "Approved emails sent",
@@ -488,12 +479,11 @@ class NurtureEngine:
                     continue  # Too recent, skip
 
             # Also check that there's no pending/approved email in the queue
-            conn = self.db._get_connection()
-            row = conn.execute(
+            row = self.db.fetchone_sql(
                 """SELECT COUNT(*) as cnt FROM nurture_queue
                    WHERE prospect_id = ? AND status IN ('pending', 'approved')""",
                 (prospect.id,),
-            ).fetchone()
+            )
             if row and row["cnt"] > 0:
                 continue
 
@@ -533,13 +523,12 @@ class NurtureEngine:
         # BREAKUP: many attempts, no response
         if attempt_count >= 5:
             # Only send breakup if we haven't already sent one
-            conn = self.db._get_connection()
-            row = conn.execute(
+            row = self.db.fetchone_sql(
                 """SELECT COUNT(*) as cnt FROM nurture_queue
                    WHERE prospect_id = ? AND sequence = ?
                    AND status IN ('sent', 'pending', 'approved')""",
                 (prospect.id, NurtureSequence.BREAKUP.value),
-            ).fetchone()
+            )
             if not row or row["cnt"] == 0:
                 return NurtureSequence.BREAKUP, 1
 
@@ -547,13 +536,12 @@ class NurtureEngine:
         if was_engaged:
             config = self.SEQUENCE_CONFIG[NurtureSequence.RE_ENGAGEMENT]
             # Figure out which step we're on
-            conn = self.db._get_connection()
-            row = conn.execute(
+            row = self.db.fetchone_sql(
                 """SELECT MAX(sequence_step) as max_step FROM nurture_queue
                    WHERE prospect_id = ? AND sequence = ?
                    AND status = 'sent'""",
                 (prospect.id, NurtureSequence.RE_ENGAGEMENT.value),
-            ).fetchone()
+            )
             last_step = row["max_step"] if row and row["max_step"] else 0
             next_step = last_step + 1
             if next_step <= config["max_steps"]:
@@ -561,26 +549,24 @@ class NurtureEngine:
 
         # WARM_TOUCH: default sequence
         config = self.SEQUENCE_CONFIG[NurtureSequence.WARM_TOUCH]
-        conn = self.db._get_connection()
-        row = conn.execute(
+        row = self.db.fetchone_sql(
             """SELECT MAX(sequence_step) as max_step FROM nurture_queue
                WHERE prospect_id = ? AND sequence = ?
                AND status = 'sent'""",
             (prospect.id, NurtureSequence.WARM_TOUCH.value),
-        ).fetchone()
+        )
         last_step = row["max_step"] if row and row["max_step"] else 0
         next_step = last_step + 1
         if next_step <= config["max_steps"]:
             return NurtureSequence.WARM_TOUCH, next_step
 
         # If we've exhausted warm touch, try breakup
-        conn = self.db._get_connection()
-        row = conn.execute(
+        row = self.db.fetchone_sql(
             """SELECT COUNT(*) as cnt FROM nurture_queue
                WHERE prospect_id = ? AND sequence = ?
                AND status IN ('sent', 'pending', 'approved')""",
             (prospect.id, NurtureSequence.BREAKUP.value),
-        ).fetchone()
+        )
         if not row or row["cnt"] == 0:
             return NurtureSequence.BREAKUP, 1
 

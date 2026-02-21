@@ -144,6 +144,7 @@ class TestRespond:
     def test_wrong_number_flags_suspect(self, anne, context):
         result = anne.respond("wrong number", context)
         assert "suspect" in result.message.lower() or "flagging" in result.message.lower()
+        assert result.requires_confirmation
 
     def test_default_note(self, anne, context):
         result = anne.respond("random thoughts about this prospect", context)

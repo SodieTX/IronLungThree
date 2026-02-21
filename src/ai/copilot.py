@@ -32,11 +32,13 @@ class CopilotResponse:
     Attributes:
         message: The text response
         action_taken: Description of any DB action performed
+        requires_confirmation: True if the caller should confirm before executing
         tokens_used: API tokens consumed (0 if local-only)
     """
 
     message: str
     action_taken: Optional[str] = None
+    requires_confirmation: bool = False
     tokens_used: int = 0
 
 
@@ -326,6 +328,17 @@ class Copilot(ClaudeClientMixin):
                     f"{prospect.population.value} to {target.value}. "
                     f"That transition isn't allowed."
                 )
+            )
+
+        # Destructive transitions require caller confirmation
+        if target == Population.LOST:
+            return CopilotResponse(
+                message=(
+                    f"Move {prospect.full_name} to lost? "
+                    f"This will remove them from active pipeline."
+                ),
+                requires_confirmation=True,
+                action_taken=f"move:{prospect.id}:{target.value}",
             )
 
         try:
