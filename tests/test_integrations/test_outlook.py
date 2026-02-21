@@ -560,7 +560,7 @@ class TestOutlookCalendar:
         with patch("src.integrations.outlook.requests") as mock_requests:
             mock_requests.request.return_value = mock_response
 
-            event_id = client.create_event(
+            event_id, teams_link = client.create_event(
                 subject="Demo with Acme Corp",
                 start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
                 duration_minutes=30,
@@ -568,6 +568,7 @@ class TestOutlookCalendar:
             )
 
             assert event_id == "event-id-123"
+            assert teams_link is None  # No Teams meeting requested
             payload = mock_requests.request.call_args.kwargs["json"]
             assert payload["subject"] == "Demo with Acme Corp"
             assert len(payload["attendees"]) == 1
@@ -582,12 +583,15 @@ class TestOutlookCalendar:
 
         mock_response = MagicMock()
         mock_response.status_code = 201
-        mock_response.json.return_value = {"id": "event-teams-123"}
+        mock_response.json.return_value = {
+            "id": "event-teams-123",
+            "onlineMeeting": {"joinUrl": "https://teams.microsoft.com/l/meetup-join/real-join-url"},
+        }
 
         with patch("src.integrations.outlook.requests") as mock_requests:
             mock_requests.request.return_value = mock_response
 
-            client.create_event(
+            event_id, teams_link = client.create_event(
                 subject="Demo",
                 start=datetime(2026, 2, 10, 14, 0, tzinfo=timezone.utc),
                 teams_meeting=True,
@@ -596,6 +600,8 @@ class TestOutlookCalendar:
             payload = mock_requests.request.call_args.kwargs["json"]
             assert payload["isOnlineMeeting"] is True
             assert payload["onlineMeetingProvider"] == "teamsForBusiness"
+            assert event_id == "event-teams-123"
+            assert teams_link == "https://teams.microsoft.com/l/meetup-join/real-join-url"
 
     def test_create_event_failure_raises(self, mock_msal):
         """Create event raises OutlookError on API failure."""

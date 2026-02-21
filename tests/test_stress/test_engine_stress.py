@@ -538,7 +538,8 @@ class TestPopulationTransitionWarfare:
         """Engaging without a stage should default to PRE_DEMO."""
         cid = _company(db)
         pid = _prospect(db, cid, population=Population.UNENGAGED)
-        transition_prospect(db, pid, Population.ENGAGED, "Interested")
+        fu = date.today() + timedelta(days=3)
+        transition_prospect(db, pid, Population.ENGAGED, "Interested", follow_up_date=fu)
         p = db.get_prospect(pid)
         assert p.population == Population.ENGAGED
         assert p.engagement_stage == EngagementStage.PRE_DEMO
@@ -592,7 +593,8 @@ class TestPopulationTransitionWarfare:
         pid = _prospect(db, cid, population=Population.UNENGAGED)
 
         # UNENGAGED -> ENGAGED
-        transition_prospect(db, pid, Population.ENGAGED, "Showed interest")
+        fu = date.today() + timedelta(days=5)
+        transition_prospect(db, pid, Population.ENGAGED, "Showed interest", follow_up_date=fu)
         p = db.get_prospect(pid)
         assert p.population == Population.ENGAGED
         assert p.engagement_stage == EngagementStage.PRE_DEMO

@@ -80,7 +80,10 @@ def prospect_id(db, company_id):
 def mock_outlook():
     """Mocked Outlook client."""
     outlook = MagicMock()
-    outlook.create_event.return_value = "event-123"
+    outlook.create_event.return_value = (
+        "event-123",
+        "https://teams.microsoft.com/l/meetup-join/real-link",
+    )
     outlook.send_email.return_value = "sent-msg-456"
     return outlook
 
@@ -117,7 +120,7 @@ class TestDemoInviteWithOutlook:
         assert invite.duration_minutes == 30
 
     def test_creates_calendar_event(self, db, prospect_id, mock_outlook, demo_time):
-        """Calendar event is created via Outlook."""
+        """Calendar event is created via Outlook with prospect as attendee."""
         invite = create_demo_invite(
             db=db,
             prospect_id=prospect_id,
@@ -128,8 +131,9 @@ class TestDemoInviteWithOutlook:
         mock_outlook.create_event.assert_called_once()
         call_kwargs = mock_outlook.create_event.call_args
         assert call_kwargs[1]["teams_meeting"] is True
+        assert call_kwargs[1]["attendees"] == ["alice@democorp.com"]
         assert invite.calendar_event_id == "event-123"
-        assert invite.teams_link is not None
+        assert invite.teams_link == "https://teams.microsoft.com/l/meetup-join/real-link"
 
     def test_sends_invite_email(self, db, prospect_id, mock_outlook, demo_time):
         """Demo invite email is sent via Outlook."""
