@@ -131,7 +131,9 @@ class OfflineOutlookClient:
         """Simulate calendar event creation."""
         self._event_count += 1
         event_id = f"{_SIM_PREFIX}-event-{self._event_count}"
-        teams_link = f"https://teams.microsoft.com/l/meetup-join/{event_id}" if teams_meeting else None
+        teams_link = (
+            f"https://teams.microsoft.com/l/meetup-join/{event_id}" if teams_meeting else None
+        )
         logger.info(
             f"OFFLINE: Would create event: {subject}",
             extra={

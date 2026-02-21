@@ -338,7 +338,9 @@ class Copilot(ClaudeClientMixin):
                     follow_up += timedelta(days=1)
 
             transition_prospect(
-                self.db, prospect.id, target,
+                self.db,
+                prospect.id,
+                target,
                 reason=f"Copilot: moved to {target.value}",
                 follow_up_date=follow_up,
             )

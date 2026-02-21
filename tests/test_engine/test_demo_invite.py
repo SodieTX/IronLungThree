@@ -80,7 +80,10 @@ def prospect_id(db, company_id):
 def mock_outlook():
     """Mocked Outlook client."""
     outlook = MagicMock()
-    outlook.create_event.return_value = ("event-123", "https://teams.microsoft.com/l/meetup-join/real-link")
+    outlook.create_event.return_value = (
+        "event-123",
+        "https://teams.microsoft.com/l/meetup-join/real-link",
+    )
     outlook.send_email.return_value = "sent-msg-456"
     return outlook
 

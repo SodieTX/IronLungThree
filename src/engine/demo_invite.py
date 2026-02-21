@@ -136,11 +136,21 @@ def check_calendar_conflicts(
 
             # Check overlap: events overlap if one starts before the other ends
             if evt_start < demo_end and evt_end > demo_datetime:
-                conflicts.append(CalendarConflict(
-                    subject=subject,
-                    start=evt_start.strftime("%I:%M %p") if isinstance(evt_start, datetime) else str(evt_start),
-                    end=evt_end.strftime("%I:%M %p") if isinstance(evt_end, datetime) else str(evt_end),
-                ))
+                conflicts.append(
+                    CalendarConflict(
+                        subject=subject,
+                        start=(
+                            evt_start.strftime("%I:%M %p")
+                            if isinstance(evt_start, datetime)
+                            else str(evt_start)
+                        ),
+                        end=(
+                            evt_end.strftime("%I:%M %p")
+                            if isinstance(evt_end, datetime)
+                            else str(evt_end)
+                        ),
+                    )
+                )
 
         return conflicts
 

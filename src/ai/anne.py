@@ -716,7 +716,8 @@ class Anne(ClaudeClientMixin):
         if prospect.id:
             activities = self.db.get_activities(prospect.id, limit=5)
             recent_positive = [
-                a for a in activities
+                a
+                for a in activities
                 if a.activity_type.value in ("email_received", "demo", "demo_completed")
                 and a.created_at
             ]
@@ -725,7 +726,8 @@ class Anne(ClaudeClientMixin):
 
             # Check for interested replies
             interested_replies = [
-                a for a in activities
+                a
+                for a in activities
                 if a.activity_type.value == "email_received"
                 and a.outcome
                 and a.outcome.value in ("interested", "replied")
@@ -741,13 +743,11 @@ class Anne(ClaudeClientMixin):
         # Generate alternative based on context
         if prospect.population == Population.ENGAGED:
             alternative = (
-                "Send a quick check-in email this week. "
-                "If no response in 7 days, then park."
+                "Send a quick check-in email this week. " "If no response in 7 days, then park."
             )
         else:
             alternative = (
-                "Call them one more time before parking. "
-                "If you get voicemail, then park."
+                "Call them one more time before parking. " "If you get voicemail, then park."
             )
 
         # If AI is available, try to generate a draft email as the alternative

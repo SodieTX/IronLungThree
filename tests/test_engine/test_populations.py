@@ -244,8 +244,11 @@ class TestTransitionProspect:
         """Transition updates prospect population."""
         fu = date.today() + timedelta(days=3)
         result = transition_prospect(
-            db, unengaged_prospect_id, Population.ENGAGED,
-            reason="Showed interest", follow_up_date=fu,
+            db,
+            unengaged_prospect_id,
+            Population.ENGAGED,
+            reason="Showed interest",
+            follow_up_date=fu,
         )
         assert result is True
 
@@ -256,8 +259,11 @@ class TestTransitionProspect:
         """Transition creates an activity record."""
         fu = date.today() + timedelta(days=3)
         transition_prospect(
-            db, unengaged_prospect_id, Population.ENGAGED,
-            reason="Showed interest", follow_up_date=fu,
+            db,
+            unengaged_prospect_id,
+            Population.ENGAGED,
+            reason="Showed interest",
+            follow_up_date=fu,
         )
 
         activities = db.get_activities(unengaged_prospect_id)
@@ -315,8 +321,11 @@ class TestTransitionProspect:
         """Follow-up date passed to transition is set on the prospect."""
         fu = date.today() + timedelta(days=7)
         transition_prospect(
-            db, unengaged_prospect_id, Population.ENGAGED,
-            reason="Interest", follow_up_date=fu,
+            db,
+            unengaged_prospect_id,
+            Population.ENGAGED,
+            reason="Interest",
+            follow_up_date=fu,
         )
         prospect = db.get_prospect(unengaged_prospect_id)
         assert prospect.follow_up_date is not None
@@ -453,7 +462,9 @@ class TestFullLifecycle:
 
         # unengaged -> engaged (showed interest)
         fu = date.today() + timedelta(days=5)
-        transition_prospect(db, pid, Population.ENGAGED, reason="Replied to email", follow_up_date=fu)
+        transition_prospect(
+            db, pid, Population.ENGAGED, reason="Replied to email", follow_up_date=fu
+        )
         p = db.get_prospect(pid)
         assert p.population == Population.ENGAGED
         assert p.engagement_stage == EngagementStage.PRE_DEMO

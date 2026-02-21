@@ -306,7 +306,9 @@ def generate_morning_brief(db: Database) -> MorningBrief:
                 full_lines.append(f"  ~ {deal.prospect_name} ({deal.company_name}): {deal.detail}")
             if vel_report.accelerating:
                 for deal in vel_report.accelerating[:2]:
-                    full_lines.append(f"  + {deal.prospect_name} ({deal.company_name}): {deal.detail}")
+                    full_lines.append(
+                        f"  + {deal.prospect_name} ({deal.company_name}): {deal.detail}"
+                    )
             full_lines.append("")
     except Exception as e:
         logger.debug(f"Velocity analysis skipped: {e}")

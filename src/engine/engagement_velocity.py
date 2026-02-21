@@ -86,10 +86,10 @@ class EngagementVelocity:
 
     # Thresholds: days in stage before flagging
     _STAGE_THRESHOLDS = {
-        EngagementStage.PRE_DEMO.value: 14,      # 2 weeks to get a demo scheduled
+        EngagementStage.PRE_DEMO.value: 14,  # 2 weeks to get a demo scheduled
         EngagementStage.DEMO_SCHEDULED.value: 7,  # 1 week between scheduling and demo
-        EngagementStage.POST_DEMO.value: 14,      # 2 weeks for follow-up after demo
-        EngagementStage.CLOSING.value: 21,         # 3 weeks to close
+        EngagementStage.POST_DEMO.value: 14,  # 2 weeks for follow-up after demo
+        EngagementStage.CLOSING.value: 21,  # 3 weeks to close
     }
 
     def __init__(self, db: Database):
