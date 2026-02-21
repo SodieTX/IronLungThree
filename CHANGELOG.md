@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-02-21
+
 ### Added — Phase 7: The Weapons (Strategic AI)
 - **AI Copilot** (`ai/copilot.py`) — Full pipeline strategy mode, record manipulation via natural language, analytical question routing
 - **Contact Analyzer** (`ai/contact_analyzer.py`) — Engagement pattern analysis, stalling detection, multi-contact coordination
@@ -76,11 +78,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version History
 
 - **0.1.0** — Project scaffolding complete, ready for Phase 1 coding
-- Future versions will follow the phase completion milestones:
-  - **0.2.0** — Phase 1 complete (The Slab)
-  - **0.3.0** — Phase 2 complete (The Daily Grind)
-  - **0.4.0** — Phase 3 complete (The Communicator)
-  - **0.5.0** — Phase 4 complete (Anne)
-  - **0.6.0** — Phase 5 complete (The Autonomy)
-  - **0.7.0** — Phase 6 complete (The Soul)
-  - **1.0.0** — Phase 7 complete (The Weapons) — Full release
+- **0.7.0** — Phases 1–6 complete, Phase 7 in progress
+- **1.0.0** — Phase 7 complete (The Weapons) — Full release
