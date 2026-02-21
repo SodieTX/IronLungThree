@@ -13,6 +13,7 @@ The Iron Lung breathes.
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from src.core.config import get_config, validate_config
 from src.core.logging import get_logger, setup_logging
 
-__version__ = "0.1.0"
+__version__ = "0.7.0"
 
 
 def main() -> int:
@@ -55,7 +56,7 @@ def main() -> int:
         return 0
 
     # Initialize logging
-    setup_logging()
+    setup_logging(console_level=logging.DEBUG if args.debug else logging.INFO)
     logger = get_logger("main")
     logger.info(f"IronLung 3 v{__version__} starting...")
 
