@@ -140,7 +140,6 @@ class SettingsTab(TabBase):
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
 
         container = self._scroll_frame
-        pad = {"padx": 12, "pady": 4}
 
         # Title
         ttk.Label(container, text="Settings", font=("Segoe UI", 16, "bold")).pack(
@@ -183,7 +182,7 @@ class SettingsTab(TabBase):
         sep = ttk.Separator(container, orient="horizontal")
         sep.pack(fill="x", padx=12, pady=8)
         ttk.Label(container, text="Feature Flags", font=("Segoe UI", 12, "bold")).pack(
-            anchor="w", **pad
+            anchor="w", padx=12, pady=4
         )
 
         flags_frame = ttk.Frame(container)
@@ -211,7 +210,7 @@ class SettingsTab(TabBase):
         sep2 = ttk.Separator(container, orient="horizontal")
         sep2.pack(fill="x", padx=12, pady=8)
         ttk.Label(container, text="Service Status", font=("Segoe UI", 12, "bold")).pack(
-            anchor="w", **pad
+            anchor="w", padx=12, pady=4
         )
 
         self._status_text = tk.Text(
@@ -222,7 +221,9 @@ class SettingsTab(TabBase):
         # --- Backup / Restore ---
         sep3 = ttk.Separator(container, orient="horizontal")
         sep3.pack(fill="x", padx=12, pady=8)
-        ttk.Label(container, text="Database", font=("Segoe UI", 12, "bold")).pack(anchor="w", **pad)
+        ttk.Label(container, text="Database", font=("Segoe UI", 12, "bold")).pack(
+            anchor="w", padx=12, pady=4
+        )
 
         db_frame = ttk.Frame(container)
         db_frame.pack(fill="x", padx=12, pady=4)
