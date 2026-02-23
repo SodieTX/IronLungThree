@@ -143,9 +143,9 @@ class SettingsTab(TabBase):
         pad = {"padx": 12, "pady": 4}
 
         # Title
-        ttk.Label(
-            container, text="Settings", font=("Segoe UI", 16, "bold")
-        ).pack(anchor="w", padx=12, pady=(12, 4))
+        ttk.Label(container, text="Settings", font=("Segoe UI", 16, "bold")).pack(
+            anchor="w", padx=12, pady=(12, 4)
+        )
 
         ttk.Label(
             container,
@@ -154,14 +154,30 @@ class SettingsTab(TabBase):
         ).pack(anchor="w", padx=12, pady=(0, 8))
 
         # --- Credential sections ---
-        self._build_section(container, "Microsoft Outlook (Azure)", _OUTLOOK_FIELDS,
-                            hint="Azure Portal > App registrations > your app")
-        self._build_section(container, "Claude AI (Anthropic)", _CLAUDE_FIELDS,
-                            hint="console.anthropic.com > API Keys")
-        self._build_section(container, "ActiveCampaign", _ACTIVECAMPAIGN_FIELDS,
-                            hint="Settings > Developer in your AC account")
-        self._build_section(container, "Google Custom Search", _GOOGLE_FIELDS,
-                            hint="console.cloud.google.com > Credentials")
+        self._build_section(
+            container,
+            "Microsoft Outlook (Azure)",
+            _OUTLOOK_FIELDS,
+            hint="Azure Portal > App registrations > your app",
+        )
+        self._build_section(
+            container,
+            "Claude AI (Anthropic)",
+            _CLAUDE_FIELDS,
+            hint="console.anthropic.com > API Keys",
+        )
+        self._build_section(
+            container,
+            "ActiveCampaign",
+            _ACTIVECAMPAIGN_FIELDS,
+            hint="Settings > Developer in your AC account",
+        )
+        self._build_section(
+            container,
+            "Google Custom Search",
+            _GOOGLE_FIELDS,
+            hint="console.cloud.google.com > Credentials",
+        )
 
         # --- Feature flags ---
         sep = ttk.Separator(container, orient="horizontal")
@@ -185,9 +201,7 @@ class SettingsTab(TabBase):
         # --- Save button ---
         btn_frame = ttk.Frame(container)
         btn_frame.pack(fill="x", padx=12, pady=(12, 4))
-        self._save_btn = ttk.Button(
-            btn_frame, text="Save Credentials", command=self._on_save
-        )
+        self._save_btn = ttk.Button(btn_frame, text="Save Credentials", command=self._on_save)
         self._save_btn.pack(side="left")
 
         self._save_status = ttk.Label(btn_frame, text="")
@@ -208,18 +222,14 @@ class SettingsTab(TabBase):
         # --- Backup / Restore ---
         sep3 = ttk.Separator(container, orient="horizontal")
         sep3.pack(fill="x", padx=12, pady=8)
-        ttk.Label(container, text="Database", font=("Segoe UI", 12, "bold")).pack(
-            anchor="w", **pad
-        )
+        ttk.Label(container, text="Database", font=("Segoe UI", 12, "bold")).pack(anchor="w", **pad)
 
         db_frame = ttk.Frame(container)
         db_frame.pack(fill="x", padx=12, pady=4)
         ttk.Button(db_frame, text="Create Backup", command=self.create_backup).pack(
             side="left", padx=(0, 8)
         )
-        ttk.Button(db_frame, text="Restore Backup", command=self.restore_backup).pack(
-            side="left"
-        )
+        ttk.Button(db_frame, text="Restore Backup", command=self.restore_backup).pack(side="left")
 
         # .env file path info
         ttk.Label(
@@ -271,9 +281,9 @@ class SettingsTab(TabBase):
                 def _toggle(e=entry, sv=show_var) -> None:
                     e.configure(show="" if sv.get() else "*")
 
-                ttk.Checkbutton(
-                    row, text="Show", variable=show_var, command=_toggle
-                ).pack(side="left")
+                ttk.Checkbutton(row, text="Show", variable=show_var, command=_toggle).pack(
+                    side="left"
+                )
             else:
                 entry = ttk.Entry(row, textvariable=var, width=50)
                 entry.pack(side="left")
