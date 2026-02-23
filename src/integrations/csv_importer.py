@@ -131,6 +131,9 @@ class CSVImporter:
         - Data normalization
     """
 
+    # Maximum import file size (100 MB)
+    MAX_IMPORT_SIZE_BYTES = 100 * 1024 * 1024
+
     def parse_file(self, path: Path) -> ParseResult:
         """Parse CSV or XLSX file.
 
@@ -143,11 +146,23 @@ class CSVImporter:
         Raises:
             ImportError_: If file cannot be parsed
         """
-        path = Path(path)
+        path = Path(path).resolve()
         if not path.exists():
             raise ImportError_(f"File not found: {path}")
 
         suffix = path.suffix.lower()
+
+        # Validate file extension
+        if suffix not in (".csv", ".xlsx", ".xls"):
+            raise ImportError_(f"Unsupported file type: {suffix}")
+
+        # Prevent DoS via oversized files
+        file_size = path.stat().st_size
+        if file_size > self.MAX_IMPORT_SIZE_BYTES:
+            raise ImportError_(
+                f"File too large ({file_size / 1024 / 1024:.1f} MB). "
+                f"Maximum allowed: {self.MAX_IMPORT_SIZE_BYTES / 1024 / 1024:.0f} MB"
+            )
 
         if suffix in (".xlsx", ".xls"):
             headers, all_rows = self._parse_xlsx(path)

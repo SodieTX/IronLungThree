@@ -80,6 +80,7 @@ class BackupManager:
         """Create a timestamped backup.
 
         Uses SQLite backup API for consistent backup.
+        Backup files are created with restricted permissions (0600).
 
         Args:
             label: Backup label for identification
@@ -90,8 +91,10 @@ class BackupManager:
         Raises:
             DatabaseError: If backup fails
         """
+        from src.core.security import restrict_permissions, secure_mkdir
+
         try:
-            self.backup_path.mkdir(parents=True, exist_ok=True)
+            secure_mkdir(self.backup_path)
         except OSError as e:
             logger.warning(f"Cannot create backup directory: {e}")
             raise DatabaseError(f"Cannot create backup directory: {e}") from e
@@ -106,6 +109,9 @@ class BackupManager:
                 sqlite3.connect(str(dest)) as dest_conn,
             ):
                 source_conn.backup(dest_conn)
+
+            # Restrict backup file to owner-only access
+            restrict_permissions(dest)
 
             logger.info(
                 "Backup created",
@@ -159,9 +165,13 @@ class BackupManager:
         Raises:
             DatabaseError: If restore fails
         """
-        backup_path = Path(backup_path)
+        backup_path = Path(backup_path).resolve()
         if not backup_path.exists():
             raise DatabaseError(f"Backup file not found: {backup_path}")
+
+        # Validate filename is a .db file (prevent restoring arbitrary files)
+        if backup_path.suffix.lower() != ".db":
+            raise DatabaseError(f"Invalid backup file type: {backup_path.suffix}")
 
         # Validate the backup is a valid SQLite database
         try:

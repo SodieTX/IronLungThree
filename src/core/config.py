@@ -231,10 +231,12 @@ def validate_config(config: Config) -> list[str]:
     """
     issues: list[str] = []
 
-    # Check database directory
+    from src.core.security import secure_mkdir
+
+    # Check database directory (with restricted permissions)
     db_dir = config.db_path.parent
     try:
-        db_dir.mkdir(parents=True, exist_ok=True)
+        secure_mkdir(db_dir)
         if not os.access(db_dir, os.W_OK):
             issues.append(f"Database directory not writable: {db_dir}")
     except OSError as e:
@@ -242,7 +244,7 @@ def validate_config(config: Config) -> list[str]:
 
     # Check log directory
     try:
-        config.log_path.mkdir(parents=True, exist_ok=True)
+        secure_mkdir(config.log_path)
         if not os.access(config.log_path, os.W_OK):
             issues.append(f"Log directory not writable: {config.log_path}")
     except OSError as e:
@@ -250,7 +252,7 @@ def validate_config(config: Config) -> list[str]:
 
     # Check backup directory
     try:
-        config.backup_path.mkdir(parents=True, exist_ok=True)
+        secure_mkdir(config.backup_path)
         if not os.access(config.backup_path, os.W_OK):
             issues.append(f"Backup directory not writable: {config.backup_path}")
     except OSError as e:
@@ -297,6 +299,15 @@ def validate_config(config: Config) -> list[str]:
             f"Have: {', '.join(ac_present)}. Missing: {', '.join(ac_missing)}."
         )
 
+    # Validate ActiveCampaign URL if present
+    if config.activecampaign_url:
+        from src.core.security import validate_api_url
+
+        try:
+            validate_api_url(config.activecampaign_url, integration="activecampaign")
+        except ValueError as e:
+            issues.append(f"ACTIVECAMPAIGN_URL security check failed: {e}")
+
     # Check Google Search credentials (Phase 5 - all or none)
     google_creds = {
         "GOOGLE_API_KEY": config.google_api_key,
@@ -309,6 +320,25 @@ def validate_config(config: Config) -> list[str]:
         issues.append(
             f"Partial Google Search credentials. "
             f"Have: {', '.join(google_present)}. Missing: {', '.join(google_missing)}."
+        )
+
+    # Validate API key formats (catch misconfigurations early)
+    from src.core.security import validate_api_key_format
+
+    if config.claude_api_key and not validate_api_key_format(config.claude_api_key, "anthropic"):
+        issues.append(
+            "CLAUDE_API_KEY does not match expected format (should start with 'sk-ant-'). "
+            "Check that the full key was pasted correctly."
+        )
+
+    if config.google_api_key and not validate_api_key_format(config.google_api_key, "google"):
+        issues.append("GOOGLE_API_KEY does not match expected format. Verify the key is correct.")
+
+    if config.activecampaign_api_key and not validate_api_key_format(
+        config.activecampaign_api_key, "activecampaign"
+    ):
+        issues.append(
+            "ACTIVECAMPAIGN_API_KEY does not match expected format. Verify the key is correct."
         )
 
     return issues

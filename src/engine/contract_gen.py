@@ -66,18 +66,33 @@ _env: object | None = None
 
 
 def _get_env():
-    """Get or create the Jinja2 environment for contracts."""
+    """Get or create the Jinja2 environment for contracts.
+
+    Uses SandboxedEnvironment to prevent template code from executing
+    arbitrary Python, even if a malicious template is injected.
+    """
     if jinja2 is None:
         raise RuntimeError("jinja2 package not installed. Install with: pip install jinja2")
     global _env
     if _env is None:
         CONTRACT_TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
-        _env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(CONTRACT_TEMPLATE_DIR)),
-            autoescape=False,  # Plain text contracts, not HTML
-            undefined=jinja2.StrictUndefined,
-            keep_trailing_newline=True,
-        )
+        try:
+            from jinja2.sandbox import SandboxedEnvironment
+
+            _env = SandboxedEnvironment(
+                loader=jinja2.FileSystemLoader(str(CONTRACT_TEMPLATE_DIR)),
+                autoescape=False,  # Plain text contracts, not HTML
+                undefined=jinja2.StrictUndefined,
+                keep_trailing_newline=True,
+            )
+        except ImportError:
+            # Fallback if sandbox not available (older jinja2)
+            _env = jinja2.Environment(
+                loader=jinja2.FileSystemLoader(str(CONTRACT_TEMPLATE_DIR)),
+                autoescape=False,
+                undefined=jinja2.StrictUndefined,
+                keep_trailing_newline=True,
+            )
     return _env
 
 

@@ -81,9 +81,11 @@ class Database:
         """Get or create database connection."""
         if self._conn is None:
             try:
-                # Create directory if needed (unless in-memory)
+                # Create directory with restricted permissions (unless in-memory)
                 if self.db_path != ":memory:":
-                    Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+                    from src.core.security import restrict_permissions, secure_mkdir
+
+                    secure_mkdir(Path(self.db_path).parent)
 
                 self._conn = sqlite3.connect(
                     self.db_path,
@@ -97,6 +99,10 @@ class Database:
                 # Enable WAL mode for better concurrency
                 if self.db_path != ":memory:":
                     self._conn.execute("PRAGMA journal_mode = WAL")
+                    # Restrict database file permissions to owner-only (0600)
+                    db_file = Path(self.db_path)
+                    if db_file.exists():
+                        restrict_permissions(db_file)
 
             except sqlite3.Error as e:
                 raise DatabaseError(f"Cannot connect to database: {e}") from e

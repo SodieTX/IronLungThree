@@ -48,16 +48,29 @@ _env: object | None = None
 
 
 def _get_env():
-    """Get or create the Jinja2 environment."""
+    """Get or create the Jinja2 environment.
+
+    Uses SandboxedEnvironment to prevent template code from executing
+    arbitrary Python, and autoescape=True to prevent XSS in HTML emails.
+    """
     if jinja2 is None:
         raise RuntimeError("jinja2 package not installed. " "Install with: pip install jinja2")
     global _env
     if _env is None:
-        _env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
-            autoescape=True,
-            undefined=jinja2.Undefined,
-        )
+        try:
+            from jinja2.sandbox import SandboxedEnvironment
+
+            _env = SandboxedEnvironment(
+                loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
+                autoescape=True,
+                undefined=jinja2.StrictUndefined,
+            )
+        except ImportError:
+            _env = jinja2.Environment(
+                loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
+                autoescape=True,
+                undefined=jinja2.StrictUndefined,
+            )
     return _env
 
 
