@@ -173,8 +173,9 @@ def load_config(env_file: Optional[Path] = None) -> Config:
 
     Priority:
         1. Environment variables (highest)
-        2. .env file
-        3. Default values (lowest)
+        2. Repo-local .env file
+        3. Persistent ~/.ironlung/.env (written by Settings tab)
+        4. Default values (lowest)
 
     Args:
         env_file: Path to .env file. Defaults to .env in current directory.
@@ -182,10 +183,15 @@ def load_config(env_file: Optional[Path] = None) -> Config:
     Returns:
         Loaded configuration
     """
+    # Load from persistent user-data location first (lowest priority of the two)
+    persistent_env = Path.home() / ".ironlung" / ".env"
+    env_vars = load_env_file(persistent_env)
+
+    # Repo-local .env overrides persistent values
     if env_file is None:
         env_file = Path.cwd() / ".env"
-
-    env_vars = load_env_file(env_file)
+    local_vars = load_env_file(env_file)
+    env_vars.update(local_vars)
 
     return Config(
         db_path=_get_path("IRONLUNG_DB_PATH", DEFAULT_DB_PATH, env_vars),
