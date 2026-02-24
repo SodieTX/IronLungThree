@@ -40,8 +40,10 @@ class EmailComposeDialog:
         self._mode_var = tk.StringVar(value="template")
         self._template_var = tk.StringVar()
         self._subject_var = tk.StringVar()
+        self._instruction_var = tk.StringVar()
         self._body_text: Optional[tk.Text] = None
         self._template_frame: Optional[ttk.Frame] = None
+        self._ai_frame: Optional[ttk.Frame] = None
         self._sent = False
 
     def show(self) -> bool:
@@ -72,6 +74,13 @@ class EmailComposeDialog:
             value="custom",
             command=self._on_mode_change,
         ).pack(side=tk.LEFT, padx=4)
+        ttk.Radiobutton(
+            mode_frame,
+            text="Anne, write this",
+            variable=self._mode_var,
+            value="ai",
+            command=self._on_mode_change,
+        ).pack(side=tk.LEFT, padx=4)
 
         # Template selector
         self._template_frame = ttk.Frame(main)
@@ -87,6 +96,16 @@ class EmailComposeDialog:
             width=30,
         ).pack(side=tk.LEFT, padx=4)
         ttk.Button(self._template_frame, text="Preview", command=self._preview_template).pack(
+            side=tk.LEFT, padx=4
+        )
+
+        # AI instruction frame (hidden by default)
+        self._ai_frame = ttk.Frame(main)
+        ttk.Label(self._ai_frame, text="Tell Anne what to write:").pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Entry(self._ai_frame, textvariable=self._instruction_var, width=40).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=4
+        )
+        ttk.Button(self._ai_frame, text="Generate", command=self._generate_ai_email).pack(
             side=tk.LEFT, padx=4
         )
 
@@ -135,13 +154,19 @@ class EmailComposeDialog:
         return self._sent
 
     def _on_mode_change(self) -> None:
-        """Handle mode toggle between template and custom."""
-        if not self._template_frame:
+        """Handle mode toggle between template, custom, and AI."""
+        if not self._template_frame or not self._ai_frame:
             return
-        if self._mode_var.get() == "template":
+        mode = self._mode_var.get()
+        if mode == "template":
             self._template_frame.pack(fill=tk.X, pady=(0, 8))
+            self._ai_frame.pack_forget()
+        elif mode == "ai":
+            self._template_frame.pack_forget()
+            self._ai_frame.pack(fill=tk.X, pady=(0, 8))
         else:
             self._template_frame.pack_forget()
+            self._ai_frame.pack_forget()
 
     def _get_templates(self) -> list[str]:
         """Get available email template names."""
@@ -189,6 +214,48 @@ class EmailComposeDialog:
             logger.error(f"Template preview failed: {e}")
             parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
             messagebox.showerror("Error", f"Template error: {e}", parent=parent)
+
+    def _generate_ai_email(self) -> None:
+        """Use AI to generate an email based on instruction."""
+        instruction = self._instruction_var.get().strip()
+        if not instruction or not self._body_text:
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showwarning(
+                "Tell Anne",
+                'Describe what you want, e.g. "short follow-up on our demo" '
+                'or "intro email mentioning their growth".',
+                parent=parent,
+            )
+            return
+
+        try:
+            from src.engine.email_gen import EmailGenerator
+
+            generator = EmailGenerator(self.db)
+            result = generator.generate_email(
+                prospect=self.prospect,
+                company=self.company,
+                instruction=instruction,
+            )
+
+            self._subject_var.set(result.subject)
+            self._body_text.delete("1.0", tk.END)
+            self._body_text.insert("1.0", result.body)
+
+            logger.info(
+                f"AI email generated for {self.prospect.full_name}",
+                extra={"context": {"tokens": result.tokens_used}},
+            )
+
+        except Exception as e:
+            logger.error(f"AI email generation failed: {e}")
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showerror(
+                "AI Unavailable",
+                f"Anne couldn't generate this email: {e}\n\n"
+                "Check your CLAUDE_API_KEY or switch to template/custom mode.",
+                parent=parent,
+            )
 
     def _on_send(self) -> None:
         """Send the email."""

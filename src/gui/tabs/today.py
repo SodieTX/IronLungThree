@@ -17,6 +17,8 @@ from src.db.models import (
     Prospect,
 )
 from src.engine.cadence import get_todays_queue
+from src.gui.adhd.audio import AudioManager, Sound
+from src.gui.adhd.dopamine import DopamineEngine, WinType
 from src.gui.cards import ProspectCard
 from src.gui.dialogs.morning_brief import MorningBriefDialog
 from src.gui.dialogs.quick_action import QuickActionDialog
@@ -41,6 +43,8 @@ class TodayTab(TabBase):
         self._notes_text: Optional[tk.Text] = None
         self._search_var = tk.StringVar()
         self._brief_shown = False
+        self._audio = AudioManager()
+        self._dopamine = DopamineEngine()
         self._create_ui()
 
     def _create_ui(self) -> None:
@@ -118,13 +122,21 @@ class TodayTab(TabBase):
         self._show_current_card()
 
     def on_activate(self) -> None:
-        """Called when this tab becomes visible."""
+        """Called when this tab becomes visible.
+
+        Preserves queue position — re-renders the current card
+        (in case data changed while on another tab) without
+        resetting the queue index.
+        """
         if not self._brief_shown:
             self._brief_shown = True
             self.refresh()
             self.show_morning_brief()
         else:
             self._update_queue_label()
+            # Re-render current card with fresh data (position preserved)
+            if self._queue and self._queue_index < len(self._queue):
+                self._show_current_card()
 
     def show_morning_brief(self) -> None:
         """Display morning brief dialog."""
@@ -143,16 +155,39 @@ class TodayTab(TabBase):
 
     def start_processing(self) -> None:
         """Start card processing loop."""
-        self._queue = get_todays_queue(self.db)
+        # Get current energy level for queue ordering
+        energy = self._get_energy_level()
+        self._queue = get_todays_queue(self.db, energy=energy)
         self._queue_index = 0
         self._update_queue_label()
         self._show_current_card()
-        logger.info(f"Processing started: {len(self._queue)} cards in queue")
+        energy_note = f" (energy: {energy})" if energy else ""
+        logger.info(f"Processing started: {len(self._queue)} cards in queue{energy_note}")
+
+    @staticmethod
+    def _get_energy_level() -> str:
+        """Get current energy level based on time of day."""
+        from datetime import datetime as dt
+
+        hour = dt.now().hour
+        if hour < 14:
+            return "HIGH"
+        elif hour < 16:
+            return "MEDIUM"
+        else:
+            return "LOW"
 
     def next_card(self) -> None:
         """Move to next card in queue."""
         # Save any notes for the current card
         self._save_current_notes()
+
+        # Record the win and play audio feedback
+        milestone = self._dopamine.record_win(WinType.CARD_PROCESSED)
+        if milestone:
+            self._audio.play_sound(Sound.STREAK)
+        else:
+            self._audio.play_sound(Sound.CARD_DONE)
 
         self._queue_index += 1
         if self._queue_index >= len(self._queue):
@@ -215,10 +250,17 @@ class TodayTab(TabBase):
         if self._card:
             self._card.destroy()
             self._card = None
+
+        self._audio.play_sound(Sound.DEAL_CLOSED)
+        self._dopamine.check_achievement("queue_cleared")
+
         if self._status_label:
-            self._status_label.config(
-                text="Queue complete! Great work.\n\nCheck the Calendar or Pipeline tabs."
-            )
+            streak = self._dopamine.get_streak()
+            msg = "Queue complete! Great work."
+            if streak >= 5:
+                msg += f"\n\nStreak: {streak} cards processed."
+            msg += "\n\nCheck the Calendar or Pipeline tabs."
+            self._status_label.config(text=msg)
             self._status_label.pack(expand=True)
         self._update_queue_label()
 
@@ -300,7 +342,18 @@ class TodayTab(TabBase):
                 created_by="user",
             )
             self.db.create_activity(activity)
-        self.next_card()
+
+        # Skip breaks the streak — no reward sound
+        self._dopamine.break_streak()
+
+        # Advance without calling next_card (which would record a win)
+        self._save_current_notes()
+        self._queue_index += 1
+        if self._queue_index >= len(self._queue):
+            self._show_queue_complete()
+            return
+        self._update_queue_label()
+        self._show_current_card()
 
     def _quick_search(self) -> None:
         """Quick search for a prospect by name."""

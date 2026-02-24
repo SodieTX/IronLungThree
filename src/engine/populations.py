@@ -105,6 +105,7 @@ def transition_prospect(
     to_population: Population,
     reason: Optional[str] = None,
     to_stage: Optional[EngagementStage] = None,
+    follow_up_date: Optional[object] = None,
 ) -> bool:
     """Execute a population transition with full logging.
 
@@ -114,13 +115,14 @@ def transition_prospect(
         to_population: Target population
         reason: Reason for transition
         to_stage: Target engagement stage (if moving to ENGAGED)
+        follow_up_date: Follow-up date (required when moving to ENGAGED)
 
     Returns:
         True if transition successful
 
     Raises:
         DNCViolationError: If trying to transition FROM DNC
-        PipelineError: If transition is invalid
+        PipelineError: If transition is invalid or ENGAGED without follow-up date
     """
     from src.db.models import Activity, ActivityType
 
@@ -144,6 +146,15 @@ def transition_prospect(
     if not can_transition(from_pop, to_population):
         raise PipelineError(f"Invalid transition: {from_pop.value} -> {to_population.value}")
 
+    # ENGAGED requires a follow-up date — deals die without one
+    if to_population == Population.ENGAGED and from_pop != Population.ENGAGED:
+        has_follow_up = follow_up_date or prospect.follow_up_date
+        if not has_follow_up:
+            raise PipelineError(
+                "Cannot move to ENGAGED without a follow-up date. "
+                "Every engaged prospect needs a next-contact date."
+            )
+
     # Build update fields
     old_stage = prospect.engagement_stage
     new_stage = to_stage
@@ -159,6 +170,10 @@ def transition_prospect(
     # Update the prospect
     prospect.population = to_population
     prospect.engagement_stage = new_stage
+
+    # Apply follow_up_date if provided
+    if follow_up_date is not None:
+        prospect.follow_up_date = follow_up_date
 
     # Set metadata for terminal states
     if to_population == Population.DEAD_DNC:
