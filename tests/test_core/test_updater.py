@@ -44,9 +44,7 @@ class TestCheckForUpdate:
     @patch("src.core.updater._get_local_version", return_value="0.7.0")
     def test_fetch_failure_returns_error(self, mock_ver, mock_git):
         """Network failure returns a graceful error."""
-        mock_git.return_value = MagicMock(
-            returncode=128, stderr="fatal: unable to access"
-        )
+        mock_git.return_value = MagicMock(returncode=128, stderr="fatal: unable to access")
         result = check_for_update()
         assert result.error is not None
         assert not result.update_available

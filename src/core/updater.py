@@ -116,9 +116,7 @@ def check_for_update() -> UpdateCheckResult:
         )
 
     # Count commits behind
-    rev_list = _run_git(
-        "rev-list", "--count", f"HEAD..origin/{_UPDATE_BRANCH}"
-    )
+    rev_list = _run_git("rev-list", "--count", f"HEAD..origin/{_UPDATE_BRANCH}")
     commits_behind = 0
     if rev_list.returncode == 0:
         try:
@@ -220,9 +218,7 @@ def apply_update() -> UpdateApplyResult:
             cwd=str(_REPO_ROOT),
         )
         if pip_result.returncode != 0:
-            logger.warning(
-                f"Dependency update had issues: {pip_result.stderr.strip()}"
-            )
+            logger.warning(f"Dependency update had issues: {pip_result.stderr.strip()}")
 
     new_version = _get_local_version()
 
