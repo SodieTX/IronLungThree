@@ -1,5 +1,6 @@
 """Main application window."""
 
+import threading
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Optional
@@ -37,6 +38,7 @@ class IronLungApp:
         self._create_status_bar()
         self._bind_shortcuts()
         self._init_anne()
+        self._check_for_updates()
         logger.info("IronLung 3 GUI launched")
         if self.root:
             self.root.mainloop()
@@ -255,6 +257,31 @@ class IronLungApp:
         except Exception as e:
             logger.warning(f"Failed to update status bar: {e}")
             self._status_label.config(text="Ready")
+
+    def _check_for_updates(self) -> None:
+        """Run a background update check and show a status bar hint if available."""
+
+        def _check() -> None:
+            try:
+                from src.core.updater import check_for_update
+
+                result = check_for_update()
+                if result.update_available and self.root:
+                    version = result.remote_version or "new"
+                    self.root.after(0, lambda: self._show_update_hint(version))
+            except Exception as e:
+                logger.debug(f"Startup update check failed (non-fatal): {e}")
+
+        thread = threading.Thread(target=_check, daemon=True)
+        thread.start()
+
+    def _show_update_hint(self, version: str) -> None:
+        """Show a subtle update notification in the status bar."""
+        if self._status_label:
+            current_text = self._status_label.cget("text")
+            self._status_label.config(
+                text=f"{current_text}  |  Update available: v{version} (Settings > Check for Updates)"
+            )
 
     def close(self) -> None:
         """Close application gracefully."""

@@ -6,6 +6,7 @@ never has to manually edit the .env file. Credentials are saved to
 registry are reloaded in-place.
 """
 
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -249,6 +250,41 @@ class SettingsTab(TabBase):
         )
         ttk.Button(db_frame, text="Restore Backup", command=self.restore_backup).pack(side="left")
 
+        # --- Application Updates ---
+        sep4 = ttk.Separator(container, orient="horizontal")
+        sep4.pack(fill="x", padx=12, pady=8)
+        ttk.Label(container, text="Application Updates", font=("Segoe UI", 12, "bold")).pack(
+            anchor="w", padx=12, pady=4
+        )
+
+        from ironlung3 import __version__
+
+        self._version_label = ttk.Label(
+            container,
+            text=f"Current version: v{__version__}",
+            font=("Consolas", 10),
+        )
+        self._version_label.pack(anchor="w", padx=24, pady=(0, 4))
+
+        update_frame = ttk.Frame(container)
+        update_frame.pack(fill="x", padx=12, pady=4)
+        self._check_btn = ttk.Button(
+            update_frame, text="Check for Updates", command=self._on_check_update
+        )
+        self._check_btn.pack(side="left", padx=(12, 8))
+
+        self._update_btn = ttk.Button(
+            update_frame, text="Update Now", command=self._on_apply_update, state="disabled"
+        )
+        self._update_btn.pack(side="left", padx=(0, 8))
+
+        self._update_status = ttk.Label(update_frame, text="")
+        self._update_status.pack(side="left", padx=8)
+
+        self._update_details = tk.Text(
+            container, height=6, wrap="word", state="disabled", font=("Consolas", 9)
+        )
+
         # .env file path info
         ttk.Label(
             container,
@@ -438,3 +474,95 @@ class SettingsTab(TabBase):
     def save_settings(self) -> None:
         """Save settings changes (called externally)."""
         self._on_save()
+
+    # ------------------------------------------------------------------
+    # Application Updates
+    # ------------------------------------------------------------------
+
+    def _on_check_update(self) -> None:
+        """Check for updates in a background thread."""
+        self._check_btn.config(state="disabled")
+        self._update_btn.config(state="disabled")
+        self._update_status.config(text="Checking for updates...", foreground="#6c757d")
+
+        def _check() -> None:
+            from src.core.updater import check_for_update
+
+            result = check_for_update()
+            # Schedule UI update on the main thread
+            self.parent.after(0, lambda: self._show_check_result(result))
+
+        thread = threading.Thread(target=_check, daemon=True)
+        thread.start()
+
+    def _show_check_result(self, result) -> None:  # type: ignore[no-untyped-def]
+        """Display the update check result (runs on main thread)."""
+        self._check_btn.config(state="normal")
+
+        if result.error:
+            self._update_status.config(text=result.error, foreground="#dc3545")
+            return
+
+        if result.update_available:
+            remote = result.remote_version or "newer"
+            self._update_status.config(
+                text=f"Update available: v{remote} ({result.commits_behind} new commit(s))",
+                foreground="#28a745",
+            )
+            self._update_btn.config(state="normal")
+
+            # Show commit summary
+            if result.commit_summary:
+                self._update_details.pack(fill="x", padx=24, pady=4)
+                self._update_details.config(state="normal")
+                self._update_details.delete("1.0", tk.END)
+                self._update_details.insert("1.0", f"What's new:\n{result.commit_summary}")
+                self._update_details.config(state="disabled")
+        else:
+            self._update_status.config(
+                text=f"You're up to date (v{result.current_version})", foreground="#28a745"
+            )
+            self._update_details.pack_forget()
+
+    def _on_apply_update(self) -> None:
+        """Apply the update in a background thread."""
+        confirm = messagebox.askyesno(
+            "Update IronLung 3",
+            "This will download and apply the latest update.\n\n"
+            "The application will need to restart after updating.\n\n"
+            "Continue?",
+        )
+        if not confirm:
+            return
+
+        self._check_btn.config(state="disabled")
+        self._update_btn.config(state="disabled")
+        self._update_status.config(text="Updating... please wait", foreground="#6c757d")
+
+        def _apply() -> None:
+            from src.core.updater import apply_update
+
+            result = apply_update()
+            self.parent.after(0, lambda: self._show_apply_result(result))
+
+        thread = threading.Thread(target=_apply, daemon=True)
+        thread.start()
+
+    def _show_apply_result(self, result) -> None:  # type: ignore[no-untyped-def]
+        """Display the update apply result (runs on main thread)."""
+        self._check_btn.config(state="normal")
+
+        if result.success:
+            self._update_status.config(text="Updated!", foreground="#28a745")
+            self._update_btn.config(state="disabled")
+            self._update_details.pack_forget()
+            messagebox.showinfo(
+                "Update Complete",
+                f"{result.message}\n\n"
+                "Please close and reopen IronLung 3 to use the new version.",
+            )
+            logger.info(f"Update applied: v{result.old_version} -> v{result.new_version}")
+        else:
+            self._update_status.config(text=result.message, foreground="#dc3545")
+            self._update_btn.config(state="normal")
+            logger.error(f"Update failed: {result.message}")
