@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-
 # ---------------------------------------------------------------------------
 # File permission helpers
 # ---------------------------------------------------------------------------
@@ -225,8 +224,7 @@ def validate_api_url(url: str, integration: Optional[str] = None) -> str:
         allowed = _ALLOWED_DOMAINS[integration]
         if not any(hostname == d or hostname.endswith(d) for d in allowed):
             raise ValueError(
-                f"URL hostname '{hostname}' not in allowed domains for "
-                f"{integration}: {allowed}"
+                f"URL hostname '{hostname}' not in allowed domains for " f"{integration}: {allowed}"
             )
 
     return url
@@ -256,9 +254,7 @@ def validate_safe_path(path: Path, allowed_parent: Path) -> Path:
     parent = Path(allowed_parent).resolve()
 
     if not str(resolved).startswith(str(parent)):
-        raise ValueError(
-            f"Path traversal detected: {path} resolves outside of {allowed_parent}"
-        )
+        raise ValueError(f"Path traversal detected: {path} resolves outside of {allowed_parent}")
 
     return resolved
 

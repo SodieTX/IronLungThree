@@ -18,7 +18,6 @@ from src.core.security import (
     validate_safe_path,
 )
 
-
 # ---------------------------------------------------------------------------
 # File permissions
 # ---------------------------------------------------------------------------
@@ -182,9 +181,7 @@ class TestValidateApiUrl:
 
     def test_integration_domain_check_activecampaign(self) -> None:
         # Valid AC domain
-        url = validate_api_url(
-            "https://myaccount.api-us1.com/api/3", integration="activecampaign"
-        )
+        url = validate_api_url("https://myaccount.api-us1.com/api/3", integration="activecampaign")
         assert url
 
     def test_integration_domain_check_rejects_wrong_domain(self) -> None:
