@@ -111,3 +111,40 @@ class TestValidateConfig:
         issues = validate_config(config)
         ac_issues = [i for i in issues if "ActiveCampaign" in i]
         assert len(ac_issues) >= 1
+
+    def test_partial_trello_flagged(self, tmp_path: Path):
+        """Partial Trello credentials should be flagged."""
+        config = Config(
+            db_path=tmp_path / "test.db",
+            log_path=tmp_path / "logs",
+            backup_path=tmp_path / "backups",
+            trello_api_key="test-key",
+            # Missing token
+        )
+        issues = validate_config(config)
+        trello_issues = [i for i in issues if "Trello" in i]
+        assert len(trello_issues) >= 1
+
+    def test_full_trello_no_issues(self, tmp_path: Path):
+        """Complete Trello credentials should not produce Trello issues."""
+        config = Config(
+            db_path=tmp_path / "test.db",
+            log_path=tmp_path / "logs",
+            backup_path=tmp_path / "backups",
+            trello_api_key="a" * 32,
+            trello_token="test-token",
+        )
+        issues = validate_config(config)
+        trello_issues = [i for i in issues if "Trello" in i]
+        assert len(trello_issues) == 0
+
+    def test_no_creds_no_trello_issues(self, tmp_path: Path):
+        """No credentials at all should not produce Trello issues."""
+        config = Config(
+            db_path=tmp_path / "test.db",
+            log_path=tmp_path / "logs",
+            backup_path=tmp_path / "backups",
+        )
+        issues = validate_config(config)
+        trello_issues = [i for i in issues if "Trello" in i]
+        assert len(trello_issues) == 0

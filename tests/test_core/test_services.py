@@ -74,6 +74,12 @@ class TestServiceRegistryNoCredentials:
             registry = ServiceRegistry()
             assert not registry.is_available("google_search")
 
+    def test_trello_not_available(self):
+        config = _make_config()
+        with patch("src.core.services.get_config", return_value=config):
+            registry = ServiceRegistry()
+            assert not registry.is_available("trello")
+
     def test_unknown_service_returns_false(self):
         config = _make_config()
         with patch("src.core.services.get_config", return_value=config):
@@ -145,6 +151,29 @@ class TestServiceRegistryWithCredentials:
         with patch("src.core.services.get_config", return_value=config):
             registry = ServiceRegistry()
             assert registry.is_available("activecampaign")
+
+    def test_trello_partial_not_available(self):
+        config = _make_config(
+            trello_api_key="test-key",
+            # Missing token
+        )
+        with patch("src.core.services.get_config", return_value=config):
+            registry = ServiceRegistry()
+            assert not registry.is_available("trello")
+            status = registry.check("trello")
+            assert "Partial" in status.reason
+
+    def test_trello_fully_configured(self):
+        config = _make_config(
+            trello_api_key="test-key",
+            trello_token="test-token",
+        )
+        with patch("src.core.services.get_config", return_value=config):
+            registry = ServiceRegistry()
+            assert registry.is_available("trello")
+            status = registry.check("trello")
+            assert status.configured
+            assert status.reason == ""
 
 
 class TestServiceRegistryRequire:
