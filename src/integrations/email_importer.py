@@ -130,9 +130,11 @@ class EmailCSVImporter:
                 self.db.create_activity(activity)
                 result.activities_created += 1
             except Exception as exc:
+                from src.core.security import redact_email
+
                 logger.warning(
                     "Failed to create email activity from CSV",
-                    extra={"context": {"email": email_addr, "error": str(exc)}},
+                    extra={"context": {"email": redact_email(email_addr), "error": str(exc)}},
                 )
 
         logger.info(

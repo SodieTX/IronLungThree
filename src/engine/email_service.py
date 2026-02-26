@@ -324,8 +324,10 @@ class EmailService:
         )
         activity_id = self._db.create_activity(activity)
 
+        from src.core.security import redact_email
+
         logger.info(
-            f"Email {'drafted' if draft_only else 'sent'}: {subject} -> {recipient}",
+            f"Email {'drafted' if draft_only else 'sent'}: {subject} -> {redact_email(recipient)}",
             extra={
                 "context": {
                     "prospect_id": prospect.id,

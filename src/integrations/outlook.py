@@ -187,9 +187,11 @@ class OutlookClient(IntegrationBase):
                 expires_in = result.get("expires_in", 3600)
                 self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
                 self._save_token_cache()
+                from src.core.security import redact_email
+
                 logger.info(
                     "Outlook authentication successful",
-                    extra={"context": {"user": self._user_email}},
+                    extra={"context": {"user": redact_email(self._user_email)}},
                 )
                 return True
             else:
@@ -227,9 +229,11 @@ class OutlookClient(IntegrationBase):
             OutlookError: If send fails
         """
         if self._config.dry_run:
+            from src.core.security import redact_email
+
             logger.info(
-                f"DRY RUN: Would send email to {to}: {subject}",
-                extra={"context": {"to": to, "subject": subject}},
+                f"DRY RUN: Would send email to {redact_email(to)}",
+                extra={"context": {"subject": subject}},
             )
             return ""
 
@@ -271,9 +275,11 @@ class OutlookClient(IntegrationBase):
             )
 
             if response.status_code == 202:
+                from src.core.security import redact_email
+
                 logger.info(
-                    f"Email sent to {to}",
-                    extra={"context": {"to": to, "subject": subject}},
+                    f"Email sent to {redact_email(to)}",
+                    extra={"context": {"subject": subject}},
                 )
                 return f"sent-{datetime.now(timezone.utc).isoformat()}"
             else:
@@ -328,9 +334,11 @@ class OutlookClient(IntegrationBase):
             if response.status_code == 201:
                 data = response.json()
                 draft_id: str = data.get("id", "")
+                from src.core.security import redact_email
+
                 logger.info(
-                    f"Draft created for {to}",
-                    extra={"context": {"to": to, "subject": subject}},
+                    f"Draft created for {redact_email(to)}",
+                    extra={"context": {"subject": subject}},
                 )
                 return draft_id
             else:
@@ -805,12 +813,13 @@ class OutlookClient(IntegrationBase):
         return self._msal_app
 
     def _save_token_cache(self) -> None:
-        """Persist MSAL token cache to disk."""
+        """Persist MSAL token cache to disk with restricted permissions."""
         app = self._get_msal_app()
         if app.token_cache.has_state_changed:
             try:
-                self._token_cache_path.parent.mkdir(parents=True, exist_ok=True)
-                self._token_cache_path.write_text(app.token_cache.serialize())
+                from src.core.security import secure_write_file
+
+                secure_write_file(self._token_cache_path, app.token_cache.serialize())
             except OSError as e:
                 logger.warning(f"Failed to save token cache: {e}")
 
@@ -853,6 +862,15 @@ class OutlookClient(IntegrationBase):
             raise OutlookError("Not authenticated — call authenticate() first")
 
         url = f"{GRAPH_BASE_URL}{endpoint}"
+
+        # Validate the target URL points to Microsoft Graph (SSRF prevention)
+        from src.core.security import validate_api_url
+
+        try:
+            validate_api_url(url, integration="microsoft_graph")
+        except ValueError as e:
+            raise OutlookError(f"Invalid Graph API URL: {e}") from e
+
         headers = {
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
@@ -865,6 +883,7 @@ class OutlookClient(IntegrationBase):
             json=json_data,
             params=params,
             timeout=30,
+            verify=True,  # Explicit TLS certificate verification
         )
 
         # Handle 401 — token may have expired, re-auth and retry once
@@ -881,6 +900,7 @@ class OutlookClient(IntegrationBase):
                 json=json_data,
                 params=params,
                 timeout=30,
+                verify=True,
             )
 
         return response

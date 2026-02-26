@@ -103,8 +103,10 @@ def export_prospects(
     cols = columns or DEFAULT_COLUMNS
 
     try:
-        # Ensure parent directory exists
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure parent directory exists with restricted permissions
+        from src.core.security import restrict_permissions, secure_mkdir
+
+        secure_mkdir(path.parent)
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -129,8 +131,11 @@ def export_prospects(
                         row.append(str(value))
                 writer.writerow(row)
 
+        # Restrict export file to owner-only access (contains PII)
+        restrict_permissions(path)
+
         logger.info(
-            f"Exported {len(prospects)} prospects to {path}",
+            f"Exported {len(prospects)} prospects",
             extra={
                 "context": {
                     "count": len(prospects),

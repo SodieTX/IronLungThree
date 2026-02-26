@@ -264,6 +264,13 @@ class ActiveCampaignClient(IntegrationBase):
         if not self._base_url or not self._api_key:
             raise IntegrationError("ActiveCampaign not configured")
 
+        from src.core.security import validate_api_url
+
+        try:
+            validate_api_url(self._base_url, integration="activecampaign")
+        except ValueError as e:
+            raise IntegrationError(f"Invalid ActiveCampaign URL: {e}") from e
+
         url = f"{self._base_url}{endpoint}"
         headers = {
             "Api-Token": self._api_key,

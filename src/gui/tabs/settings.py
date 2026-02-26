@@ -43,8 +43,13 @@ def _read_env(path: Path) -> dict[str, str]:
 
 
 def _write_env(path: Path, values: dict[str, str]) -> None:
-    """Write key=value pairs to an .env file, preserving comments."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    """Write key=value pairs to an .env file, preserving comments.
+
+    Uses secure file permissions (0600) to protect credentials.
+    """
+    from src.core.security import secure_mkdir, secure_write_file
+
+    secure_mkdir(path.parent)
 
     # Read existing lines to preserve comments and ordering
     existing_lines: list[str] = []
@@ -73,8 +78,8 @@ def _write_env(path: Path, values: dict[str, str]) -> None:
         if key not in written_keys and val:
             new_lines.append(f"{key}={val}\n")
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.writelines(new_lines)
+    content = "".join(new_lines)
+    secure_write_file(path, content)
 
 
 # Credential field definitions: (env_key, label, is_secret)
@@ -334,12 +339,9 @@ class SettingsTab(TabBase):
             messagebox.showerror("Save Failed", f"Could not write credentials file:\n{e}")
             return
 
-        # Also write to the repo-local .env so the existing config loader picks it up
-        try:
-            repo_env = Path.cwd() / ".env"
-            _write_env(repo_env, values)
-        except Exception:
-            pass  # Non-fatal; the persistent copy is the important one
+        # Security: credentials are ONLY written to the persistent user-data
+        # location (~/.ironlung/.env), never to the repo checkout directory.
+        # This prevents accidental commits of secrets to version control.
 
         # Reload config and service registry so changes take effect immediately
         from src.core.config import reset_config
@@ -354,7 +356,7 @@ class SettingsTab(TabBase):
         # Clear the "Saved!" message after a few seconds
         self.parent.after(3000, lambda: self._save_status.config(text=""))
 
-        logger.info(f"Credentials saved to {_ENV_PATH}")
+        logger.info("Credentials saved to persistent store")
 
     # ------------------------------------------------------------------
     # Service status

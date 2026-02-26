@@ -100,10 +100,13 @@ def setup_logging(
     if _logging_initialized:
         return
 
-    # Determine log directory
+    # Determine log directory (with restricted permissions)
     if log_dir is None:
         log_dir = Path.home() / ".ironlung" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+
+    from src.core.security import restrict_permissions, secure_mkdir
+
+    secure_mkdir(log_dir)
 
     # Get root ironlung logger
     root_logger = logging.getLogger("ironlung")
@@ -126,6 +129,10 @@ def setup_logging(
     file_handler.setLevel(file_level)
     file_handler.setFormatter(JSONFormatter())
     root_logger.addHandler(file_handler)
+
+    # Restrict log file permissions to owner-only
+    if log_file.exists():
+        restrict_permissions(log_file)
 
     _logging_initialized = True
     root_logger.info("Logging initialized", extra={"context": {"log_dir": str(log_dir)}})
