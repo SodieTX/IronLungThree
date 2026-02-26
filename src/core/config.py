@@ -38,6 +38,9 @@ class Config:
         activecampaign_url: ActiveCampaign API URL (Phase 5)
         google_api_key: Google Custom Search API key (Phase 5)
         google_cx: Google Custom Search Engine ID (Phase 5)
+        trello_api_key: Trello API key (Phase 5)
+        trello_token: Trello API token (Phase 5)
+        trello_board_id: Trello board ID (Phase 5)
         debug: Enable debug mode
         dry_run: Log but don't send emails
     """
@@ -66,6 +69,11 @@ class Config:
     # Phase 5: Google Custom Search
     google_api_key: Optional[str] = None
     google_cx: Optional[str] = None
+
+    # Phase 5: Trello
+    trello_api_key: Optional[str] = None
+    trello_token: Optional[str] = None
+    trello_board_id: Optional[str] = None
 
     # Feature flags
     debug: bool = False
@@ -210,6 +218,9 @@ def load_config(env_file: Optional[Path] = None) -> Config:
         ac_replenish_threshold=_get_int("AC_REPLENISH_THRESHOLD", 50, env_vars),
         google_api_key=_get_str("GOOGLE_API_KEY", env_vars),
         google_cx=_get_str("GOOGLE_CX", env_vars),
+        trello_api_key=_get_str("TRELLO_API_KEY", env_vars),
+        trello_token=_get_str("TRELLO_TOKEN", env_vars),
+        trello_board_id=_get_str("TRELLO_BOARD_ID", env_vars),
         debug=_get_bool("IRONLUNG_DEBUG", False, env_vars),
         dry_run=_get_bool("IRONLUNG_DRY_RUN", False, env_vars),
     )
@@ -322,6 +333,20 @@ def validate_config(config: Config) -> list[str]:
             f"Have: {', '.join(google_present)}. Missing: {', '.join(google_missing)}."
         )
 
+    # Check Trello credentials (Phase 5 - key and token required together)
+    trello_creds = {
+        "TRELLO_API_KEY": config.trello_api_key,
+        "TRELLO_TOKEN": config.trello_token,
+    }
+    trello_present = [k for k, v in trello_creds.items() if v]
+    trello_missing = [k for k, v in trello_creds.items() if not v]
+
+    if trello_present and trello_missing:
+        issues.append(
+            f"Partial Trello credentials. "
+            f"Have: {', '.join(trello_present)}. Missing: {', '.join(trello_missing)}."
+        )
+
     # Validate API key formats (catch misconfigurations early)
     from src.core.security import validate_api_key_format
 
@@ -340,6 +365,9 @@ def validate_config(config: Config) -> list[str]:
         issues.append(
             "ACTIVECAMPAIGN_API_KEY does not match expected format. Verify the key is correct."
         )
+
+    if config.trello_api_key and not validate_api_key_format(config.trello_api_key, "trello"):
+        issues.append("TRELLO_API_KEY does not match expected format. Verify the key is correct.")
 
     return issues
 

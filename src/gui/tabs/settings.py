@@ -104,6 +104,12 @@ _GOOGLE_FIELDS = [
     ("GOOGLE_CX", "Search Engine ID", False),
 ]
 
+_TRELLO_FIELDS = [
+    ("TRELLO_API_KEY", "API Key", True),
+    ("TRELLO_TOKEN", "Token", True),
+    ("TRELLO_BOARD_ID", "Board ID", False),
+]
+
 
 class SettingsTab(TabBase):
     """Application settings with credential entry, service status, and backups."""
@@ -181,6 +187,12 @@ class SettingsTab(TabBase):
             "Google Custom Search",
             _GOOGLE_FIELDS,
             hint="console.cloud.google.com > Credentials",
+        )
+        self._build_section(
+            container,
+            "Trello",
+            _TRELLO_FIELDS,
+            hint="trello.com/power-ups/admin > API Key, then generate a Token",
         )
 
         # --- Feature flags ---

@@ -272,7 +272,7 @@ def validate_api_key_format(key: str, provider: str) -> bool:
 
     Args:
         key: API key to validate
-        provider: Provider name ("anthropic", "activecampaign", "google")
+        provider: Provider name ("anthropic", "activecampaign", "google", "trello")
 
     Returns:
         True if key appears to be in valid format
@@ -293,6 +293,10 @@ def validate_api_key_format(key: str, provider: str) -> bool:
     if provider == "activecampaign":
         # AC keys are typically 64-char hex strings
         return len(key) >= 20 and re.match(r"^[A-Za-z0-9]+$", key) is not None
+
+    if provider == "trello":
+        # Trello API keys are 32-char hex strings
+        return len(key) >= 16 and re.match(r"^[A-Za-z0-9]+$", key) is not None
 
     # Unknown provider - just check it's not empty and reasonably long
     return len(key) >= 10

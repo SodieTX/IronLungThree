@@ -323,6 +323,30 @@ class TestConfigValidation:
         issues = validate_config(config)
         assert any("Google" in issue for issue in issues)
 
+    def test_partial_trello_warns(self, tmp_path):
+        config = Config(
+            db_path=tmp_path / "test.db",
+            log_path=tmp_path / "logs",
+            backup_path=tmp_path / "backups",
+            cloud_sync_path=None,
+            trello_api_key="test-key",
+            # Missing token
+        )
+        issues = validate_config(config)
+        assert any("Trello" in issue for issue in issues)
+
+    def test_full_trello_no_warnings(self, tmp_path):
+        config = Config(
+            db_path=tmp_path / "test.db",
+            log_path=tmp_path / "logs",
+            backup_path=tmp_path / "backups",
+            cloud_sync_path=None,
+            trello_api_key="a" * 32,
+            trello_token="test-token",
+        )
+        issues = validate_config(config)
+        assert not any("Trello" in issue for issue in issues)
+
     def test_nonexistent_cloud_sync_warns(self, tmp_path):
         config = Config(
             db_path=tmp_path / "test.db",

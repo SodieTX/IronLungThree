@@ -45,7 +45,7 @@ class ServicePhase(Enum):
     PHASE_1 = 1  # Core / local-only
     PHASE_3 = 3  # Outlook, Bria
     PHASE_4 = 4  # Claude AI
-    PHASE_5 = 5  # ActiveCampaign, Google Search
+    PHASE_5 = 5  # ActiveCampaign, Google Search, Trello
 
 
 @dataclass
@@ -234,6 +234,38 @@ class ServiceRegistry:
             reason=google_reason,
             credentials_present=google_present,
             credentials_missing=google_missing,
+        )
+
+        # ------------------------------------------------------------------
+        # Phase 5: Trello
+        # ------------------------------------------------------------------
+        trello_creds = {
+            "TRELLO_API_KEY": config.trello_api_key,
+            "TRELLO_TOKEN": config.trello_token,
+        }
+        trello_present = [k for k, v in trello_creds.items() if v]
+        trello_missing = [k for k, v in trello_creds.items() if not v]
+        trello_configured = len(trello_missing) == 0
+
+        if trello_present and trello_missing:
+            trello_reason = (
+                f"Partial Trello config: have {', '.join(trello_present)} "
+                f"but missing {', '.join(trello_missing)}"
+            )
+        elif trello_missing:
+            trello_reason = "Trello not configured"
+        else:
+            trello_reason = ""
+
+        self._statuses["trello"] = ServiceStatus(
+            name="Trello",
+            service_key="trello",
+            phase=ServicePhase.PHASE_5,
+            configured=trello_configured,
+            available=trello_configured,
+            reason=trello_reason,
+            credentials_present=trello_present,
+            credentials_missing=trello_missing,
         )
 
     def check(self, service_key: str) -> ServiceStatus:
