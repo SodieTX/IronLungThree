@@ -144,12 +144,12 @@ def main() -> int:
     _register_orchestrator_tasks(orchestrator, db)
     orchestrator.start()
 
-    app = IronLungApp(db)
-    app.run()
-
-    orchestrator.stop()
-
-    db.close()
+    try:
+        app = IronLungApp(db)
+        app.run()
+    finally:
+        orchestrator.stop()
+        db.close()
     logger.info("IronLung 3 shutdown complete")
     return 0
 
@@ -207,11 +207,12 @@ def _register_orchestrator_tasks(orchestrator, db) -> None:  # type: ignore[no-u
 
     # Demo prep refresh — pre-generate prep docs for upcoming demos
     def _refresh_demo_prep() -> None:
+        from src.db.models import EngagementStage, Population
         from src.engine.demo_prep import generate_prep
 
-        prospects = db.get_prospects(population="demo_scheduled", limit=20)
+        prospects = db.get_prospects(population=Population.ENGAGED, limit=100)
         for p in prospects:
-            if p.id is not None:
+            if p.id is not None and p.engagement_stage == EngagementStage.DEMO_SCHEDULED:
                 try:
                     generate_prep(db, p.id)
                 except Exception:

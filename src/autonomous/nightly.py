@@ -24,9 +24,7 @@ from src.db.models import Population
 
 logger = get_logger(__name__)
 
-# Sentinel values for tracking nightly cycle runs
-_CYCLE_SENTINEL_PROSPECT_ID = 0
-_CYCLE_SENTINEL_FIELD = "nightly_cycle_last_run"
+_CYCLE_METADATA_KEY = "nightly_cycle_last_run"
 
 
 @dataclass
@@ -292,7 +290,7 @@ def run_condensed_cycle(db: Database) -> NightlyCycleResult:
 def check_last_run(db: Database) -> Optional[datetime]:
     """Check when nightly cycle last ran.
 
-    Uses a sentinel record in data_freshness table.
+    Uses system_metadata table.
 
     Args:
         db: Database instance
@@ -300,33 +298,19 @@ def check_last_run(db: Database) -> Optional[datetime]:
     Returns:
         Datetime of last run, or None if never run
     """
-    row = db.get_latest_data_freshness(_CYCLE_SENTINEL_PROSPECT_ID, _CYCLE_SENTINEL_FIELD)
-
-    if row is None:
+    value = db.get_system_metadata(_CYCLE_METADATA_KEY)
+    if value is None:
         return None
-
-    verified = row["verified_date"]
-    if isinstance(verified, str):
-        try:
-            return datetime.fromisoformat(verified)
-        except (ValueError, TypeError):
-            return None
-    elif isinstance(verified, datetime):
-        return verified
-    elif isinstance(verified, date):
-        return datetime(verified.year, verified.month, verified.day)
-    return None
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return None
 
 
 def _record_cycle_run(db: Database) -> None:
-    """Record nightly cycle completion in data_freshness."""
+    """Record nightly cycle completion in system_metadata."""
     try:
-        db.create_data_freshness(
-            prospect_id=_CYCLE_SENTINEL_PROSPECT_ID,
-            field_name=_CYCLE_SENTINEL_FIELD,
-            verified_date=date.today(),
-            verification_method="nightly_cycle",
-        )
+        db.upsert_system_metadata(_CYCLE_METADATA_KEY, datetime.now().isoformat())
     except Exception as e:
         logger.warning(f"Failed to record cycle run: {e}")
 
