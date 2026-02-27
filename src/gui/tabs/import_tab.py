@@ -301,21 +301,22 @@ class ImportTab(TabBase):
         details_text.pack(fill=tk.BOTH, expand=True)
 
         # Show first 5 new records
-        for i, record in enumerate(preview.new_records[:5]):
-            details_text.insert(tk.END, f"\n{i+1}. {record.first_name} {record.last_name}\n")
-            details_text.insert(tk.END, f"   Company: {record.company_name}\n")
-            details_text.insert(tk.END, f"   Email: {record.email}\n")
-            if record.phone:
-                details_text.insert(tk.END, f"   Phone: {record.phone}\n")
+        for i, analysis in enumerate(preview.new_records[:5]):
+            rec = analysis.record
+            details_text.insert(tk.END, f"\n{i+1}. {rec.first_name} {rec.last_name}\n")
+            details_text.insert(tk.END, f"   Company: {rec.company_name}\n")
+            details_text.insert(tk.END, f"   Email: {rec.email}\n")
+            if rec.phone:
+                details_text.insert(tk.END, f"   Phone: {rec.phone}\n")
 
         # Highlight DNC blocks in red
         if preview.blocked_dnc:
             details_text.insert(tk.END, "\n\n⚠️ BLOCKED (DNC):\n", "warning")
-            for i, record in enumerate(preview.blocked_dnc[:5]):
+            for i, analysis in enumerate(preview.blocked_dnc[:5]):
+                rec = analysis.record
                 details_text.insert(
                     tk.END,
-                    f"{i+1}. {record.first_name} {record.last_name}"
-                    f" - {record.email or record.phone}\n",
+                    f"{i+1}. {rec.first_name} {rec.last_name}" f" - {rec.email or rec.phone}\n",
                     "dnc",
                 )
 
@@ -437,7 +438,7 @@ class ImportTab(TabBase):
                         activities.append(act)
 
             # Sort by date and take latest 10
-            activities.sort(key=lambda a: a.timestamp or "", reverse=True)
+            activities.sort(key=lambda a: a.created_at or "", reverse=True)
             activities = activities[:10]
 
             # Display
@@ -447,7 +448,7 @@ class ImportTab(TabBase):
             if activities:
                 for act in activities:
                     timestamp = (
-                        act.timestamp.strftime("%Y-%m-%d %H:%M") if act.timestamp else "Unknown"
+                        act.created_at.strftime("%Y-%m-%d %H:%M") if act.created_at else "Unknown"
                     )
                     self._history_text.insert(tk.END, f"{timestamp} - {act.notes or 'Import'}\n")
             else:

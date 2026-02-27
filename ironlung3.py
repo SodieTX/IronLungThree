@@ -99,6 +99,43 @@ def main() -> int:
         logger.error(f"Failed to initialize database: {e}")
         return 1
 
+    # Seed database with sample data if empty (first run)
+    try:
+        pop_counts = db.get_population_counts()
+        if sum(pop_counts.values()) == 0:
+            sample_csv = Path(__file__).parent / "data" / "sample_contacts.csv"
+            if sample_csv.exists():
+                from src.db.intake import IntakeFunnel
+                from src.integrations.csv_importer import CSVImporter
+
+                importer = CSVImporter()
+                mapping = {
+                    "first_name": "First Name",
+                    "last_name": "Last Name",
+                    "email": "Email",
+                    "phone": "Phone",
+                    "company_name": "Company",
+                    "title": "Title",
+                    "state": "State",
+                }
+                records = importer.apply_mapping(sample_csv, mapping)
+                funnel = IntakeFunnel(db)
+                preview = funnel.analyze(
+                    records, source_name="sample_data", filename="sample_contacts.csv"
+                )
+                result = funnel.commit(preview)
+
+                try:
+                    from src.engine.scoring import rescore_all
+
+                    rescore_all(db)
+                except Exception:
+                    pass  # Scoring failure is non-fatal
+
+                logger.info(f"Auto-seeded database with {result.imported_count} sample contacts")
+    except Exception as e:
+        logger.warning(f"Auto-seed failed (non-fatal): {e}")
+
     # Check backup status and create one if stale
     try:
         from src.db.backup import BackupManager
