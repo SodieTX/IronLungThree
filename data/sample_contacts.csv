@@ -1,6 +1,26 @@
 First Name,Last Name,Email,Phone,Company,Title,State
-John,Smith,john.smith@acme.com,555-123-4567,Acme Corp,CEO,TX
-Jane,Doe,jane.doe@techstart.com,555-987-6543,TechStart Inc,CTO,CA
-Bob,Johnson,bob.j@consulting.com,555-456-7890,Consulting LLC,VP Sales,NY
-Alice,Williams,alice.w@finance.net,555-321-0987,Finance Net,CFO,FL
-Charlie,Brown,charlie@dev.io,555-654-3210,Dev IO,Lead Developer,WA
+John,Smith,john.smith@acmelending.com,713-555-0101,Acme Lending LLC,CEO,TX
+Jane,Doe,jane.doe@techstartmortgage.com,415-555-0102,TechStart Mortgage,CTO,CA
+Bob,Johnson,bob.j@midwestfunding.com,212-555-0103,Midwest Funding Corp,VP Sales,NY
+Alice,Williams,alice.w@suncoastfinance.net,305-555-0104,Suncoast Finance,CFO,FL
+Charlie,Brown,charlie@northwestloans.io,206-555-0105,Northwest Loans,Director of Operations,WA
+David,Garcia,david.garcia@lonestarcapital.com,214-555-0106,Lone Star Capital,President,TX
+Maria,Rodriguez,maria.r@goldengatefunding.com,510-555-0107,Golden Gate Funding,SVP,CA
+James,Wilson,james.w@empirelending.com,718-555-0108,Empire Lending Group,VP of Technology,NY
+Sarah,Martinez,sarah.m@peachstatemortgage.com,404-555-0109,Peach State Mortgage,CEO,GA
+Michael,Anderson,michael.a@rockymtnloans.com,303-555-0110,Rocky Mountain Loans,COO,CO
+Lisa,Thomas,lisa.t@desertcapital.com,602-555-0111,Desert Capital Partners,EVP,AZ
+Robert,Jackson,robert.j@greatplainsfunding.com,816-555-0112,Great Plains Funding,Senior Manager,MO
+Jennifer,White,jennifer.w@bayoufunding.com,504-555-0113,Bayou Funding LLC,Director,LA
+William,Harris,william.h@keystone-mortgage.com,215-555-0114,Keystone Mortgage Group,VP Lending,PA
+Patricia,Martin,patricia.m@carolinalending.com,704-555-0115,Carolina Lending Corp,President,NC
+Richard,Thompson,richard.t@lakeshorecapital.com,312-555-0116,Lakeshore Capital,CEO,IL
+Linda,Lee,linda.l@tidewater-funding.com,757-555-0117,Tidewater Funding,Managing Director,VA
+Daniel,Clark,daniel.c@cascadeloans.com,503-555-0118,Cascade Loans Inc,VP of Sales,OR
+Karen,Lewis,karen.l@cornbelt-mortgage.com,515-555-0119,Cornbelt Mortgage,Owner,IA
+Steven,Walker,steven.w@magnoliacapital.com,615-555-0120,Magnolia Capital,Senior VP,TN
+Nancy,Hall,nancy.h@copperstatemortgage.com,480-555-0121,Copper State Mortgage,COO,AZ
+Kevin,Allen,kevin.a@bluegrassfunding.com,502-555-0122,Bluegrass Funding,Director of Ops,KY
+Donna,Young,donna.y@prairiefinance.com,402-555-0123,Prairie Finance Group,VP,NE
+Brian,King,brian.k@harborsidelending.com,203-555-0124,Harborside Lending,CEO,CT
+Sandra,Wright,sandra.w@redrivermortgage.com,918-555-0125,Red River Mortgage,President,OK

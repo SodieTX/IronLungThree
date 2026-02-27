@@ -99,15 +99,33 @@ def main() -> int:
         logger.error(f"Failed to initialize database: {e}")
         return 1
 
-    # Startup backup (Phase 1, Step 1.11)
-    from src.db.backup import BackupManager
-
+    # Check backup status and create one if stale
     try:
-        backup = BackupManager()
-        backup.create_backup(label="startup")
-        logger.info("Startup backup created")
+        from src.db.backup import BackupManager
+
+        backup_mgr = BackupManager()
+        backups = backup_mgr.list_backups()
+        if not backups:
+            backup_mgr.create_backup(label="startup")
+            logger.info("No backups found — created startup backup")
+        else:
+            from datetime import datetime, timedelta
+
+            newest = backups[0]
+            age = datetime.now() - newest.timestamp
+            if age > timedelta(hours=24):
+                backup_mgr.create_backup(label="startup")
+                logger.info(
+                    f"Last backup was {age.total_seconds() / 3600:.0f}h ago "
+                    "— created startup backup"
+                )
+            else:
+                logger.info(
+                    f"Last backup: {newest.timestamp.strftime('%Y-%m-%d %H:%M')} "
+                    f"({age.total_seconds() / 3600:.1f}h ago)"
+                )
     except Exception as e:
-        logger.warning(f"Startup backup failed (non-fatal): {e}")
+        logger.warning(f"Backup check failed (non-fatal): {e}")
 
     if args.nightly:
         logger.info("Running nightly cycle...")

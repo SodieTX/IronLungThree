@@ -132,11 +132,15 @@ class TodayTab(TabBase):
                 self._onboarding_frame = None
                 if self._status_label:
                     self._status_label.pack(expand=True)
+                if self._action_frame:
+                    self._action_frame.pack(fill=tk.X, padx=16, pady=(0, 8))
             return
 
-        # Database is empty — hide the normal status label and show onboarding
+        # Database is empty — hide the normal status label and action bar
         if self._status_label:
             self._status_label.pack_forget()
+        if self._action_frame:
+            self._action_frame.pack_forget()
 
         # Don't rebuild if already showing
         if self._onboarding_frame is not None:
@@ -244,13 +248,27 @@ class TodayTab(TabBase):
 
     def on_activate(self) -> None:
         """Called when this tab becomes visible."""
+        # Check if database is empty — if so, show onboarding (not the brief)
+        try:
+            pop_counts = self.db.get_population_counts()
+            total = sum(pop_counts.values())
+        except Exception:
+            total = 0
+
+        if total == 0:
+            # Database empty — show onboarding, not the brief
+            self._check_empty_state()
+            return
+
+        # Database has data — tear down onboarding if present
         self._check_empty_state()
+
         if not self._brief_shown:
             self._brief_shown = True
             self.refresh()
             self.show_morning_brief()
         else:
-            self.refresh()
+            self._update_queue_label()
 
     def show_morning_brief(self) -> None:
         """Display morning brief dialog."""
@@ -337,15 +355,29 @@ class TodayTab(TabBase):
             self._notes_text.delete("1.0", tk.END)
 
     def _show_queue_complete(self) -> None:
-        """Show queue complete message."""
+        """Show queue complete message with end-of-day summary."""
         if self._card:
             self._card.destroy()
             self._card = None
+
         if self._status_label:
-            self._status_label.config(
-                text="Queue complete! Great work.\n\nCheck the Calendar or Pipeline tabs."
-            )
-            self._status_label.pack(expand=True)
+            # Generate EOD summary
+            try:
+                from src.content.eod_summary import generate_eod_summary
+
+                eod = generate_eod_summary(self.db)
+                self._status_label.config(
+                    text=eod.full_text,
+                    justify=tk.LEFT,
+                    anchor="nw",
+                )
+            except Exception as e:
+                logger.warning(f"EOD summary failed: {e}")
+                self._status_label.config(
+                    text="Queue complete! Great work.\n\n" "Check the Calendar or Pipeline tabs."
+                )
+            self._status_label.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
+
         self._update_queue_label()
 
     def _update_queue_label(self) -> None:
