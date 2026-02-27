@@ -39,11 +39,11 @@ class ImportTab(TabBase):
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.bind(
             "<Configure>",
-            lambda e: canvas.itemconfig(
-                canvas.find_withtag("all")[0], width=e.width
-            )
-            if canvas.find_withtag("all")
-            else None,
+            lambda e: (
+                canvas.itemconfig(canvas.find_withtag("all")[0], width=e.width)
+                if canvas.find_withtag("all")
+                else None
+            ),
         )
         canvas.configure(yscrollcommand=scrollbar.set)
 

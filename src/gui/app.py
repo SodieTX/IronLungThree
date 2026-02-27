@@ -286,4 +286,3 @@ class IronLungApp:
                 self._notebook.select(i)
                 return
         logger.warning(f"Tab not found: {tab_name}")
-

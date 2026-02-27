@@ -154,9 +154,7 @@ class SettingsTab(TabBase):
         container = self._scroll_frame
 
         # --- System Readiness ---
-        self._readiness_frame = ttk.LabelFrame(
-            container, text="System Readiness", padding=12
-        )
+        self._readiness_frame = ttk.LabelFrame(container, text="System Readiness", padding=12)
         self._readiness_frame.pack(fill="x", padx=12, pady=(12, 4))
 
         # Database status row
