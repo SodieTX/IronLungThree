@@ -363,6 +363,15 @@ class ImportTab(TabBase):
                 self._preset_var.get() if self._preset_var.get() != "None" else None,
             )
 
+            # Pre-import backup (safety net)
+            try:
+                from src.db.backup import BackupManager
+
+                BackupManager().create_backup(label="pre_import")
+                logger.info("Pre-import backup created")
+            except Exception as e:
+                logger.warning(f"Pre-import backup failed (non-fatal): {e}")
+
             # Analyze and commit
             from src.db.intake import IntakeFunnel
 
@@ -374,6 +383,15 @@ class ImportTab(TabBase):
             )
 
             result = funnel.commit(preview)
+
+            # Score the newly imported prospects so queue ordering works immediately
+            try:
+                from src.engine.scoring import rescore_all
+
+                scored = rescore_all(self.db)
+                logger.info(f"Post-import rescore: {scored} prospects scored")
+            except Exception as e:
+                logger.warning(f"Post-import rescore failed (non-fatal): {e}")
 
             # Show success message
             messagebox.showinfo(

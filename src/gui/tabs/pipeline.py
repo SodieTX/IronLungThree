@@ -339,51 +339,120 @@ class PipelineTab(TabBase):
         self._show_prospect_details(int(prospect_id))
 
     def _show_prospect_details(self, prospect_id: int) -> None:
-        """Show prospect details dialog."""
+        """Show prospect details with edit option."""
+        if self.frame is None:
+            return
+
         try:
             prospect = self.db.get_prospect(prospect_id)
             if not prospect:
                 messagebox.showerror("Error", f"Prospect {prospect_id} not found")
                 return
 
-            # Create dialog
-            dialog = tk.Toplevel(self.frame)
-            dialog.title(f"Prospect Details - {prospect.full_name}")
-            dialog.geometry("500x400")
+            frame = self.frame  # local ref for closures / mypy narrowing
 
-            # Details frame
+            dialog = tk.Toplevel(frame)
+            dialog.title(f"Prospect Details - {prospect.full_name}")
+            dialog.geometry("550x500")
+            dialog.transient(frame.winfo_toplevel())
+
+            # Edit button at top
+            top_bar = ttk.Frame(dialog)
+            top_bar.pack(fill=tk.X, padx=10, pady=5)
+
+            def _open_edit() -> None:
+                dialog.destroy()
+                from src.gui.dialogs.edit_prospect import EditProspectDialog
+
+                edit_dlg = EditProspectDialog(frame, prospect)
+                if edit_dlg.show():
+                    updated = edit_dlg.get_updated_prospect()
+                    self.db.update_prospect(updated)
+                    self.refresh()
+                    logger.info(f"Prospect {prospect_id} updated from pipeline")
+
+            ttk.Button(top_bar, text="Edit Prospect", command=_open_edit).pack(side=tk.LEFT)
+            ttk.Button(top_bar, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
+
+            # Details
             details_frame = ttk.Frame(dialog, padding=10)
             details_frame.pack(fill=tk.BOTH, expand=True)
 
-            # Create text widget
-            text = tk.Text(details_frame, wrap=tk.WORD)
-            text.pack(fill=tk.BOTH, expand=True)
+            text = tk.Text(details_frame, wrap=tk.WORD, font=("Segoe UI", 10))
+            scrollbar = ttk.Scrollbar(details_frame, orient="vertical", command=text.yview)
+            text.configure(yscrollcommand=scrollbar.set)
+            text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-            # Add prospect details
             text.insert(tk.END, f"ID: {prospect.id}\n")
             text.insert(tk.END, f"Name: {prospect.full_name}\n")
             text.insert(tk.END, f"Title: {prospect.title or 'N/A'}\n")
             pop_val = prospect.population.value if prospect.population else "N/A"
             text.insert(tk.END, f"Population: {pop_val}\n")
+            if prospect.engagement_stage:
+                text.insert(tk.END, f"Stage: {prospect.engagement_stage.value}\n")
             text.insert(tk.END, f"Score: {prospect.prospect_score or 'N/A'}\n")
-            text.insert(tk.END, f"\nNotes:\n{prospect.notes or 'No notes'}\n")
+            text.insert(
+                tk.END,
+                f"Confidence: {prospect.data_confidence or 'N/A'}\n",
+            )
+            if prospect.follow_up_date:
+                text.insert(
+                    tk.END,
+                    f"Follow-up: {str(prospect.follow_up_date)[:10]}\n",
+                )
+            text.insert(tk.END, f"Source: {prospect.source or 'N/A'}\n")
+            text.insert(tk.END, f"Attempts: {prospect.attempt_count or 0}\n")
 
-            # Get company info
+            # Company info
             if prospect.company_id:
                 company = self.db.get_company(prospect.company_id)
                 if company:
-                    text.insert(tk.END, f"\nCompany: {company.name}\n")
-                    if company.state:
-                        text.insert(tk.END, f"State: {company.state}\n")
+                    text.insert(tk.END, "\n--- Company ---\n")
+                    text.insert(tk.END, f"Company: {company.name}\n")
+                    text.insert(tk.END, f"State: {company.state or 'N/A'}\n")
+                    text.insert(
+                        tk.END,
+                        f"Timezone: {company.timezone or 'N/A'}\n",
+                    )
+                    if company.loan_types:
+                        text.insert(tk.END, f"Loan Types: {company.loan_types}\n")
 
+            # Contact methods
+            if prospect.id:
+                methods = self.db.get_contact_methods(prospect.id)
+                if methods:
+                    text.insert(tk.END, "\n--- Contact Methods ---\n")
+                    for m in methods:
+                        verified = " \u2713" if m.is_verified else ""
+                        primary = " (primary)" if m.is_primary else ""
+                        suspect = " SUSPECT" if m.is_suspect else ""
+                        text.insert(
+                            tk.END,
+                            f"{m.type.value}: {m.value}" f"{primary}{verified}{suspect}\n",
+                        )
+
+            # Recent activities
+            if prospect.id:
+                activities = self.db.get_activities(prospect.id, limit=10)
+                if activities:
+                    text.insert(tk.END, "\n--- Recent Activity ---\n")
+                    for a in activities:
+                        date_str = str(a.created_at)[:10] if a.created_at else ""
+                        text.insert(
+                            tk.END,
+                            f"{date_str} {a.activity_type.value}: " f"{a.notes or ''}\n",
+                        )
+
+            text.insert(
+                tk.END,
+                f"\n--- Notes ---\n{prospect.notes or 'No notes'}\n",
+            )
             text.config(state="disabled")
-
-            # Close button
-            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
 
         except Exception as e:
             logger.error(f"Failed to show prospect details: {e}")
-            messagebox.showerror("Error", f"Failed to load prospect details: {e}")
+            messagebox.showerror("Error", f"Failed to load prospect: {e}")
 
     def _on_selection_changed(self, event: object) -> None:
         """Update selection count label."""

@@ -23,6 +23,7 @@ class IronLungApp:
         self._calendar_tab: Any = None
         self._demos_tab: Any = None
         self._broken_tab: Any = None
+        self._troubled_tab: Any = None
         self._settings_tab: Any = None
         self._status_label: Optional[ttk.Label] = None
         self._dictation_bar: Any = None
@@ -121,6 +122,16 @@ class IronLungApp:
         self._notebook.add(broken_frame, text="Broken")
         self._broken_tab = broken_tab
 
+        # Troubled tab
+        from src.gui.tabs.troubled import TroubledTab
+
+        troubled_frame: tk.Widget = ttk.Frame(self._notebook)
+        troubled_tab = TroubledTab(troubled_frame, self.db)
+        troubled_tab.frame = troubled_frame  # type: ignore[assignment]
+        troubled_tab.app = self
+        self._notebook.add(troubled_frame, text="Troubled")
+        self._troubled_tab = troubled_tab
+
         # Settings tab
         from src.gui.tabs.settings import SettingsTab
 
@@ -135,7 +146,8 @@ class IronLungApp:
         self._notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
         logger.info(
-            "Tab notebook created with Today, Import, Pipeline, Calendar, Demos, Broken, and Settings tabs"
+            "Tab notebook created with Today, Import, Pipeline, Calendar, "
+            "Demos, Broken, Troubled, and Settings tabs"
         )
 
     def _create_dictation_bar(self) -> None:
@@ -239,6 +251,7 @@ class IronLungApp:
             self._calendar_tab,
             self._demos_tab,
             self._broken_tab,
+            self._troubled_tab,
             self._settings_tab,
         ]
         if current_tab < len(tabs) and tabs[current_tab]:
@@ -246,7 +259,7 @@ class IronLungApp:
         self._update_status_bar()
 
     def _update_status_bar(self) -> None:
-        """Update status bar with database statistics."""
+        """Update status bar with database statistics and backup info."""
         if not self._status_label:
             return
         try:
@@ -256,8 +269,31 @@ class IronLungApp:
             total = sum(pop_counts.values())
             unengaged = pop_counts.get(Population.UNENGAGED, 0)
             engaged = pop_counts.get(Population.ENGAGED, 0)
-
             status_text = f"{total} prospects | {unengaged} unengaged | {engaged} engaged"
+
+            # Add backup info
+            try:
+                from datetime import datetime
+
+                from src.db.backup import BackupManager
+
+                backups = BackupManager().list_backups()
+                if backups:
+                    age = datetime.now() - backups[0].timestamp
+                    hours = age.total_seconds() / 3600
+                    if hours < 1:
+                        backup_str = "Last backup: <1h ago"
+                    elif hours < 24:
+                        backup_str = f"Last backup: {hours:.0f}h ago"
+                    else:
+                        days = hours / 24
+                        backup_str = f"Last backup: {days:.0f}d ago"
+                else:
+                    backup_str = "No backups"
+                status_text += f" | {backup_str}"
+            except Exception:
+                pass  # Don't let backup check break the status bar
+
             self._status_label.config(text=status_text)
         except Exception as e:
             logger.warning(f"Failed to update status bar: {e}")
