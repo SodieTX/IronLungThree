@@ -8,7 +8,7 @@ All tabs inherit from TabBase and implement:
 
 import tkinter as tk
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 
 class TabBase(ABC):
@@ -18,6 +18,7 @@ class TabBase(ABC):
         self.parent = parent
         self.db = db
         self.frame: Optional[tk.Frame] = parent  # type: ignore[assignment]
+        self.app: Any = None  # Set by IronLungApp after construction
 
     @abstractmethod
     def refresh(self) -> None:

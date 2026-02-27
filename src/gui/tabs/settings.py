@@ -13,6 +13,7 @@ from typing import Optional
 
 from src.core.logging import get_logger
 from src.gui.tabs import TabBase
+from src.gui.theme import COLORS
 
 logger = get_logger(__name__)
 
@@ -151,6 +152,40 @@ class SettingsTab(TabBase):
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
 
         container = self._scroll_frame
+
+        # --- System Readiness ---
+        self._readiness_frame = ttk.LabelFrame(container, text="System Readiness", padding=12)
+        self._readiness_frame.pack(fill="x", padx=12, pady=(12, 4))
+
+        # Database status row
+        db_row = ttk.Frame(self._readiness_frame)
+        db_row.pack(fill="x", pady=4)
+
+        self._db_status_label = ttk.Label(
+            db_row,
+            text="Checking database...",
+            font=("Segoe UI", 10),
+        )
+        self._db_status_label.pack(side="left", padx=(0, 12))
+
+        self._import_now_btn = ttk.Button(
+            db_row,
+            text="Import Contacts Now",
+            command=self._go_to_import,
+        )
+        self._import_now_btn.pack(side="left")
+
+        # Service readiness summary
+        self._readiness_summary = ttk.Label(
+            self._readiness_frame,
+            text="",
+            font=("Segoe UI", 10),
+            wraplength=650,
+        )
+        self._readiness_summary.pack(fill="x", pady=(4, 0))
+
+        # Populate on build
+        self._refresh_readiness()
 
         # Title
         ttk.Label(container, text="Settings", font=("Segoe UI", 16, "bold")).pack(
@@ -369,6 +404,7 @@ class SettingsTab(TabBase):
         self.parent.after(3000, lambda: self._save_status.config(text=""))
 
         logger.info("Credentials saved to persistent store")
+        self._refresh_readiness()
 
     # ------------------------------------------------------------------
     # Service status
@@ -391,14 +427,15 @@ class SettingsTab(TabBase):
     # ------------------------------------------------------------------
 
     def refresh(self) -> None:
-        """Reload settings state."""
+        """Reload settings tab state."""
         self._load_current_values()
+        self._refresh_readiness()
         self._refresh_status()
         logger.info("Settings tab refreshed")
 
     def on_activate(self) -> None:
         """Called when this tab becomes visible."""
-        self._refresh_status()
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Backup / Restore
@@ -438,3 +475,57 @@ class SettingsTab(TabBase):
     def save_settings(self) -> None:
         """Save settings changes (called externally)."""
         self._on_save()
+
+    def _refresh_readiness(self) -> None:
+        """Update the system readiness dashboard."""
+        # Database status
+        try:
+            from src.db.models import Population
+
+            pop_counts = self.db.get_population_counts()
+            total = sum(pop_counts.values())
+        except Exception:
+            total = 0
+            pop_counts = {}
+
+        if total == 0:
+            self._db_status_label.config(
+                text="🔴  Database is empty — no prospects loaded",
+                foreground=COLORS["danger"],
+            )
+            self._import_now_btn.pack(side="left")  # ensure visible
+        else:
+            unengaged = pop_counts.get(Population.UNENGAGED, 0)
+            engaged = pop_counts.get(Population.ENGAGED, 0)
+            self._db_status_label.config(
+                text=f"🟢  {total} prospects loaded  ({unengaged} unengaged, {engaged} engaged)",
+                foreground=COLORS["success"],
+            )
+            self._import_now_btn.pack_forget()  # hide — not needed
+
+        # Service readiness
+        try:
+            from src.core.services import get_service_registry
+
+            registry = get_service_registry()
+            report = registry.readiness_report()
+
+            lines = []
+            for svc in report.services:
+                if svc.configured:
+                    lines.append(f"🟢 {svc.name}")
+                elif svc.credentials_present:
+                    lines.append(
+                        f"🟡 {svc.name} (partial — missing {', '.join(svc.credentials_missing)})"
+                    )
+                else:
+                    lines.append(f"⚪ {svc.name} (not configured)")
+            self._readiness_summary.config(text="  |  ".join(lines))
+        except Exception as e:
+            logger.warning(f"Failed to check service readiness: {e}")
+            self._readiness_summary.config(text="Could not check service status")
+
+    def _go_to_import(self) -> None:
+        """Switch to the Import tab."""
+        if self.app:
+            self.app.switch_to_tab("Import")

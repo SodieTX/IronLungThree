@@ -41,6 +41,7 @@ class TodayTab(TabBase):
         self._notes_text: Optional[tk.Text] = None
         self._search_var = tk.StringVar()
         self._brief_shown = False
+        self._onboarding_frame: Optional[tk.Frame] = None
         self._create_ui()
 
     def _create_ui(self) -> None:
@@ -110,6 +111,130 @@ class TodayTab(TabBase):
         ttk.Button(btn_row, text="Skip", command=self._skip_card).pack(side=tk.LEFT, padx=4)
         ttk.Button(btn_row, text="Next", command=self.next_card).pack(side=tk.RIGHT, padx=4)
 
+        # Check if we should show onboarding instead
+        self._check_empty_state()
+
+    def _check_empty_state(self) -> None:
+        """If database is empty, show onboarding welcome instead of dead queue."""
+        if not self._card_frame:
+            return
+
+        try:
+            pop_counts = self.db.get_population_counts()
+            total = sum(pop_counts.values())
+        except Exception:
+            total = 0
+
+        if total > 0:
+            # Database has data — make sure we're showing the normal UI
+            if self._onboarding_frame is not None:
+                self._onboarding_frame.destroy()
+                self._onboarding_frame = None
+                if self._status_label:
+                    self._status_label.pack(expand=True)
+            return
+
+        # Database is empty — hide the normal status label and show onboarding
+        if self._status_label:
+            self._status_label.pack_forget()
+
+        # Don't rebuild if already showing
+        if self._onboarding_frame is not None:
+            return
+
+        self._onboarding_frame = tk.Frame(self._card_frame, bg=COLORS["bg"])
+        self._onboarding_frame.pack(expand=True)
+
+        # Welcome header
+        tk.Label(
+            self._onboarding_frame,
+            text="Welcome to IronLung 3.",
+            font=("Segoe UI", 20, "bold"),
+            bg=COLORS["bg"],
+            fg=COLORS["fg"],
+        ).pack(pady=(40, 8))
+
+        tk.Label(
+            self._onboarding_frame,
+            text="Your pipeline is empty. Let's get it loaded.",
+            font=("Segoe UI", 13),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 32))
+
+        # Action buttons frame
+        actions = tk.Frame(self._onboarding_frame, bg=COLORS["bg"])
+        actions.pack()
+
+        # Import button (primary action)
+        import_btn = tk.Button(
+            actions,
+            text="  ①  Import Contacts  ",
+            font=("Segoe UI", 13, "bold"),
+            bg=COLORS["accent"],
+            fg="#ffffff",
+            activebackground="#0052a3",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=24,
+            pady=12,
+            command=self._go_to_import,
+        )
+        import_btn.pack(pady=8)
+
+        tk.Label(
+            actions,
+            text="Load a CSV or Excel file to populate your pipeline",
+            font=("Segoe UI", 10),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 20))
+
+        # Settings button (secondary action)
+        settings_btn = tk.Button(
+            actions,
+            text="  ②  Configure Services  ",
+            font=("Segoe UI", 11),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            activebackground=COLORS["bg"],
+            activeforeground=COLORS["fg"],
+            relief="solid",
+            cursor="hand2",
+            padx=20,
+            pady=8,
+            command=self._go_to_settings,
+        )
+        settings_btn.pack(pady=4)
+
+        tk.Label(
+            actions,
+            text="Set up Outlook, Claude AI, and other integrations",
+            font=("Segoe UI", 10),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 32))
+
+        # Bottom note
+        tk.Label(
+            self._onboarding_frame,
+            text="Once you have prospects, this tab becomes your daily command center.",
+            font=("Segoe UI", 10, "italic"),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack()
+
+    def _go_to_import(self) -> None:
+        """Navigate to the Import tab."""
+        if self.app:
+            self.app.switch_to_tab("Import")
+
+    def _go_to_settings(self) -> None:
+        """Navigate to the Settings tab."""
+        if self.app:
+            self.app.switch_to_tab("Settings")
+
     def refresh(self) -> None:
         """Reload queue from database."""
         self._queue = get_todays_queue(self.db)
@@ -119,12 +244,13 @@ class TodayTab(TabBase):
 
     def on_activate(self) -> None:
         """Called when this tab becomes visible."""
+        self._check_empty_state()
         if not self._brief_shown:
             self._brief_shown = True
             self.refresh()
             self.show_morning_brief()
         else:
-            self._update_queue_label()
+            self.refresh()
 
     def show_morning_brief(self) -> None:
         """Display morning brief dialog."""

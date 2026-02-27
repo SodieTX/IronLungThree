@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 from src.core.logging import get_logger
 from src.gui.tabs import TabBase
+from src.gui.theme import COLORS
 
 logger = get_logger(__name__)
 
@@ -27,7 +28,7 @@ class ImportTab(TabBase):
             return
 
         # Create main container with scrollbar
-        canvas = tk.Canvas(self.frame)
+        canvas = tk.Canvas(self.frame, bg=COLORS["bg"], highlightthickness=0)
         scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
@@ -36,6 +37,14 @@ class ImportTab(TabBase):
         )
 
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.bind(
+            "<Configure>",
+            lambda e: (
+                canvas.itemconfig(canvas.find_withtag("all")[0], width=e.width)
+                if canvas.find_withtag("all")
+                else None
+            ),
+        )
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)

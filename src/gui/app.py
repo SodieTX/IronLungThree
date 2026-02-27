@@ -67,6 +67,7 @@ class IronLungApp:
         today_frame: tk.Widget = ttk.Frame(self._notebook)
         today_tab = TodayTab(today_frame, self.db)
         today_tab.frame = today_frame  # type: ignore[assignment]
+        today_tab.app = self
         self._notebook.add(today_frame, text="Today")
         self._today_tab = today_tab
 
@@ -76,6 +77,7 @@ class IronLungApp:
         import_frame: tk.Widget = ttk.Frame(self._notebook)
         import_tab = ImportTab(import_frame, self.db)
         import_tab.frame = import_frame  # type: ignore[assignment]
+        import_tab.app = self
         self._notebook.add(import_frame, text="Import")
         self._import_tab = import_tab
 
@@ -85,6 +87,7 @@ class IronLungApp:
         pipeline_frame: tk.Widget = ttk.Frame(self._notebook)
         pipeline_tab = PipelineTab(pipeline_frame, self.db)
         pipeline_tab.frame = pipeline_frame  # type: ignore[assignment]
+        pipeline_tab.app = self
         self._notebook.add(pipeline_frame, text="Pipeline")
         self._pipeline_tab = pipeline_tab
 
@@ -94,6 +97,7 @@ class IronLungApp:
         calendar_frame: tk.Widget = ttk.Frame(self._notebook)
         calendar_tab = CalendarTab(calendar_frame, self.db)
         calendar_tab.frame = calendar_frame  # type: ignore[assignment]
+        calendar_tab.app = self
         self._notebook.add(calendar_frame, text="Calendar")
         self._calendar_tab = calendar_tab
 
@@ -103,6 +107,7 @@ class IronLungApp:
         demos_frame: tk.Widget = ttk.Frame(self._notebook)
         demos_tab = DemosTab(demos_frame, self.db)
         demos_tab.frame = demos_frame  # type: ignore[assignment]
+        demos_tab.app = self
         self._notebook.add(demos_frame, text="Demos")
         self._demos_tab = demos_tab
 
@@ -112,6 +117,7 @@ class IronLungApp:
         broken_frame: tk.Widget = ttk.Frame(self._notebook)
         broken_tab = BrokenTab(broken_frame, self.db)
         broken_tab.frame = broken_frame  # type: ignore[assignment]
+        broken_tab.app = self
         self._notebook.add(broken_frame, text="Broken")
         self._broken_tab = broken_tab
 
@@ -121,6 +127,7 @@ class IronLungApp:
         settings_frame: tk.Widget = ttk.Frame(self._notebook)
         settings_tab = SettingsTab(settings_frame, self.db)
         settings_tab.frame = settings_frame  # type: ignore[assignment]
+        settings_tab.app = self
         self._notebook.add(settings_frame, text="Settings")
         self._settings_tab = settings_tab
 
@@ -264,3 +271,18 @@ class IronLungApp:
             self.root.destroy()
             self.root = None
         logger.info("IronLung 3 closed")
+
+    def switch_to_tab(self, tab_name: str) -> None:
+        """Switch to a tab by name.
+
+        Args:
+            tab_name: One of 'Today', 'Import', 'Pipeline', 'Calendar',
+                      'Demos', 'Broken', 'Settings'
+        """
+        if not self._notebook:
+            return
+        for i in range(self._notebook.index("end")):
+            if self._notebook.tab(i, "text") == tab_name:
+                self._notebook.select(i)
+                return
+        logger.warning(f"Tab not found: {tab_name}")
