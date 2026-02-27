@@ -1073,9 +1073,7 @@ class Database:
     def get_system_metadata(self, key: str) -> Optional[str]:
         """Get a system metadata value by key."""
         conn = self._get_connection()
-        row = conn.execute(
-            "SELECT value FROM system_metadata WHERE key = ?", (key,)
-        ).fetchone()
+        row = conn.execute("SELECT value FROM system_metadata WHERE key = ?", (key,)).fetchone()
         return row["value"] if row else None
 
     def get_recent_activities_with_notes(
