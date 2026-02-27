@@ -340,16 +340,21 @@ class PipelineTab(TabBase):
 
     def _show_prospect_details(self, prospect_id: int) -> None:
         """Show prospect details with edit option."""
+        if self.frame is None:
+            return
+
         try:
             prospect = self.db.get_prospect(prospect_id)
             if not prospect:
                 messagebox.showerror("Error", f"Prospect {prospect_id} not found")
                 return
 
-            dialog = tk.Toplevel(self.frame)
+            frame = self.frame  # local ref for closures / mypy narrowing
+
+            dialog = tk.Toplevel(frame)
             dialog.title(f"Prospect Details - {prospect.full_name}")
             dialog.geometry("550x500")
-            dialog.transient(self.frame.winfo_toplevel())
+            dialog.transient(frame.winfo_toplevel())
 
             # Edit button at top
             top_bar = ttk.Frame(dialog)
@@ -359,7 +364,7 @@ class PipelineTab(TabBase):
                 dialog.destroy()
                 from src.gui.dialogs.edit_prospect import EditProspectDialog
 
-                edit_dlg = EditProspectDialog(self.frame, prospect)
+                edit_dlg = EditProspectDialog(frame, prospect)
                 if edit_dlg.show():
                     updated = edit_dlg.get_updated_prospect()
                     self.db.update_prospect(updated)
