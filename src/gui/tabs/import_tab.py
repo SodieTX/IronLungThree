@@ -316,8 +316,7 @@ class ImportTab(TabBase):
                 rec = analysis.record
                 details_text.insert(
                     tk.END,
-                    f"{i+1}. {rec.first_name} {rec.last_name}"
-                    f" - {rec.email or rec.phone}\n",
+                    f"{i+1}. {rec.first_name} {rec.last_name}" f" - {rec.email or rec.phone}\n",
                     "dnc",
                 )
 

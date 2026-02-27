@@ -132,9 +132,7 @@ def main() -> int:
                 except Exception:
                     pass  # Scoring failure is non-fatal
 
-                logger.info(
-                    f"Auto-seeded database with {result.imported_count} sample contacts"
-                )
+                logger.info(f"Auto-seeded database with {result.imported_count} sample contacts")
     except Exception as e:
         logger.warning(f"Auto-seed failed (non-fatal): {e}")
 
