@@ -5,6 +5,7 @@ This package handles all communication with external services:
     - Bria (softphone dialing)
     - ActiveCampaign (lead import)
     - Google Search (free tier for research)
+    - Trello (board/task management)
     - CSV/XLSX import
 
 Modules:
@@ -13,6 +14,7 @@ Modules:
     - bria: Bria softphone integration
     - activecampaign: ActiveCampaign API client
     - google_search: Google Custom Search client
+    - trello: Trello API client
     - csv_importer: CSV/XLSX file parser
     - email_importer: Email CSV importer for enrichment
 """

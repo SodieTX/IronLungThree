@@ -12,7 +12,8 @@ Exception Hierarchy:
     ├── IntegrationError
     │   ├── OutlookError
     │   ├── BriaError
-    │   └── ActiveCampaignError
+    │   ├── ActiveCampaignError
+    │   └── TrelloError
     ├── ImportError_
     └── PipelineError
         └── DNCViolationError
@@ -108,6 +109,18 @@ class ActiveCampaignError(IntegrationError):
         - API authentication fails
         - API call fails
         - Rate limit exceeded
+    """
+
+    pass
+
+
+class TrelloError(IntegrationError):
+    """Trello API integration failed.
+
+    Raised when:
+        - API authentication fails
+        - API call fails
+        - Board/list/card operations fail
     """
 
     pass
