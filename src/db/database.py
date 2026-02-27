@@ -317,6 +317,13 @@ class Database:
         CREATE INDEX IF NOT EXISTS idx_tags_prospect ON prospect_tags(prospect_id);
         CREATE INDEX IF NOT EXISTS idx_tags_name ON prospect_tags(tag_name);
 
+        -- System Metadata (key-value store for cycle tracking, etc.)
+        CREATE TABLE IF NOT EXISTS system_metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         -- Schema Version
         CREATE TABLE IF NOT EXISTS schema_version (
             version INTEGER PRIMARY KEY,
@@ -1044,6 +1051,30 @@ class Database:
             (prospect_id, field_name),
         ).fetchone()
         return dict(row) if row else None
+
+    # =========================================================================
+    # SYSTEM METADATA
+    # =========================================================================
+
+    def upsert_system_metadata(self, key: str, value: str) -> None:
+        """Insert or update a system metadata entry."""
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO system_metadata (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                (key, value),
+            )
+            conn.commit()
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise DatabaseError(f"Failed to upsert system metadata: {e}") from e
+
+    def get_system_metadata(self, key: str) -> Optional[str]:
+        """Get a system metadata value by key."""
+        conn = self._get_connection()
+        row = conn.execute("SELECT value FROM system_metadata WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
 
     def get_recent_activities_with_notes(
         self, since: str, limit: int = 100
