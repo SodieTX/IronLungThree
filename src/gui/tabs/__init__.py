@@ -17,7 +17,7 @@ class TabBase(ABC):
     def __init__(self, parent: tk.Widget, db):
         self.parent = parent
         self.db = db
-        self.frame: Optional[tk.Frame] = None
+        self.frame: Optional[tk.Frame] = parent  # type: ignore[assignment]
 
     @abstractmethod
     def refresh(self) -> None:
