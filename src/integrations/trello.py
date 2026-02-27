@@ -133,9 +133,7 @@ class TrelloClient(IntegrationBase):
 
         try:
             self._rate_limiter.wait_if_needed()
-            response = self._api_request(
-                "GET", "/members/me/boards", params={"fields": "name,url"}
-            )
+            response = self._api_request("GET", "/members/me/boards", params={"fields": "name,url"})
 
             if response.status_code != 200:
                 raise IntegrationError(
@@ -244,9 +242,7 @@ class TrelloClient(IntegrationBase):
 
             cards: list[TrelloCard] = []
             for card_data in response.json():
-                labels = [
-                    label.get("name", "") for label in card_data.get("labels", [])
-                ]
+                labels = [label.get("name", "") for label in card_data.get("labels", [])]
                 cards.append(
                     TrelloCard(
                         id=card_data.get("id", ""),
@@ -315,9 +311,7 @@ class TrelloClient(IntegrationBase):
                 description=card_data.get("desc", ""),
                 list_id=card_data.get("idList", ""),
                 url=card_data.get("url", ""),
-                labels=[
-                    label.get("name", "") for label in card_data.get("labels", [])
-                ],
+                labels=[label.get("name", "") for label in card_data.get("labels", [])],
             )
 
             logger.info(
