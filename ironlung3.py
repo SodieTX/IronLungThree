@@ -174,49 +174,75 @@ def _register_orchestrator_tasks(orchestrator, db) -> None:  # type: ignore[no-u
 
         def _scan_replies() -> None:
             from src.autonomous.reply_monitor import ReplyMonitor
+            from src.db.database import Database as ThreadDatabase
             from src.integrations.outlook import OutlookClient
 
-            outlook = OutlookClient()
-            monitor = ReplyMonitor(db=db, outlook=outlook)
-            monitor.poll_inbox()
+            thread_db = ThreadDatabase()
+            thread_db.initialize()
+            try:
+                outlook = OutlookClient()
+                monitor = ReplyMonitor(db=thread_db, outlook=outlook)
+                monitor.poll_inbox()
+            finally:
+                thread_db.close()
 
         orchestrator.register_task("reply_scan", _scan_replies, timedelta(minutes=30))
 
         # Email sync (received) — sync inbox emails to activity history
         def _sync_emails() -> None:
             from src.autonomous.email_sync import EmailSync
+            from src.db.database import Database as ThreadDatabase
             from src.integrations.outlook import OutlookClient
 
-            outlook = OutlookClient()
-            sync = EmailSync(db=db, outlook=outlook)
-            sync.sync_received()
-            sync.sync_sent()
+            thread_db = ThreadDatabase()
+            thread_db.initialize()
+            try:
+                outlook = OutlookClient()
+                sync = EmailSync(db=thread_db, outlook=outlook)
+                sync.sync_received()
+                sync.sync_sent()
+            finally:
+                thread_db.close()
 
         orchestrator.register_task("email_sync", _sync_emails, timedelta(hours=1))
 
         # Nurture sending — send approved nurture drafts via Outlook
         def _send_nurture() -> None:
+            from src.db.database import Database as ThreadDatabase
             from src.engine.nurture import NurtureEngine
             from src.integrations.outlook import OutlookClient
 
-            outlook = OutlookClient()
-            engine = NurtureEngine(db, outlook=outlook)
-            engine.send_approved_emails()
+            thread_db = ThreadDatabase()
+            thread_db.initialize()
+            try:
+                outlook = OutlookClient()
+                engine = NurtureEngine(thread_db, outlook=outlook)
+                engine.send_approved_emails()
+            finally:
+                thread_db.close()
 
         orchestrator.register_task("nurture_send", _send_nurture, timedelta(hours=4))
 
     # Demo prep refresh — pre-generate prep docs for upcoming demos
     def _refresh_demo_prep() -> None:
+        from src.db.database import Database as ThreadDatabase
         from src.db.models import EngagementStage, Population
         from src.engine.demo_prep import generate_prep
 
-        prospects = db.get_prospects(population=Population.ENGAGED, limit=100)
-        for p in prospects:
-            if p.id is not None and p.engagement_stage == EngagementStage.DEMO_SCHEDULED:
-                try:
-                    generate_prep(db, p.id)
-                except Exception:
-                    pass  # Individual failure shouldn't stop batch
+        # Create a thread-local database connection (SQLite connections
+        # cannot be shared across threads)
+        thread_db = ThreadDatabase()
+        thread_db.initialize()
+        try:
+            prospects = thread_db.get_prospects(population=Population.ENGAGED, limit=100)
+            for p in prospects:
+                if p.id is not None and p.engagement_stage == EngagementStage.DEMO_SCHEDULED:
+                    try:
+                        generate_prep(thread_db, p.id)
+                    except Exception:
+                        pass  # Individual failure shouldn't stop batch
+        finally:
+            thread_db.close()
 
     orchestrator.register_task("demo_prep", _refresh_demo_prep, timedelta(hours=1))
 
