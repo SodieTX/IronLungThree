@@ -26,7 +26,7 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Format check
-        run: black --check src tests ironlung3.py
+        run: python -m black --check src tests ironlung3.py
 
       - name: Import order check
         run: isort --check-only src tests ironlung3.py
