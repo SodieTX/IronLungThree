@@ -100,6 +100,7 @@ def main() -> int:
         return 1
 
     # Seed database with sample data if empty (first run)
+    _seed_status = ""
     try:
         pop_counts = db.get_population_counts()
         if sum(pop_counts.values()) == 0:
@@ -108,6 +109,7 @@ def main() -> int:
                 from src.db.intake import IntakeFunnel
                 from src.integrations.csv_importer import CSVImporter
 
+                logger.info(f"Database empty — auto-seeding from {sample_csv}")
                 importer = CSVImporter()
                 mapping = {
                     "first_name": "First Name",
@@ -119,22 +121,40 @@ def main() -> int:
                     "state": "State",
                 }
                 records = importer.apply_mapping(sample_csv, mapping)
-                funnel = IntakeFunnel(db)
-                preview = funnel.analyze(
-                    records, source_name="sample_data", filename="sample_contacts.csv"
-                )
-                result = funnel.commit(preview)
+                if not records:
+                    logger.error("Auto-seed: CSV parsed but produced 0 records")
+                    _seed_status = "seed_empty"
+                else:
+                    funnel = IntakeFunnel(db)
+                    preview = funnel.analyze(
+                        records, source_name="sample_data", filename="sample_contacts.csv"
+                    )
+                    result = funnel.commit(preview)
 
-                try:
-                    from src.engine.scoring import rescore_all
+                    try:
+                        from src.engine.scoring import rescore_all
 
-                    rescore_all(db)
-                except Exception:
-                    pass  # Scoring failure is non-fatal
+                        rescore_all(db)
+                    except Exception as score_err:
+                        logger.warning(f"Scoring after seed failed (non-fatal): {score_err}")
 
-                logger.info(f"Auto-seeded database with {result.imported_count} sample contacts")
+                    if result.imported_count == 0:
+                        logger.error("Auto-seed: commit ran but imported 0 records")
+                        _seed_status = "seed_zero"
+                    else:
+                        logger.info(
+                            f"Auto-seeded database with {result.imported_count} sample contacts"
+                        )
+            else:
+                logger.warning(f"Sample CSV not found at {sample_csv} — cannot auto-seed")
+                _seed_status = "seed_no_csv"
+        else:
+            logger.info(
+                f"Database has {sum(pop_counts.values())} existing prospects — skipping auto-seed"
+            )
     except Exception as e:
-        logger.warning(f"Auto-seed failed (non-fatal): {e}")
+        logger.error(f"Auto-seed FAILED: {e}", exc_info=True)
+        _seed_status = f"seed_error: {e}"
 
     # Check backup status and create one if stale
     try:
@@ -200,7 +220,7 @@ def main() -> int:
     orchestrator.start()
 
     try:
-        app = IronLungApp(db)
+        app = IronLungApp(db, seed_status=_seed_status)
         app.run()
     finally:
         orchestrator.stop()

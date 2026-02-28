@@ -319,7 +319,34 @@ class TodayTab(TabBase):
 
         if not self._queue or self._queue_index >= len(self._queue):
             if self._status_label:
-                self._status_label.config(text="No cards in queue.")
+                # Give a helpful message based on what's in the database
+                try:
+                    from src.db.models import Population
+
+                    pop_counts = self.db.get_population_counts()
+                    broken = pop_counts.get(Population.BROKEN, 0)
+                    parked = pop_counts.get(Population.PARKED, 0)
+                    total = sum(pop_counts.values())
+                    if total > 0 and broken > 0 and broken == total:
+                        msg = (
+                            f"You have {broken} contacts but they are all 'Broken'\n"
+                            "(missing email or phone).\n\n"
+                            "Go to the Broken tab to fix them,\n"
+                            "or import new contacts from the Import tab."
+                        )
+                    elif total > 0 and parked > 0:
+                        msg = (
+                            "No cards due today.\n\n"
+                            f"You have {parked} parked contacts waiting.\n"
+                            "Check the Pipeline tab for your full list."
+                        )
+                    elif total > 0:
+                        msg = "No cards due today.\n" "Check the Pipeline tab for your full list."
+                    else:
+                        msg = "No cards queued.\n" "Click 'Today's Brief' to load today's queue."
+                except Exception:
+                    msg = "No cards in queue."
+                self._status_label.config(text=msg)
                 self._status_label.pack(expand=True)
             return
 
