@@ -155,7 +155,19 @@ class CalendarTab(TabBase):
             return
 
         monday = self._current_date - timedelta(days=self._current_date.weekday())
-        conn = self.db._get_connection()
+        
+        try:
+            conn = self.db._get_connection()
+        except Exception as e:
+            logger.error(f"Failed to get database connection: {e}")
+            tk.Label(
+                self._content_frame,
+                text=f"Error loading calendar: {e}",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg="red",
+            ).pack(expand=True)
+            return
 
         for col, day_offset in enumerate(range(5)):
             day = monday + timedelta(days=day_offset)
@@ -186,21 +198,32 @@ class CalendarTab(TabBase):
             ).pack(fill=tk.X)
 
             # Get follow-ups for this day
-            rows = conn.execute(
-                """SELECT p.id, p.first_name, p.last_name, p.population,
-                          p.engagement_stage, c.timezone as company_tz
-                   FROM prospects p
-                   LEFT JOIN companies c ON p.company_id = c.id
-                   WHERE DATE(p.follow_up_date) = DATE(?)
-                   AND p.population NOT IN (?, ?, ?)
-                   ORDER BY p.prospect_score DESC""",
-                (
-                    day_iso,
-                    Population.DEAD_DNC.value,
-                    Population.CLOSED_WON.value,
-                    Population.LOST.value,
-                ),
-            ).fetchall()
+            try:
+                rows = conn.execute(
+                    """SELECT p.id, p.first_name, p.last_name, p.population,
+                              p.engagement_stage, c.timezone as company_tz
+                       FROM prospects p
+                       LEFT JOIN companies c ON p.company_id = c.id
+                       WHERE DATE(p.follow_up_date) = DATE(?)
+                       AND p.population NOT IN (?, ?, ?)
+                       ORDER BY p.prospect_score DESC""",
+                    (
+                        day_iso,
+                        Population.DEAD_DNC.value,
+                        Population.CLOSED_WON.value,
+                        Population.LOST.value,
+                    ),
+                ).fetchall()
+            except Exception as e:
+                logger.error(f"Failed to load follow-ups for {day_iso}: {e}")
+                tk.Label(
+                    col_frame,
+                    text="Error loading data",
+                    font=FONTS["small"],
+                    bg=col_frame["bg"],
+                    fg="red",
+                ).pack(pady=8)
+                continue
 
             if not rows:
                 tk.Label(
@@ -258,24 +281,47 @@ class CalendarTab(TabBase):
             return
 
         day_iso = self._current_date.isoformat()
-        conn = self.db._get_connection()
+        
+        try:
+            conn = self.db._get_connection()
+        except Exception as e:
+            logger.error(f"Failed to get database connection: {e}")
+            tk.Label(
+                self._content_frame,
+                text=f"Error loading calendar: {e}",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg="red",
+            ).pack(expand=True)
+            return
 
-        rows = conn.execute(
-            """SELECT p.id, p.first_name, p.last_name, p.title, p.population,
-                      p.engagement_stage, p.prospect_score, p.follow_up_date,
-                      c.name as company_name, c.timezone as company_tz
-               FROM prospects p
-               LEFT JOIN companies c ON p.company_id = c.id
-               WHERE DATE(p.follow_up_date) = DATE(?)
-               AND p.population NOT IN (?, ?, ?)
-               ORDER BY c.timezone ASC, p.prospect_score DESC""",
-            (
-                day_iso,
-                Population.DEAD_DNC.value,
-                Population.CLOSED_WON.value,
-                Population.LOST.value,
-            ),
-        ).fetchall()
+        try:
+            rows = conn.execute(
+                """SELECT p.id, p.first_name, p.last_name, p.title, p.population,
+                          p.engagement_stage, p.prospect_score, p.follow_up_date,
+                          c.name as company_name, c.timezone as company_tz
+                   FROM prospects p
+                   LEFT JOIN companies c ON p.company_id = c.id
+                   WHERE DATE(p.follow_up_date) = DATE(?)
+                   AND p.population NOT IN (?, ?, ?)
+                   ORDER BY c.timezone ASC, p.prospect_score DESC""",
+                (
+                    day_iso,
+                    Population.DEAD_DNC.value,
+                    Population.CLOSED_WON.value,
+                    Population.LOST.value,
+                ),
+            ).fetchall()
+        except Exception as e:
+            logger.error(f"Failed to load follow-ups for {day_iso}: {e}")
+            tk.Label(
+                self._content_frame,
+                text=f"Error loading follow-ups: {e}",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg="red",
+            ).pack(expand=True)
+            return
 
         if not rows:
             tk.Label(
@@ -346,19 +392,41 @@ class CalendarTab(TabBase):
         if not self._content_frame:
             return
 
-        conn = self.db._get_connection()
+        try:
+            conn = self.db._get_connection()
+        except Exception as e:
+            logger.error(f"Failed to get database connection: {e}")
+            tk.Label(
+                self._content_frame,
+                text=f"Error loading calendar: {e}",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg="red",
+            ).pack(expand=True)
+            return
 
         # Get all parked prospects grouped by month
-        rows = conn.execute(
-            """SELECT p.parked_month, COUNT(*) as cnt,
-                      GROUP_CONCAT(p.first_name || ' ' || p.last_name, ', ') as names
-               FROM prospects p
-               WHERE p.population = ?
-               AND p.parked_month IS NOT NULL
-               GROUP BY p.parked_month
-               ORDER BY p.parked_month ASC""",
-            (Population.PARKED.value,),
-        ).fetchall()
+        try:
+            rows = conn.execute(
+                """SELECT p.parked_month, COUNT(*) as cnt,
+                          GROUP_CONCAT(p.first_name || ' ' || p.last_name, ', ') as names
+                   FROM prospects p
+                   WHERE p.population = ?
+                   AND p.parked_month IS NOT NULL
+                   GROUP BY p.parked_month
+                   ORDER BY p.parked_month ASC""",
+                (Population.PARKED.value,),
+            ).fetchall()
+        except Exception as e:
+            logger.error(f"Failed to load parked prospects: {e}")
+            tk.Label(
+                self._content_frame,
+                text=f"Error loading parked prospects: {e}",
+                font=FONTS["large"],
+                bg=COLORS["bg_alt"],
+                fg="red",
+            ).pack(expand=True)
+            return
 
         if not rows:
             tk.Label(
