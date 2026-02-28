@@ -62,9 +62,7 @@ class ImportTab(TabBase):
 
         ttk.Separator(file_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=10)
 
-        trello_btn = ttk.Button(
-            file_frame, text="Sync from Trello", command=self._sync_from_trello
-        )
+        trello_btn = ttk.Button(file_frame, text="Sync from Trello", command=self._sync_from_trello)
         trello_btn.pack(side=tk.LEFT, padx=5)
 
         # Preset selection
