@@ -79,13 +79,13 @@ class ImportTab(TabBase):
             width=20,
         )
         self._preset_combo.pack(side=tk.LEFT, padx=5)
+        self._preset_combo.bind("<<ComboboxSelected>>", lambda e: self._apply_preset_mapping())
 
         # Column mapping section
         self._mapping_frame = ttk.LabelFrame(scrollable_frame, text="Column Mapping", padding=10)
         self._mapping_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        no_file_label = ttk.Label(self._mapping_frame, text="Select a file to see column mappings")
-        no_file_label.pack(pady=20)
+        self._render_empty_mapping()
 
         # Preview and import buttons
         action_frame = ttk.Frame(scrollable_frame)
@@ -166,6 +166,9 @@ class ImportTab(TabBase):
             # Show column mappings
             self._show_mapping_ui()
 
+            # Apply preset mapping (auto-detect or user-selected)
+            self._apply_preset_mapping()
+
             # Enable buttons
             self._preview_btn.config(state="normal")
             self._import_btn.config(state="normal")
@@ -187,6 +190,7 @@ class ImportTab(TabBase):
         self._mapping_widgets = {}
 
         if not self._parse_result:
+            self._render_empty_mapping()
             return
 
         # Create mapping dropdowns for each required field
@@ -238,6 +242,45 @@ class ImportTab(TabBase):
                     break
 
         self._mapping_frame.columnconfigure(1, weight=1)
+
+    def _render_empty_mapping(self) -> None:
+        """Render placeholder when no file is selected."""
+        for widget in self._mapping_frame.winfo_children():
+            widget.destroy()
+        ttk.Label(self._mapping_frame, text="Select a file to see column mappings").pack(pady=20)
+
+    def _apply_preset_mapping(self) -> None:
+        """Apply preset mapping to the mapping widgets."""
+        if not self._parse_result or not self._mapping_widgets:
+            return
+        preset = self._preset_var.get()
+        if not preset or preset == "None":
+            return
+
+        try:
+            from src.integrations.csv_importer import PRESETS
+        except Exception:
+            return
+
+        preset_map = PRESETS.get(preset)
+        if not preset_map:
+            return
+
+        headers_lower = {h.lower().strip(): h for h in self._parse_result.headers}
+
+        # Clear existing selections first
+        for var in self._mapping_widgets.values():
+            var.set("")
+
+        # Apply preset matches
+        for field_key, column_names in preset_map.items():
+            if field_key not in self._mapping_widgets:
+                continue
+            for col_name in column_names:
+                match = headers_lower.get(col_name.lower())
+                if match:
+                    self._mapping_widgets[field_key].set(match)
+                    break
 
     def preview_import(self) -> None:
         """Show import preview dialog."""
@@ -423,17 +466,13 @@ class ImportTab(TabBase):
             if self.app and hasattr(self.app, "refresh_data_tabs"):
                 self.app.refresh_data_tabs()
 
-            # Auto-switch to Broken tab when broken records were imported
-            if result.broken_count > 0 and self.app and hasattr(self.app, "switch_to_tab"):
-                self.app.switch_to_tab("Broken")
-
             # Clear selection
             self._selected_file = None
             self._parse_result = None
             self._file_label.config(text="No file selected")
             self._preview_btn.config(state="disabled")
             self._import_btn.config(state="disabled")
-            self._show_mapping_ui()
+            self._render_empty_mapping()
 
         except Exception as e:
             messagebox.showerror("Error", f"Import failed: {e}")
@@ -442,33 +481,33 @@ class ImportTab(TabBase):
     def _load_import_history(self) -> None:
         """Load import history from database."""
         try:
-            from src.db.models import ActivityType
-
-            # Get recent import activities
-            activities = []
-            prospects = self.db.get_prospects(limit=100)
-            for prospect in prospects:
-                if prospect.id is None:
-                    continue
-                acts = self.db.get_activities(prospect.id, limit=5)
-                for act in acts:
-                    if act.activity_type == ActivityType.IMPORT:
-                        activities.append(act)
-
-            # Sort by date and take latest 10
-            activities.sort(key=lambda a: a.created_at or "", reverse=True)
-            activities = activities[:10]
+            # Use import_sources table for accurate batch history
+            sources = self.db.get_import_sources(limit=10)
 
             # Display
             self._history_text.config(state="normal")
             self._history_text.delete("1.0", tk.END)
 
-            if activities:
-                for act in activities:
-                    timestamp = (
-                        act.created_at.strftime("%Y-%m-%d %H:%M") if act.created_at else "Unknown"
+            if sources:
+                for src in sources:
+                    if src.import_date:
+                        try:
+                            timestamp = src.import_date.strftime("%Y-%m-%d %H:%M")
+                        except AttributeError:
+                            timestamp = str(src.import_date)[:16]
+                    else:
+                        timestamp = "Unknown"
+                    filename = src.filename or src.source_name or "Import"
+                    self._history_text.insert(
+                        tk.END,
+                        (
+                            f"{timestamp} - {filename} "
+                            f"(Imported {src.imported_records}, "
+                            f"Merged {src.duplicate_records}, "
+                            f"Broken {src.broken_records}, "
+                            f"DNC {src.dnc_blocked_records})\n"
+                        ),
                     )
-                    self._history_text.insert(tk.END, f"{timestamp} - {act.notes or 'Import'}\n")
             else:
                 self._history_text.insert(tk.END, "No import history yet")
 

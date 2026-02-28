@@ -153,8 +153,11 @@ class CSVImporter:
         suffix = path.suffix.lower()
 
         # Validate file extension
-        if suffix not in (".csv", ".xlsx", ".xls"):
-            raise ImportError_(f"Unsupported file type: {suffix}")
+        if suffix not in (".csv", ".xlsx"):
+            raise ImportError_(
+                f"Unsupported file type: {suffix}. "
+                "Supported formats: .csv, .xlsx"
+            )
 
         # Prevent DoS via oversized files
         file_size = path.stat().st_size
@@ -164,7 +167,7 @@ class CSVImporter:
                 f"Maximum allowed: {self.MAX_IMPORT_SIZE_BYTES / 1024 / 1024:.0f} MB"
             )
 
-        if suffix in (".xlsx", ".xls"):
+        if suffix == ".xlsx":
             headers, all_rows = self._parse_xlsx(path)
             encoding = "xlsx"
         elif suffix == ".csv":
@@ -239,12 +242,15 @@ class CSVImporter:
         path = Path(path)
         suffix = path.suffix.lower()
 
-        if suffix in (".xlsx", ".xls"):
+        if suffix == ".xlsx":
             headers, all_rows = self._parse_xlsx(path)
         elif suffix == ".csv":
             headers, all_rows, _ = self._parse_csv(path)
         else:
-            raise ImportError_(f"Unsupported file type: {suffix}")
+            raise ImportError_(
+                f"Unsupported file type: {suffix}. "
+                "Supported formats: .csv, .xlsx"
+            )
 
         # If preset specified and no mapping, build mapping from preset
         if preset and preset in PRESETS and not mapping:

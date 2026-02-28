@@ -6,16 +6,25 @@ Three-section workbench:
     3. Manual Research Needed — system struck out, user researches
 """
 
+import json
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
-from src.db.models import Population, ResearchStatus
+from src.db.models import (
+    Activity,
+    ActivityType,
+    ContactMethod,
+    ContactMethodType,
+    Population,
+    ResearchStatus,
+)
 from src.engine.populations import transition_prospect
 from src.gui.tabs import TabBase
 from src.gui.theme import COLORS, FONTS
+from src.core.phone import normalize_phone
 
 logger = get_logger(__name__)
 
@@ -29,6 +38,7 @@ class BrokenTab(TabBase):
         self._progress_tree: Optional[ttk.Treeview] = None
         self._manual_tree: Optional[ttk.Treeview] = None
         self._header_label: Optional[tk.Label] = None
+        self._task_lookup: dict[int, object] = {}
         self._create_ui()
 
     def _create_ui(self) -> None:
@@ -110,6 +120,11 @@ class BrokenTab(TabBase):
             self._confirm_tree = tree
             ttk.Button(
                 btn_frame,
+                text="View Findings",
+                command=self._view_findings,
+            ).pack(side=tk.LEFT, padx=4)
+            ttk.Button(
+                btn_frame,
                 text="Confirm Selected",
                 command=self._confirm_selected,
             ).pack(side=tk.LEFT, padx=4)
@@ -124,6 +139,11 @@ class BrokenTab(TabBase):
             self._manual_tree = tree
             ttk.Button(
                 btn_frame,
+                text="Add Contact Method",
+                command=self._add_contact_method,
+            ).pack(side=tk.LEFT, padx=4)
+            ttk.Button(
+                btn_frame,
                 text="Mark as Researched",
                 command=self._mark_researched,
             ).pack(side=tk.LEFT, padx=4)
@@ -131,19 +151,6 @@ class BrokenTab(TabBase):
     def refresh(self) -> None:
         """Reload broken data from database."""
         conn = self.db._get_connection()
-
-        # Backfill research_queue for broken prospects that don't have tasks.
-        # Sequestered records (Trello sync, transition, etc.) may lack tasks.
-        cursor = conn.execute(
-            """INSERT INTO research_queue (prospect_id, priority, status)
-               SELECT p.id, 0, 'pending' FROM prospects p
-               WHERE p.population = ?
-               AND NOT EXISTS (SELECT 1 FROM research_queue rq WHERE rq.prospect_id = p.id)""",
-            (Population.BROKEN.value,),
-        )
-        if cursor.rowcount > 0:
-            conn.commit()
-            logger.info("Backfilled research tasks for %d broken prospects", cursor.rowcount)
 
         # Count total broken
         broken_count = conn.execute(
@@ -171,10 +178,15 @@ class BrokenTab(TabBase):
             (Population.BROKEN.value,),
         ).fetchall()
 
+        self._task_lookup = {}
         for task in tasks:
             status = task["status"]
             if status in tasks_by_status:
                 tasks_by_status[status].append(task)
+            try:
+                self._task_lookup[int(task["prospect_id"])] = task
+            except Exception:
+                continue
 
         # Also get broken prospects without research tasks
         all_broken = conn.execute(
@@ -283,19 +295,45 @@ class BrokenTab(TabBase):
             )
             return
 
+        confirmed = 0
+        still_missing = 0
+        no_findings = 0
+        applied_findings = 0
+
         for item in selected:
             values = self._confirm_tree.item(item)["values"]
             pid = int(values[0])
-            try:
-                transition_prospect(
-                    self.db,
-                    pid,
-                    Population.UNENGAGED,
-                    reason="Research confirmed — data complete",
-                )
-                logger.info(f"Confirmed broken prospect {pid} -> unengaged")
-            except Exception as e:
-                logger.error(f"Failed to confirm prospect {pid}: {e}")
+            findings = self._get_findings(pid)
+            if not findings:
+                no_findings += 1
+                continue
+
+            applied_findings += self._apply_findings(pid, findings)
+
+            if self._is_complete(pid):
+                try:
+                    transition_prospect(
+                        self.db,
+                        pid,
+                        Population.UNENGAGED,
+                        reason="Research confirmed — data complete",
+                    )
+                    confirmed += 1
+                    logger.info(f"Confirmed broken prospect {pid} -> unengaged")
+                except Exception as e:
+                    logger.error(f"Failed to confirm prospect {pid}: {e}")
+            else:
+                still_missing += 1
+
+        if confirmed or still_missing or no_findings:
+            messagebox.showinfo(
+                "Confirmation Summary",
+                f"Applied findings: {applied_findings}\n"
+                f"Moved to unengaged: {confirmed}\n"
+                f"Still missing data: {still_missing}\n"
+                f"No findings to apply: {no_findings}",
+                parent=self.frame.winfo_toplevel(),
+            )
 
         self.refresh()
 
@@ -324,7 +362,7 @@ class BrokenTab(TabBase):
                         "UPDATE research_queue SET status = ? WHERE id = ?",
                         (ResearchStatus.FAILED.value, task.id),
                     )
-                    conn.connection.commit() if hasattr(conn, "connection") else None
+                    conn.commit()
                     break
             logger.info(f"Rejected research for prospect {pid}")
 
@@ -371,3 +409,188 @@ class BrokenTab(TabBase):
                 )
 
         self.refresh()
+
+    def _view_findings(self) -> None:
+        """Show research findings for the selected record."""
+        if not self._confirm_tree or not self.frame:
+            return
+        selected = self._confirm_tree.selection()
+        if not selected:
+            messagebox.showinfo(
+                "Info", "Select a record to view findings.", parent=self.frame.winfo_toplevel()
+            )
+            return
+        if len(selected) > 1:
+            messagebox.showinfo(
+                "Info", "Select a single record to view findings.", parent=self.frame.winfo_toplevel()
+            )
+            return
+
+        values = self._confirm_tree.item(selected[0])["values"]
+        pid = int(values[0])
+        findings = self._get_findings(pid)
+        if not findings:
+            messagebox.showinfo(
+                "No Findings",
+                "No research findings available for this record.",
+                parent=self.frame.winfo_toplevel(),
+            )
+            return
+
+        dialog = tk.Toplevel(self.frame)
+        dialog.title("Research Findings")
+        dialog.geometry("520x360")
+        dialog.transient(self.frame.winfo_toplevel())
+
+        text = tk.Text(dialog, wrap=tk.WORD, font=FONTS["small"])
+        text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        for i, finding in enumerate(findings, start=1):
+            field = finding.get("field", "")
+            value = finding.get("value", "")
+            confidence = finding.get("confidence", "")
+            source = finding.get("source", "")
+            text.insert(
+                tk.END,
+                f"{i}. {field}: {value}\n"
+                f"   confidence: {confidence}\n"
+                f"   source: {source}\n\n",
+            )
+
+        text.config(state="disabled")
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=(0, 8))
+
+    def _add_contact_method(self) -> None:
+        """Add a contact method to the selected broken prospect."""
+        if not self._manual_tree or not self.frame:
+            return
+        selected = self._manual_tree.selection()
+        if not selected:
+            messagebox.showinfo(
+                "Info", "Select a record first.", parent=self.frame.winfo_toplevel()
+            )
+            return
+
+        values = self._manual_tree.item(selected[0])["values"]
+        pid = int(values[0])
+        methods = self.db.get_contact_methods(pid)
+
+        from src.gui.dialogs.contact_method import ContactMethodDialog
+
+        dialog = ContactMethodDialog(self.frame, pid, methods)
+        method = dialog.show()
+        if not method:
+            return
+
+        # If new method is primary, unset existing primaries of the same type
+        if method.is_primary:
+            for m in methods:
+                if m.type == method.type and m.is_primary:
+                    m.is_primary = False
+                    self.db.update_contact_method(m)
+
+        self.db.create_contact_method(method)
+        self.refresh()
+
+    def _get_findings(self, prospect_id: int) -> list[dict[str, str]]:
+        """Get parsed research findings for a prospect."""
+        task = self._task_lookup.get(prospect_id)
+        if not task:
+            return []
+        findings_raw = task["findings"] if "findings" in task.keys() else None
+        if not findings_raw:
+            return []
+        try:
+            data = json.loads(findings_raw)
+        except (TypeError, json.JSONDecodeError):
+            return []
+        if not isinstance(data, list):
+            return []
+        findings: list[dict[str, str]] = []
+        for item in data:
+            if isinstance(item, dict):
+                findings.append(item)
+        return findings
+
+    def _apply_findings(self, prospect_id: int, findings: list[dict[str, str]]) -> int:
+        """Apply research findings to contact methods."""
+        existing = self.db.get_contact_methods(prospect_id)
+        existing_emails = {m.value.lower() for m in existing if m.type == ContactMethodType.EMAIL}
+        existing_phones = {normalize_phone(m.value) for m in existing if m.type == ContactMethodType.PHONE}
+
+        has_primary_email = any(m.type == ContactMethodType.EMAIL and m.is_primary for m in existing)
+        has_primary_phone = any(m.type == ContactMethodType.PHONE and m.is_primary for m in existing)
+
+        added = 0
+        for finding in findings:
+            field = str(finding.get("field", "")).lower().strip()
+            value = str(finding.get("value", "")).strip()
+            if not value:
+                continue
+
+            confidence = str(finding.get("confidence", "")).lower().strip()
+            source = str(finding.get("source", "research")).strip()
+
+            if field == "email":
+                email = value.lower()
+                if email in existing_emails:
+                    continue
+                method = ContactMethod(
+                    prospect_id=prospect_id,
+                    type=ContactMethodType.EMAIL,
+                    value=email,
+                    is_primary=not has_primary_email,
+                    source=f"research:{source}",
+                    confidence_score=self._confidence_score(confidence),
+                )
+                self.db.create_contact_method(method)
+                has_primary_email = True
+                existing_emails.add(email)
+            elif field == "phone":
+                phone = normalize_phone(value)
+                if not phone or phone in existing_phones:
+                    continue
+                method = ContactMethod(
+                    prospect_id=prospect_id,
+                    type=ContactMethodType.PHONE,
+                    value=phone,
+                    is_primary=not has_primary_phone,
+                    source=f"research:{source}",
+                    confidence_score=self._confidence_score(confidence),
+                )
+                self.db.create_contact_method(method)
+                has_primary_phone = True
+                existing_phones.add(phone)
+            else:
+                continue
+
+            activity = Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.ENRICHMENT,
+                notes=(
+                    f"Confirmed research {field}: {value} "
+                    f"(source: {source}, confidence: {confidence})"
+                ),
+                created_by="user",
+            )
+            self.db.create_activity(activity)
+            added += 1
+
+        return added
+
+    def _is_complete(self, prospect_id: int) -> bool:
+        """Check if prospect has both email and phone."""
+        methods = self.db.get_contact_methods(prospect_id)
+        has_email = any(m.type == ContactMethodType.EMAIL for m in methods)
+        has_phone = any(m.type == ContactMethodType.PHONE for m in methods)
+        return has_email and has_phone
+
+    def _confidence_score(self, confidence: str) -> int:
+        """Map confidence label to score."""
+        if confidence == "high":
+            return 90
+        if confidence == "medium":
+            return 70
+        if confidence == "low":
+            return 40
+        return 50
