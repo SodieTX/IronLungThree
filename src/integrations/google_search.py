@@ -119,14 +119,14 @@ class GoogleSearchClient(IntegrationBase):
             logger.warning("Google Search daily quota exhausted")
             raise IntegrationError("Google Search daily quota exhausted (100/day)")
 
+        # Clamp to API maximum before cache lookup so cache key is consistent
+        num_results = min(num_results, 10)
+
         # Check cache first
         cache_key = f"{query}:{num_results}"
         if cache_key in self._cache:
             logger.debug(f"Google Search cache hit: {query}")
             return self._cache[cache_key]
-
-        # Clamp to API maximum
-        num_results = min(num_results, 10)
 
         try:
             response = self.with_retry(

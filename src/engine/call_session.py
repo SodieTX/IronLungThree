@@ -235,7 +235,13 @@ class CallSession:
         label = type_labels.get(last.activity_type, str(last.activity_type))
         date_str = ""
         if last.created_at:
-            date_str = f" on {last.created_at.strftime('%b %d')}"
+            created = last.created_at
+            if isinstance(created, str):
+                try:
+                    created = datetime.fromisoformat(created)
+                except (ValueError, TypeError):
+                    created = None
+            date_str = f" on {created.strftime('%b %d')}" if created else ""
 
         return f"{label}{date_str}"
 

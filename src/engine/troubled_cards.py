@@ -98,7 +98,10 @@ class TroubledCardsService:
 
         cards: list[TroubledCard] = []
         for row in rows:
-            follow_date = datetime.fromisoformat(row["follow_up_date"]).date()
+            try:
+                follow_date = datetime.fromisoformat(row["follow_up_date"]).date()
+            except (ValueError, TypeError):
+                continue
             days = (target_date - follow_date).days
             cards.append(
                 TroubledCard(
@@ -135,8 +138,11 @@ class TroubledCardsService:
         for row in rows:
             last = row["last_activity"]
             if last:
-                last_date = datetime.fromisoformat(last).date()
-                days = (target_date - last_date).days
+                try:
+                    last_date = datetime.fromisoformat(last).date()
+                except (ValueError, TypeError):
+                    last_date = None
+                days = (target_date - last_date).days if last_date else self.STALLED_THRESHOLD_DAYS
             else:
                 days = self.STALLED_THRESHOLD_DAYS
             cards.append(

@@ -70,12 +70,15 @@ def attempt_recall(
             message="No message ID provided",
         )
 
-    # Step 1: Try to delete the sent message
+    # Step 1: Read original message details BEFORE deleting
+    # (deletion removes the message, making it unreadable)
+    original = _get_original_message(outlook, message_id) if send_follow_up else None
+
+    # Step 2: Try to delete the sent message
     deleted = _delete_sent_message(outlook, message_id)
 
-    # Step 2: Send follow-up if requested
+    # Step 3: Send follow-up if requested
     if send_follow_up:
-        original = _get_original_message(outlook, message_id)
         if original:
             to_address = original.get("to", "")
             subject = original.get("subject", "")

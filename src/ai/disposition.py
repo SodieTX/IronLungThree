@@ -55,7 +55,8 @@ class Disposition:
 _WON_SIGNALS = [
     "signed",
     "contract",
-    "closed",
+    "closed won",
+    "deal closed",
     "deal done",
     "won",
     "we got it",
@@ -78,7 +79,8 @@ _LOST_SIGNALS = [
     "not buying",
     "not interested",
     "hard no",
-    "lost",
+    "lost the deal",
+    "lost to competitor",
 ]
 
 
@@ -94,21 +96,21 @@ def determine_disposition(conversation: str | list[dict]) -> Disposition:
 
     text_lower = text.lower()
 
-    # Check for WON signals
-    for signal in _WON_SIGNALS:
-        if signal in text_lower:
-            return Disposition(
-                outcome="WON",
-                population=Population.CLOSED_WON,
-            )
-
-    # Check for DEAD signals
+    # Check for DEAD signals first (more specific, irreversible -- must take priority)
     for signal, reason in _DEAD_SIGNALS.items():
         if signal in text_lower:
             return Disposition(
                 outcome="OUT",
                 population=Population.DEAD_DNC,
                 reason=reason,
+            )
+
+    # Check for WON signals
+    for signal in _WON_SIGNALS:
+        if signal in text_lower:
+            return Disposition(
+                outcome="WON",
+                population=Population.CLOSED_WON,
             )
 
     # Check for LOST signals

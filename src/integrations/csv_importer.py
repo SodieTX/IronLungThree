@@ -381,6 +381,7 @@ class CSVImporter:
                 "openpyxl is required for XLSX files. Install with: pip install openpyxl"
             )
 
+        wb = None
         try:
             wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
             ws = wb.active
@@ -390,7 +391,6 @@ class CSVImporter:
             # First row is headers
             header_row = next(rows_iter, None)
             if header_row is None:
-                wb.close()
                 return [], []
 
             headers = [str(cell).strip() if cell else "" for cell in header_row]
@@ -402,11 +402,13 @@ class CSVImporter:
                     continue
                 data_rows.append(cells)
 
-            wb.close()
             return headers, data_rows
 
         except Exception as e:
             raise ImportError_(f"Cannot parse XLSX: {e}") from e
+        finally:
+            if wb is not None:
+                wb.close()
 
     @staticmethod
     def split_full_name(full_name: str) -> tuple[str, str]:

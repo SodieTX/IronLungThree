@@ -233,8 +233,9 @@ class ClosedWonDialog:
 
             contract = render_contract(self.db, self.prospect_id)
 
-            # Show contract in a new window
-            preview = tk.Toplevel(self._dialog)
+            # Show contract in a new window (parent is root, not dialog,
+            # so destroying the dialog doesn't kill the preview)
+            preview = tk.Toplevel(self.parent.winfo_toplevel())
             preview.title(f"Contract — {contract.prospect_name}")
             preview.geometry("700x600")
 

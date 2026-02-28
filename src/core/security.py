@@ -253,7 +253,7 @@ def validate_safe_path(path: Path, allowed_parent: Path) -> Path:
     resolved = Path(path).resolve()
     parent = Path(allowed_parent).resolve()
 
-    if not str(resolved).startswith(str(parent)):
+    if not (resolved == parent or str(resolved).startswith(str(parent) + os.sep)):
         raise ValueError(f"Path traversal detected: {path} resolves outside of {allowed_parent}")
 
     return resolved
