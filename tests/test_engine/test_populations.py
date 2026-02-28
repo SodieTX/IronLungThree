@@ -287,6 +287,17 @@ class TestTransitionProspect:
         assert prospect.population == Population.PARKED
         assert prospect.engagement_stage is None
 
+    def test_transition_to_broken_creates_research_task(self, db, unengaged_prospect_id):
+        """Transitioning to BROKEN creates research_queue entry so Broken tab can display it."""
+        transition_prospect(
+            db, unengaged_prospect_id, Population.BROKEN, reason="Data degraded"
+        )
+
+        tasks = db.get_research_tasks(limit=100)
+        prospect_tasks = [t for t in tasks if t.prospect_id == unengaged_prospect_id]
+        assert len(prospect_tasks) == 1
+        assert prospect_tasks[0].status.value == "pending"
+
     def test_dnc_transition_raises_error(self, db, dnc_prospect_id):
         """Transitioning FROM DNC raises DNCViolationError."""
         with pytest.raises(DNCViolationError):
