@@ -195,10 +195,35 @@ class TodayTab(TabBase):
             fg=COLORS["muted"],
         ).pack(pady=(0, 20))
 
-        # Settings button (secondary action)
+        # Sync from Trello button
+        trello_btn = tk.Button(
+            actions,
+            text="  ②  Sync from Trello  ",
+            font=("Segoe UI", 11),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            activebackground=COLORS["bg"],
+            activeforeground=COLORS["fg"],
+            relief="solid",
+            cursor="hand2",
+            padx=20,
+            pady=8,
+            command=self._sync_from_trello,
+        )
+        trello_btn.pack(pady=4)
+
+        tk.Label(
+            actions,
+            text="Pull cards from your Trello board into the pipeline",
+            font=("Segoe UI", 10),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 8))
+
+        # Settings button (tertiary action)
         settings_btn = tk.Button(
             actions,
-            text="  ②  Configure Services  ",
+            text="  ③  Configure Services  ",
             font=("Segoe UI", 11),
             bg=COLORS["bg_alt"],
             fg=COLORS["fg"],
@@ -233,6 +258,11 @@ class TodayTab(TabBase):
         """Navigate to the Import tab."""
         if self.app:
             self.app.switch_to_tab("Import")
+
+    def _sync_from_trello(self) -> None:
+        """Run Trello sync. refresh_data_tabs updates the empty state."""
+        if self.app:
+            self.app.run_trello_sync(parent=self.frame)
 
     def _go_to_settings(self) -> None:
         """Navigate to the Settings tab."""

@@ -55,6 +55,25 @@ _DEFAULT_LIST_MAP: dict[str, Population] = {
     "nurture": Population.PARKED,
     "on hold": Population.PARKED,
     "do not contact": Population.DEAD_DNC,
+    # Sales pipeline / CRM-style list names
+    "activecampaign - net new": Population.UNENGAGED,
+    "showed interest": Population.ENGAGED,
+    "post-demo follow up": Population.ENGAGED,
+    "cold - revival": Population.UNENGAGED,
+    "cool - need re-engagement": Population.PARKED,
+    "callback requested": Population.ENGAGED,
+    "engaged-hot follow ups": Population.ENGAGED,
+    "upcoming (no demo yet)": Population.UNENGAGED,
+    "for the next work day": Population.ENGAGED,
+    "demo scheduled": Population.ENGAGED,
+    "demo finished awaiting answer": Population.ENGAGED,
+    "hot - close this week": Population.ENGAGED,
+    "call in march": Population.PARKED,
+    "in talks-follow up set-do not email": Population.ENGAGED,
+    "missing data-do not email": Population.BROKEN,
+    "deal lost": Population.LOST,
+    "partnerships-no sales emails": Population.PARTNERSHIP,
+    "april": Population.PARKED,
 }
 
 # Single-keyword fallback: if a Trello list name *contains* one of these
@@ -129,11 +148,42 @@ class SyncResult:
         self.summary = "\n".join(lines)
 
 
+# Fallback: if list name contains these substrings, map to population.
+# Used when exact match fails (handles variations like "Call in April").
+_FALLBACK_KEYWORDS: list[tuple[str, Population]] = [
+    ("demo", Population.ENGAGED),
+    ("engaged", Population.ENGAGED),
+    ("follow up", Population.ENGAGED),
+    ("follow-up", Population.ENGAGED),
+    ("callback", Population.ENGAGED),
+    ("hot", Population.ENGAGED),
+    ("showed interest", Population.ENGAGED),
+    ("in talks", Population.ENGAGED),
+    ("net new", Population.UNENGAGED),
+    ("cold", Population.UNENGAGED),
+    ("upcoming", Population.UNENGAGED),
+    ("call in", Population.PARKED),
+    ("march", Population.PARKED),
+    ("april", Population.PARKED),
+    ("may", Population.PARKED),
+    ("june", Population.PARKED),
+    ("cool", Population.PARKED),
+    ("revival", Population.UNENGAGED),
+    ("re-engagement", Population.PARKED),
+    ("missing data", Population.BROKEN),
+    ("do not email", Population.BROKEN),  # Missing data / DNC variants
+    ("deal lost", Population.LOST),
+    ("lost", Population.LOST),
+    ("partnership", Population.PARTNERSHIP),
+    ("partnerships", Population.PARTNERSHIP),
+]
+
+
 def _match_population(list_name: str) -> Optional[Population]:
     """Match a Trello list name to a Population enum value.
 
-    Tries exact match first, then Population enum names, then keyword
-    substring matching against the list name.
+    Tries exact match first, then Population enum values, then keyword
+    substring matching (longest keywords first for specificity).
     """
     key = list_name.strip().lower()
     if key in _DEFAULT_LIST_MAP:
@@ -144,12 +194,12 @@ def _match_population(list_name: str) -> Optional[Population]:
         if key == pop.value or key == pop.name.lower():
             return pop
 
-    # Keyword/substring fallback: check if the list name contains a known
-    # keyword.  Longest keywords checked first to prefer specific matches
-    # (e.g. "closed_won" before "closed").
-    for keyword in sorted(_KEYWORD_MAP, key=len, reverse=True):
+    # Keyword/substring fallback: longest keywords first to prefer specific
+    # matches (e.g. "closed won" before "closed", "deal lost" before "lost").
+    all_keywords = {**_KEYWORD_MAP, **dict(_FALLBACK_KEYWORDS)}
+    for keyword in sorted(all_keywords, key=len, reverse=True):
         if keyword in key:
-            return _KEYWORD_MAP[keyword]
+            return all_keywords[keyword]
 
     return None
 

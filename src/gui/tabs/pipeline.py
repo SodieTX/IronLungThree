@@ -144,6 +144,9 @@ class PipelineTab(TabBase):
             year = current.year + (current.month + i - 1) // 12
             months.append(f"{year:04d}-{month:02d}")
 
+        # Default to current month so user can park with one click
+        self._bulk_park_var.set(f"{current.year:04d}-{current.month:02d}")
+
         bulk_park_combo = ttk.Combobox(
             bulk_frame,
             textvariable=self._bulk_park_var,
@@ -262,7 +265,7 @@ class PipelineTab(TabBase):
 
         try:
             population = Population(target_population)
-            self.bulk_move(population.value)
+            self.bulk_move(population)
         except ValueError:
             messagebox.showerror("Error", f"Invalid population: {target_population}")
 
@@ -275,8 +278,10 @@ class PipelineTab(TabBase):
 
         self.bulk_park(target_month)
 
-    def bulk_move(self, population: str) -> None:
+    def bulk_move(self, population: "Population") -> None:
         """Bulk move selected to population."""
+        from src.db.models import Population
+
         if self._tree is None:
             return
 
@@ -286,17 +291,25 @@ class PipelineTab(TabBase):
             return
 
         prospect_ids = [self._tree.item(item)["values"][0] for item in selected]
+        pop_label = population.value
 
         if not messagebox.askyesno(
-            "Confirm Move", f"Move {len(selected)} prospects to {population}?"
+            "Confirm Move", f"Move {len(selected)} prospects to {pop_label}?"
         ):
             return
 
         try:
-            self.db.bulk_update_population(prospect_ids, population)
-            messagebox.showinfo("Success", f"Moved {len(selected)} prospects to {population}")
-            logger.info(f"Bulk moved {len(selected)} prospects to {population}")
+            updated, skipped_dnc, skipped_invalid = self.db.bulk_update_population(
+                prospect_ids, population, "bulk move from pipeline"
+            )
+            msg = f"Moved {updated} prospects to {population.value}"
+            if skipped_dnc or skipped_invalid:
+                msg += f" ({skipped_dnc} DNC skipped, {skipped_invalid} invalid transition skipped)"
+            messagebox.showinfo("Success", msg)
+            logger.info(f"Bulk moved {updated} prospects to {population.value}")
             self.refresh()
+            if self.app and hasattr(self.app, "refresh_data_tabs"):
+                self.app.refresh_data_tabs()
         except Exception as e:
             logger.error(f"Bulk move failed: {e}")
             messagebox.showerror("Error", f"Bulk move failed: {e}")
@@ -323,6 +336,8 @@ class PipelineTab(TabBase):
             messagebox.showinfo("Success", f"Parked {len(selected)} prospects until {month}")
             logger.info(f"Bulk parked {len(selected)} prospects to {month}")
             self.refresh()
+            if self.app and hasattr(self.app, "refresh_data_tabs"):
+                self.app.refresh_data_tabs()
         except Exception as e:
             logger.error(f"Bulk park failed: {e}")
             messagebox.showerror("Error", f"Bulk park failed: {e}")
@@ -373,6 +388,8 @@ class PipelineTab(TabBase):
                     updated = edit_dlg.get_updated_prospect()
                     self.db.update_prospect(updated)
                     self.refresh()
+                    if self.app and hasattr(self.app, "refresh_data_tabs"):
+                        self.app.refresh_data_tabs()
                     logger.info(f"Prospect {prospect_id} updated from pipeline")
 
             ttk.Button(top_bar, text="Edit Prospect", command=_open_edit).pack(side=tk.LEFT)
@@ -481,6 +498,8 @@ class PipelineTab(TabBase):
             result = sync.sync()
 
             self.refresh()
+            if self.app and hasattr(self.app, "refresh_data_tabs"):
+                self.app.refresh_data_tabs()
 
             messagebox.showinfo(
                 "Trello Sync Complete",
