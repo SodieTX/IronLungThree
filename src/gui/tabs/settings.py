@@ -111,7 +111,7 @@ _GOOGLE_FIELDS = [
 _TRELLO_FIELDS = [
     ("TRELLO_API_KEY", "API Key", True),
     ("TRELLO_TOKEN", "Token", True),
-    ("TRELLO_BOARD_ID", "Board ID", False),
+    ("TRELLO_BOARD_ID", "Board ID or URL", False),
 ]
 
 

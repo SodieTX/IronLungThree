@@ -12,6 +12,7 @@ Usage:
     cards = client.get_cards(list_id)
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -25,6 +26,9 @@ from src.integrations.base import IntegrationBase, RateLimiter
 logger = get_logger(__name__)
 
 TRELLO_API_BASE = "https://api.trello.com/1"
+
+# Matches https://trello.com/b/<boardId>/optional-slug
+_TRELLO_URL_RE = re.compile(r"trello\.com/b/([A-Za-z0-9]+)")
 
 
 @dataclass
@@ -98,7 +102,13 @@ class TrelloClient(IntegrationBase):
 
     @property
     def _board_id(self) -> Optional[str]:
-        return self._config.trello_board_id
+        raw = self._config.trello_board_id
+        if not raw:
+            return None
+        match = _TRELLO_URL_RE.search(raw)
+        if match:
+            return match.group(1)
+        return raw
 
     def health_check(self) -> bool:
         """Check if Trello API is reachable.
