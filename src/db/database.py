@@ -719,6 +719,7 @@ class Database:
         score_max: Optional[int] = None,
         search_query: Optional[str] = None,
         tags: Optional[list[str]] = None,
+        exclude_populations: Optional[list[Population]] = None,
         sort_by: str = "prospect_score",
         sort_dir: str = "DESC",
         limit: int = 100,
@@ -777,6 +778,11 @@ class Database:
                 f"p.id IN (SELECT prospect_id FROM prospect_tags WHERE tag_name IN ({placeholders}))"
             )
             params.extend(tags)
+
+        if exclude_populations:
+            placeholders = ",".join("?" for _ in exclude_populations)
+            conditions.append(f"p.population NOT IN ({placeholders})")
+            params.extend(p.value for p in exclude_populations)
 
         where_clause = ""
         if conditions:

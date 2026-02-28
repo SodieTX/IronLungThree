@@ -423,6 +423,10 @@ class ImportTab(TabBase):
             if self.app and hasattr(self.app, "refresh_data_tabs"):
                 self.app.refresh_data_tabs()
 
+            # Auto-switch to Broken tab when broken records were imported
+            if result.broken_count > 0 and self.app and hasattr(self.app, "switch_to_tab"):
+                self.app.switch_to_tab("Broken")
+
             # Clear selection
             self._selected_file = None
             self._parse_result = None
