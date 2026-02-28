@@ -40,6 +40,11 @@ class IronLungApp:
         self._init_anne()
         logger.info("IronLung 3 GUI launched")
         if self.root:
+            # Schedule initial tab activation after the event loop starts.
+            # The <<NotebookTabChanged>> event fires synchronously when the
+            # first tab is added to the notebook, BEFORE the handler is bound,
+            # so the Today tab's on_activate() never gets called on startup.
+            self.root.after_idle(self._activate_initial_tab)
             self.root.mainloop()
 
     def _create_window(self) -> None:
@@ -238,6 +243,16 @@ class IronLungApp:
             self._notebook.select(0)  # Switch to Today tab
             if hasattr(self._today_tab, "_search_var"):
                 self._today_tab._search_var.set("")
+
+    def _activate_initial_tab(self) -> None:
+        """Activate whichever tab is initially selected.
+
+        The <<NotebookTabChanged>> event fires synchronously when the first
+        tab is added via notebook.add(), but the Python handler isn't bound
+        yet at that point — so the initial activation is missed.  This method
+        is scheduled via after_idle() to run once the event loop starts.
+        """
+        self._on_tab_changed(None)
 
     def _on_tab_changed(self, event: object) -> None:
         """Handle tab change event."""
