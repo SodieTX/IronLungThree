@@ -36,6 +36,7 @@ class DemosTab(TabBase):
         self._tree: Optional[ttk.Treeview] = None
         self._view_mode = "upcoming"  # "upcoming" or "completed"
         self._prep_text: Optional[tk.Text] = None
+        self._empty_label: Optional[ttk.Label] = None
         self._create_ui()
 
     def _create_ui(self) -> None:
@@ -119,6 +120,15 @@ class DemosTab(TabBase):
         self._prep_text.insert("1.0", "Select a demo to see prep details.")
         self._prep_text.config(state="disabled")
 
+        # Empty state label (left pane)
+        self._empty_label = ttk.Label(
+            left,
+            text="",
+            foreground=COLORS["muted"],
+        )
+        self._empty_label.pack(fill=tk.X, padx=8, pady=(6, 0))
+        self._empty_label.pack_forget()
+
         # Bottom bar: mark complete button
         bottom = ttk.Frame(self.frame)
         bottom.pack(fill=tk.X, padx=8, pady=(0, 8))
@@ -143,6 +153,17 @@ class DemosTab(TabBase):
     def create_invite(self) -> None:
         """Open demo invite creator dialog."""
         if not self.frame:
+            return
+
+        # If no engaged prospects, warn and return
+        engaged = self.db.get_prospects(population=Population.ENGAGED, limit=1)
+        if not engaged:
+            messagebox.showinfo(
+                "No Engaged Prospects",
+                "There are no engaged prospects to schedule a demo for yet.\n\n"
+                "Move a prospect to ENGAGED from the Pipeline tab first.",
+                parent=self.frame.winfo_toplevel(),
+            )
             return
 
         dialog = DemoInviteDialog(self.frame, self.db)
@@ -212,6 +233,20 @@ class DemosTab(TabBase):
                     status,
                 ),
             )
+
+        # Empty state copy
+        if self._empty_label:
+            if not demo_prospects:
+                self._empty_label.config(
+                    text=(
+                        "No demos scheduled yet. "
+                        "Click 'Create Invite' to schedule one."
+                    )
+                )
+                if not self._empty_label.winfo_ismapped():
+                    self._empty_label.pack(fill=tk.X, padx=8, pady=(6, 0))
+            else:
+                self._empty_label.pack_forget()
 
     def _on_demo_select(self, event: object) -> None:
         """Handle double-click on a demo row to show prep."""
@@ -368,6 +403,16 @@ class DemoInviteDialog:
         )
         # Load engaged prospects
         self._prospects = self.db.get_prospects(population=Population.ENGAGED)
+        if not self._prospects:
+            messagebox.showinfo(
+                "No Engaged Prospects",
+                "There are no ENGAGED prospects available.\n\n"
+                "Move a prospect to ENGAGED first.",
+                parent=self.parent.winfo_toplevel(),
+            )
+            if self._dialog:
+                self._dialog.destroy()
+            return False
         prospect_names = [f"{p.id}: {p.full_name}" for p in self._prospects]
 
         ttk.Combobox(
@@ -461,19 +506,48 @@ class DemoInviteDialog:
             prospect.follow_up_date = demo_dt
             self.db.update_prospect(prospect)
 
-        # Log demo scheduled activity
-        notes = f"Demo scheduled: {date_str} {time_str} ({duration} min)"
-        if self._teams_var.get():
-            notes += " | Teams meeting"
+        # Create invite + log activity (Outlook if configured, offline otherwise)
+        try:
+            from src.engine.demo_invite import create_demo_invite
+            from src.gui.service_guard import check_service
+            from src.integrations.outlook import OutlookClient
 
-        activity = Activity(
-            prospect_id=prospect_id,
-            activity_type=ActivityType.DEMO_SCHEDULED,
-            outcome=ActivityOutcome.DEMO_SET,
-            notes=notes,
-            created_by="user",
-        )
-        self.db.create_activity(activity)
+            outlook = None
+            if check_service("outlook", parent=self._dialog, silent=True):
+                outlook = OutlookClient()
+
+            invite = create_demo_invite(
+                db=self.db,
+                prospect_id=prospect_id,
+                demo_datetime=demo_dt,
+                duration_minutes=duration,
+                outlook=outlook,
+                teams_meeting=self._teams_var.get(),
+            )
+
+            # User-facing confirmation
+            lines = [
+                f"Invite logged for {invite.prospect_name}",
+                f"Demo time: {demo_dt.strftime('%Y-%m-%d %H:%M')}",
+                f"Duration: {duration} minutes",
+            ]
+            if invite.calendar_event_id:
+                lines.append("Calendar event created")
+            else:
+                lines.append("No calendar event created (Outlook not configured)")
+            if invite.email_sent:
+                lines.append("Invite email sent")
+            else:
+                lines.append("Invite email not sent")
+            if invite.teams_link:
+                lines.append(f"Teams link: {invite.teams_link}")
+
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showinfo("Demo Scheduled", "\n".join(lines), parent=parent)
+        except Exception as e:
+            parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
+            messagebox.showerror("Demo Invite Failed", f"Could not create invite:\n{e}", parent=parent)
+            return
 
         logger.info(
             f"Demo invite created for prospect {prospect_id}",
