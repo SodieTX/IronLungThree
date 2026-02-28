@@ -57,6 +57,34 @@ _DEFAULT_LIST_MAP: dict[str, Population] = {
     "do not contact": Population.DEAD_DNC,
 }
 
+# Single-keyword fallback: if a Trello list name *contains* one of these
+# words, map it to the corresponding population.  Checked after exact match
+# fails, longest keywords first to avoid ambiguous short matches.
+_KEYWORD_MAP: dict[str, Population] = {
+    "unengaged": Population.UNENGAGED,
+    "partnership": Population.PARTNERSHIP,
+    "partnerships": Population.PARTNERSHIP,
+    "closed_won": Population.CLOSED_WON,
+    "closed won": Population.CLOSED_WON,
+    "engaged": Population.ENGAGED,
+    "qualified": Population.ENGAGED,
+    "contacted": Population.ENGAGED,
+    "nurture": Population.PARKED,
+    "broken": Population.BROKEN,
+    "prospects": Population.UNENGAGED,
+    "parked": Population.PARKED,
+    "follow": Population.ENGAGED,
+    "active": Population.ENGAGED,
+    "demos": Population.ENGAGED,
+    "leads": Population.UNENGAGED,
+    "dead": Population.DEAD_DNC,
+    "lost": Population.LOST,
+    "hold": Population.PARKED,
+    "closed": Population.CLOSED_WON,
+    "won": Population.CLOSED_WON,
+    "dnc": Population.DEAD_DNC,
+}
+
 
 @dataclass
 class SyncResult:
@@ -104,7 +132,8 @@ class SyncResult:
 def _match_population(list_name: str) -> Optional[Population]:
     """Match a Trello list name to a Population enum value.
 
-    Tries exact match first, then case-insensitive, then normalised.
+    Tries exact match first, then Population enum names, then keyword
+    substring matching against the list name.
     """
     key = list_name.strip().lower()
     if key in _DEFAULT_LIST_MAP:
@@ -114,6 +143,13 @@ def _match_population(list_name: str) -> Optional[Population]:
     for pop in Population:
         if key == pop.value or key == pop.name.lower():
             return pop
+
+    # Keyword/substring fallback: check if the list name contains a known
+    # keyword.  Longest keywords checked first to prefer specific matches
+    # (e.g. "closed_won" before "closed").
+    for keyword in sorted(_KEYWORD_MAP, key=len, reverse=True):
+        if keyword in key:
+            return _KEYWORD_MAP[keyword]
 
     return None
 
