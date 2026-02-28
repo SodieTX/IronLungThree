@@ -6,6 +6,9 @@ never has to manually edit the .env file. Credentials are saved to
 registry are reloaded in-place.
 """
 
+import re
+import subprocess
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -288,6 +291,33 @@ class SettingsTab(TabBase):
         ttk.Button(db_frame, text="Reset & Re-seed Database", command=self._reset_and_reseed).pack(
             side="left"
         )
+
+        # --- Update Application ---
+        sep4 = ttk.Separator(container, orient="horizontal")
+        sep4.pack(fill="x", padx=12, pady=8)
+        ttk.Label(container, text="Update Application", font=("Segoe UI", 12, "bold")).pack(
+            anchor="w", padx=12, pady=4
+        )
+        ttk.Label(
+            container,
+            text="Pull the latest version from GitHub. Your database and credentials are preserved.",
+            foreground="#6c757d",
+            wraplength=650,
+        ).pack(anchor="w", padx=24, pady=(0, 4))
+
+        update_frame = ttk.Frame(container)
+        update_frame.pack(fill="x", padx=12, pady=4)
+        self._update_btn = ttk.Button(
+            update_frame, text="Update Now", command=self._update_application
+        )
+        self._update_btn.pack(side="left", padx=(0, 8))
+        self._update_status_label = ttk.Label(update_frame, text="", font=("Segoe UI", 10))
+        self._update_status_label.pack(side="left")
+
+        self._update_log = tk.Text(
+            container, height=6, wrap="word", state="disabled", font=("Consolas", 9)
+        )
+        self._update_log.pack(fill="x", padx=12, pady=(4, 0))
 
         # .env file path info
         ttk.Label(
@@ -640,3 +670,149 @@ class SettingsTab(TabBase):
         """Switch to the Import tab."""
         if self.app:
             self.app.switch_to_tab("Import")
+
+    # ------------------------------------------------------------------
+    # Application update
+    # ------------------------------------------------------------------
+
+    _GITHUB_URL = "https://github.com/SodieTX/IronLungThree.git"
+    _SANDBOX_PROXY_RE = re.compile(
+        r"https?://[^@]*@127\.0\.0\.1:\d+/git/(.+)",
+    )
+
+    def _append_update_log(self, text: str) -> None:
+        """Append a line to the update log (must be called from the main thread)."""
+        self._update_log.config(state="normal")
+        self._update_log.insert(tk.END, text + "\n")
+        self._update_log.see(tk.END)
+        self._update_log.config(state="disabled")
+
+    def _update_application(self) -> None:
+        """Pull the latest code from GitHub, fixing sandbox proxies if needed."""
+        self._update_btn.config(state="disabled")
+        self._update_status_label.config(text="Updating...", foreground="#007bff")
+
+        # Clear previous log
+        self._update_log.config(state="normal")
+        self._update_log.delete("1.0", tk.END)
+        self._update_log.config(state="disabled")
+
+        # Run git operations in a background thread so the GUI stays responsive
+        thread = threading.Thread(target=self._do_update, daemon=True)
+        thread.start()
+
+    def _do_update(self) -> None:
+        """Background worker: fix remote, pull, and report results."""
+        repo_root = Path(__file__).resolve().parents[3]  # src/gui/tabs -> repo root
+        log_lines: list[str] = []
+        errors: list[str] = []
+
+        def log(msg: str) -> None:
+            log_lines.append(msg)
+            self.parent.after(0, self._append_update_log, msg)
+
+        def run_git(*args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                ["git", *args],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
+        try:
+            # 1. Check the current remote URL and fix sandbox proxies
+            result = run_git("remote", "get-url", "origin")
+            current_url = result.stdout.strip()
+            log(f"Current remote: {current_url}")
+
+            if self._SANDBOX_PROXY_RE.match(current_url):
+                log("Detected sandbox proxy — resetting to GitHub...")
+                fix = run_git("remote", "set-url", "origin", self._GITHUB_URL)
+                if fix.returncode != 0:
+                    errors.append(f"Failed to fix remote: {fix.stderr.strip()}")
+                    log(f"ERROR: {fix.stderr.strip()}")
+                else:
+                    log(f"Remote set to {self._GITHUB_URL}")
+            elif "github.com" not in current_url:
+                # Unknown remote — set to the canonical GitHub URL
+                log("Remote doesn't point to GitHub — resetting...")
+                run_git("remote", "set-url", "origin", self._GITHUB_URL)
+                log(f"Remote set to {self._GITHUB_URL}")
+            else:
+                log("Remote OK")
+
+            # 2. Fetch latest from origin
+            log("Fetching latest from origin...")
+            fetch = run_git("fetch", "origin", "main")
+            if fetch.returncode != 0:
+                errors.append(f"Fetch failed: {fetch.stderr.strip()}")
+                log(f"ERROR: {fetch.stderr.strip()}")
+            else:
+                log("Fetch complete")
+
+            if not errors:
+                # 3. Show what's incoming
+                incoming = run_git("log", "HEAD..origin/main", "--oneline")
+                commits = incoming.stdout.strip()
+                if not commits:
+                    log("Already up to date!")
+                else:
+                    count = len(commits.splitlines())
+                    log(f"{count} new commit(s) available:")
+                    for line in commits.splitlines()[:10]:
+                        log(f"  {line}")
+                    if count > 10:
+                        log(f"  ... and {count - 10} more")
+
+                    # 4. Pull (fast-forward preferred, fallback to rebase)
+                    log("Pulling updates...")
+                    pull = run_git("pull", "--ff-only", "origin", "main")
+                    if pull.returncode != 0:
+                        # Try rebase if ff-only fails (local commits exist)
+                        log("Fast-forward not possible, trying rebase...")
+                        pull = run_git("pull", "--rebase", "origin", "main")
+
+                    if pull.returncode != 0:
+                        errors.append(f"Pull failed: {pull.stderr.strip()}")
+                        log(f"ERROR: {pull.stderr.strip()}")
+                    else:
+                        log("Pull complete — code is up to date!")
+
+        except subprocess.TimeoutExpired:
+            errors.append("Git command timed out (60s)")
+            log("ERROR: Git command timed out")
+        except FileNotFoundError:
+            errors.append("Git is not installed or not on PATH")
+            log("ERROR: Git is not installed or not on PATH")
+        except Exception as e:
+            errors.append(str(e))
+            log(f"ERROR: {e}")
+
+        # Report results back on the main thread
+        if errors:
+            logger.error(f"Application update failed: {errors}")
+            self.parent.after(
+                0,
+                lambda: self._finish_update(False, "; ".join(errors)),
+            )
+        else:
+            logger.info("Application updated successfully")
+            self.parent.after(
+                0,
+                lambda: self._finish_update(True, ""),
+            )
+
+    def _finish_update(self, success: bool, error_msg: str) -> None:
+        """Called on the main thread when the update finishes."""
+        self._update_btn.config(state="normal")
+        if success:
+            self._update_status_label.config(
+                text="Up to date! Restart the app to load new code.",
+                foreground="#28a745",
+            )
+        else:
+            self._update_status_label.config(
+                text=f"Update failed: {error_msg}",
+                foreground="#dc3545",
+            )
