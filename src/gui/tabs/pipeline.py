@@ -180,15 +180,23 @@ class PipelineTab(TabBase):
         from src.db.models import Population
 
         population_filter = None
+        exclude_broken = False
         if self._population_var.get() != "All":
             try:
                 population_filter = Population(self._population_var.get())
             except ValueError:
                 pass
+        else:
+            # When showing "All", sequester broken — they belong in Broken tab only
+            exclude_broken = True
 
         # Get prospects
         try:
-            prospects = self.db.get_prospects(population=population_filter, limit=10000)
+            prospects = self.db.get_prospects(
+                population=population_filter,
+                exclude_populations=[Population.BROKEN] if exclude_broken else None,
+                limit=10000,
+            )
 
             # Apply search filter
             search_term = self._search_var.get().lower()
