@@ -384,12 +384,18 @@ class IronLungApp:
             sync = TrelloPipelineSync(self.db)
             result = sync.sync()
             self.refresh_data_tabs()
-            messagebox.showinfo("Trello Sync Complete", result.summary, parent=parent)
+            if isinstance(parent, tk.Misc):
+                messagebox.showinfo("Trello Sync Complete", result.summary, parent=parent)
+            else:
+                messagebox.showinfo("Trello Sync Complete", result.summary)
             logger.info(f"Trello sync: {result.created} created, {result.updated} updated")
             return True
         except Exception as e:
             logger.error(f"Trello sync failed: {e}")
-            messagebox.showerror("Trello Sync Error", f"Sync failed: {e}", parent=parent)
+            if isinstance(parent, tk.Misc):
+                messagebox.showerror("Trello Sync Error", f"Sync failed: {e}", parent=parent)
+            else:
+                messagebox.showerror("Trello Sync Error", f"Sync failed: {e}")
             return False
 
     def refresh_data_tabs(self) -> None:

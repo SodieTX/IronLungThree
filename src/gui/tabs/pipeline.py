@@ -6,6 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
 from src.core.logging import get_logger
+from src.db.models import Population
 from src.gui.tabs import TabBase
 
 logger = get_logger(__name__)
@@ -35,8 +36,6 @@ class PipelineTab(TabBase):
 
         # Population filter
         ttk.Label(toolbar, text="Population:").pack(side=tk.LEFT, padx=5)
-
-        from src.db.models import Population
 
         population_values = ["All"] + [p.value for p in Population]
 
@@ -278,10 +277,8 @@ class PipelineTab(TabBase):
 
         self.bulk_park(target_month)
 
-    def bulk_move(self, population: "Population") -> None:
+    def bulk_move(self, population: Population) -> None:
         """Bulk move selected to population."""
-        from src.db.models import Population
-
         if self._tree is None:
             return
 
