@@ -76,6 +76,34 @@ _DEFAULT_LIST_MAP: dict[str, Population] = {
     "april": Population.PARKED,
 }
 
+# Single-keyword fallback: if a Trello list name *contains* one of these
+# words, map it to the corresponding population.  Checked after exact match
+# fails, longest keywords first to avoid ambiguous short matches.
+_KEYWORD_MAP: dict[str, Population] = {
+    "unengaged": Population.UNENGAGED,
+    "partnership": Population.PARTNERSHIP,
+    "partnerships": Population.PARTNERSHIP,
+    "closed_won": Population.CLOSED_WON,
+    "closed won": Population.CLOSED_WON,
+    "engaged": Population.ENGAGED,
+    "qualified": Population.ENGAGED,
+    "contacted": Population.ENGAGED,
+    "nurture": Population.PARKED,
+    "broken": Population.BROKEN,
+    "prospects": Population.UNENGAGED,
+    "parked": Population.PARKED,
+    "follow": Population.ENGAGED,
+    "active": Population.ENGAGED,
+    "demos": Population.ENGAGED,
+    "leads": Population.UNENGAGED,
+    "dead": Population.DEAD_DNC,
+    "lost": Population.LOST,
+    "hold": Population.PARKED,
+    "closed": Population.CLOSED_WON,
+    "won": Population.CLOSED_WON,
+    "dnc": Population.DEAD_DNC,
+}
+
 
 @dataclass
 class SyncResult:
@@ -154,7 +182,8 @@ _FALLBACK_KEYWORDS: list[tuple[str, Population]] = [
 def _match_population(list_name: str) -> Optional[Population]:
     """Match a Trello list name to a Population enum value.
 
-    Tries exact match first, then Population enum values, then keyword fallback.
+    Tries exact match first, then Population enum values, then keyword
+    substring matching (longest keywords first for specificity).
     """
     key = list_name.strip().lower()
     if key in _DEFAULT_LIST_MAP:
@@ -165,10 +194,12 @@ def _match_population(list_name: str) -> Optional[Population]:
         if key == pop.value or key == pop.name.lower():
             return pop
 
-    # Fallback: keyword substring match (first match wins)
-    for keyword, population in _FALLBACK_KEYWORDS:
+    # Keyword/substring fallback: longest keywords first to prefer specific
+    # matches (e.g. "closed won" before "closed", "deal lost" before "lost").
+    all_keywords = {**_KEYWORD_MAP, **dict(_FALLBACK_KEYWORDS)}
+    for keyword in sorted(all_keywords, key=len, reverse=True):
         if keyword in key:
-            return population
+            return all_keywords[keyword]
 
     return None
 
