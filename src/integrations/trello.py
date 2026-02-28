@@ -361,6 +361,28 @@ class TrelloClient(IntegrationBase):
         except Exception as e:
             raise IntegrationError(f"Trello card move error: {e}") from e
 
+    def get_full_board(self, board_id: Optional[str] = None) -> dict[str, list[TrelloCard]]:
+        """Get all lists and their cards for a board.
+
+        Returns a dict mapping list name -> list of cards.
+        This is the primary method for pulling pipeline data from Trello.
+
+        Args:
+            board_id: Board ID (uses configured board if not provided)
+
+        Returns:
+            Dict of {list_name: [TrelloCard, ...]}
+
+        Raises:
+            IntegrationError: If API call fails
+        """
+        lists = self.get_lists(board_id)
+        board: dict[str, list[TrelloCard]] = {}
+        for trello_list in lists:
+            cards = self.get_cards(trello_list.id)
+            board[trello_list.name] = cards
+        return board
+
     def _api_request(
         self,
         method: str,

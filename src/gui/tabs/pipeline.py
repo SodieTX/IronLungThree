@@ -60,6 +60,10 @@ class PipelineTab(TabBase):
         export_btn = ttk.Button(toolbar, text="Export View", command=self.export_view)
         export_btn.pack(side=tk.RIGHT, padx=5)
 
+        # Trello sync button
+        self._trello_btn = ttk.Button(toolbar, text="Sync Trello", command=self._sync_trello)
+        self._trello_btn.pack(side=tk.RIGHT, padx=5)
+
         # Treeview with scrollbars
         tree_frame = ttk.Frame(self.frame)
         tree_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -460,6 +464,34 @@ class PipelineTab(TabBase):
             return
         selected = self._tree.selection()
         self._selection_label.config(text=f"{len(selected)} selected")
+
+    def _sync_trello(self) -> None:
+        """Pull pipeline data from Trello board and sync into the database."""
+        from src.gui.service_guard import check_service
+
+        if not check_service("trello", parent=self.frame):
+            return
+
+        from src.integrations.trello_sync import TrelloPipelineSync
+
+        self._trello_btn.config(state="disabled", text="Syncing...")
+
+        try:
+            sync = TrelloPipelineSync(self.db)
+            result = sync.sync()
+
+            self.refresh()
+
+            messagebox.showinfo(
+                "Trello Sync Complete",
+                result.summary,
+            )
+            logger.info(f"Trello sync: {result.created} created, {result.updated} updated")
+        except Exception as e:
+            logger.error(f"Trello sync failed: {e}")
+            messagebox.showerror("Trello Sync Error", f"Sync failed: {e}")
+        finally:
+            self._trello_btn.config(state="normal", text="Sync Trello")
 
     def _sort_column(self, col: str) -> None:
         """Sort treeview by column."""
