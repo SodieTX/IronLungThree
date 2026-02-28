@@ -358,7 +358,7 @@ class IronLungApp:
 
         Args:
             tab_name: One of 'Today', 'Import', 'Pipeline', 'Calendar',
-                      'Demos', 'Broken', 'Settings'
+                      'Demos', 'Broken', 'Troubled', 'Settings'
         """
         if not self._notebook:
             return
@@ -367,3 +367,23 @@ class IronLungApp:
                 self._notebook.select(i)
                 return
         logger.warning(f"Tab not found: {tab_name}")
+
+    def refresh_data_tabs(self) -> None:
+        """Refresh all tabs that display prospect data.
+
+        Call after import, Trello sync, or bulk operations so data
+        appears correctly without switching tabs.
+        """
+        for tab in (
+            self._today_tab,
+            self._pipeline_tab,
+            self._broken_tab,
+            self._troubled_tab,
+            self._calendar_tab,
+            self._demos_tab,
+        ):
+            if tab and hasattr(tab, "refresh"):
+                try:
+                    tab.refresh()
+                except Exception as e:
+                    logger.warning(f"Tab refresh failed: {e}")

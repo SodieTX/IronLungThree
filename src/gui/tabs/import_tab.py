@@ -408,8 +408,10 @@ class ImportTab(TabBase):
                 f"{result.merged_count} merged"
             )
 
-            # Refresh history
+            # Refresh history and all data tabs so new prospects appear
             self.refresh()
+            if self.app and hasattr(self.app, "refresh_data_tabs"):
+                self.app.refresh_data_tabs()
 
             # Clear selection
             self._selected_file = None
@@ -432,6 +434,8 @@ class ImportTab(TabBase):
             activities = []
             prospects = self.db.get_prospects(limit=100)
             for prospect in prospects:
+                if prospect.id is None:
+                    continue
                 acts = self.db.get_activities(prospect.id, limit=5)
                 for act in acts:
                     if act.activity_type == ActivityType.IMPORT:
