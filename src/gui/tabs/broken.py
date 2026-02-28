@@ -132,6 +132,19 @@ class BrokenTab(TabBase):
         """Reload broken data from database."""
         conn = self.db._get_connection()
 
+        # Backfill research_queue for broken prospects that don't have tasks.
+        # Sequestered records (Trello sync, transition, etc.) may lack tasks.
+        cursor = conn.execute(
+            """INSERT INTO research_queue (prospect_id, priority, status)
+               SELECT p.id, 0, 'pending' FROM prospects p
+               WHERE p.population = ?
+               AND NOT EXISTS (SELECT 1 FROM research_queue rq WHERE rq.prospect_id = p.id)""",
+            (Population.BROKEN.value,),
+        )
+        if cursor.rowcount > 0:
+            conn.commit()
+            logger.info("Backfilled research tasks for %d broken prospects", cursor.rowcount)
+
         # Count total broken
         broken_count = conn.execute(
             "SELECT COUNT(*) as cnt FROM prospects WHERE population = ?",

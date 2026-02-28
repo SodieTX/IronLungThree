@@ -183,6 +183,26 @@ def transition_prospect(
 
     db.update_prospect(prospect)
 
+    # When moving to BROKEN, ensure a research_queue entry exists so the Broken tab
+    # can display the record (In Progress section). Intake creates these for new
+    # imports, but prospects sequestered via transition or Trello sync do not.
+    if to_population == Population.BROKEN:
+        from src.db.models import ResearchTask
+
+        conn = db._get_connection()
+        existing = conn.execute(
+            "SELECT 1 FROM research_queue WHERE prospect_id = ? LIMIT 1",
+            (prospect_id,),
+        ).fetchone()
+        if not existing:
+            db.create_research_task(
+                ResearchTask(prospect_id=prospect_id, priority=0),
+            )
+            logger.info(
+                "Created research task for sequestered broken prospect",
+                extra={"context": {"prospect_id": prospect_id}},
+            )
+
     # Log the transition activity
     activity = Activity(
         prospect_id=prospect_id,
