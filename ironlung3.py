@@ -188,11 +188,11 @@ def main() -> int:
         logger.info("Running nightly cycle...")
         from src.autonomous.nightly import run_nightly_cycle
 
-        result = run_nightly_cycle(db)
-        if result.errors:
+        nightly_result = run_nightly_cycle(db)
+        if nightly_result.errors:
             logger.warning(
-                f"Nightly cycle completed with {len(result.errors)} error(s)",
-                extra={"context": {"errors": result.errors}},
+                f"Nightly cycle completed with {len(nightly_result.errors)} error(s)",
+                extra={"context": {"errors": nightly_result.errors}},
             )
         else:
             logger.info("Nightly cycle completed successfully")
