@@ -336,10 +336,9 @@ class TrelloPipelineSync:
             else:
                 result.skipped += 1
         else:
-            # Create company if provided
-            company_id = 0
-            if company_name:
-                company_id = self._find_or_create_company(company_name)
+            # Create company if provided; use "Unknown" when card has no company
+            # (company_id must reference a valid company - FK constraint)
+            company_id = self._find_or_create_company(company_name or "Unknown")
 
             # Build notes from labels
             notes = None
