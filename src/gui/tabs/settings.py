@@ -282,7 +282,12 @@ class SettingsTab(TabBase):
         ttk.Button(db_frame, text="Create Backup", command=self.create_backup).pack(
             side="left", padx=(0, 8)
         )
-        ttk.Button(db_frame, text="Restore Backup", command=self.restore_backup).pack(side="left")
+        ttk.Button(db_frame, text="Restore Backup", command=self.restore_backup).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(db_frame, text="Reset & Re-seed Database", command=self._reset_and_reseed).pack(
+            side="left"
+        )
 
         # .env file path info
         ttk.Label(
@@ -524,6 +529,112 @@ class SettingsTab(TabBase):
         except Exception as e:
             logger.warning(f"Failed to check service readiness: {e}")
             self._readiness_summary.config(text="Could not check service status")
+
+    def _reset_and_reseed(self) -> None:
+        """Delete and re-create the database, then re-seed with sample data."""
+        if not messagebox.askyesno(
+            "Reset Database",
+            "This will DELETE all current data and re-load from sample contacts.\n\n"
+            "Are you sure? (A backup will be created first.)",
+        ):
+            return
+
+        try:
+            # Create backup first
+            from src.db.backup import BackupManager
+
+            try:
+                backup_mgr = BackupManager()
+                backup_path = backup_mgr.create_backup(label="pre_reset")
+                logger.info(f"Pre-reset backup created: {backup_path}")
+            except Exception as be:
+                logger.warning(f"Pre-reset backup failed (continuing anyway): {be}")
+
+            # Close and delete the database
+            from src.core.config import get_config
+
+            config = get_config()
+            db_path = Path(str(config.db_path))
+
+            self.db.close()
+
+            if db_path.exists():
+                db_path.unlink()
+                logger.info(f"Deleted database: {db_path}")
+
+            # Also remove WAL/SHM files if present
+            for suffix in (".db-wal", ".db-shm"):
+                wal_path = db_path.with_suffix(suffix)
+                if wal_path.exists():
+                    wal_path.unlink()
+
+            # Re-initialize
+            from src.db.database import Database
+
+            new_db = Database()
+            new_db.initialize()
+
+            # Re-seed
+            sample_csv = Path(__file__).parents[2] / "data" / "sample_contacts.csv"
+            if not sample_csv.exists():
+                # Try relative to the repo root
+                import ironlung3
+
+                sample_csv = Path(ironlung3.__file__).parent / "data" / "sample_contacts.csv"
+
+            if sample_csv.exists():
+                from src.db.intake import IntakeFunnel
+                from src.integrations.csv_importer import CSVImporter
+
+                importer = CSVImporter()
+                mapping = {
+                    "first_name": "First Name",
+                    "last_name": "Last Name",
+                    "email": "Email",
+                    "phone": "Phone",
+                    "company_name": "Company",
+                    "title": "Title",
+                    "state": "State",
+                }
+                records = importer.apply_mapping(sample_csv, mapping)
+                funnel = IntakeFunnel(new_db)
+                preview = funnel.analyze(
+                    records, source_name="sample_data", filename="sample_contacts.csv"
+                )
+                result = funnel.commit(preview)
+
+                try:
+                    from src.engine.scoring import rescore_all
+
+                    rescore_all(new_db)
+                except Exception:
+                    pass
+
+                messagebox.showinfo(
+                    "Reset Complete",
+                    f"Database reset and re-seeded with {result.imported_count} contacts.\n\n"
+                    "Restart the app for all tabs to refresh properly.",
+                )
+                logger.info(f"Database reset — seeded {result.imported_count} contacts")
+            else:
+                messagebox.showwarning(
+                    "Reset Complete (No Seed Data)",
+                    "Database was reset but sample_contacts.csv was not found.\n\n"
+                    "Use the Import tab to load your own data.",
+                )
+
+            # Point the app's db reference to the new connection
+            # (tabs will still reference the old one until restart,
+            # but at least new tab activations will work)
+            self.db = new_db
+            if self.app:
+                self.app.db = new_db
+
+            self._refresh_readiness()
+
+        except Exception as e:
+            logger.error(f"Database reset failed: {e}", exc_info=True)
+            messagebox.showerror("Reset Failed", f"Could not reset database:\n{e}")
 
     def _go_to_import(self) -> None:
         """Switch to the Import tab."""

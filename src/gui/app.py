@@ -13,8 +13,9 @@ logger = get_logger(__name__)
 class IronLungApp:
     """Main application window."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, seed_status: str = ""):
         self.db = db
+        self._seed_status = seed_status
         self.root: Optional[tk.Tk] = None
         self._notebook: Optional[ttk.Notebook] = None
         self._today_tab: Any = None
@@ -45,6 +46,9 @@ class IronLungApp:
             # first tab is added to the notebook, BEFORE the handler is bound,
             # so the Today tab's on_activate() never gets called on startup.
             self.root.after_idle(self._activate_initial_tab)
+            # Show seed failure warning after event loop starts
+            if self._seed_status:
+                self.root.after(200, self._show_seed_warning)
             self.root.mainloop()
 
     def _create_window(self) -> None:
@@ -243,6 +247,32 @@ class IronLungApp:
             self._notebook.select(0)  # Switch to Today tab
             if hasattr(self._today_tab, "_search_var"):
                 self._today_tab._search_var.set("")
+
+    def _show_seed_warning(self) -> None:
+        """Show a warning dialog when auto-seed failed at startup."""
+        from tkinter import messagebox
+
+        if self._seed_status.startswith("seed_error"):
+            messagebox.showwarning(
+                "Data Loading Issue",
+                "IronLung could not auto-load sample data on startup.\n\n"
+                f"Details: {self._seed_status}\n\n"
+                "You can load data manually from the Import tab,\n"
+                "or use Settings → 'Reset & Re-seed Database' to retry.",
+            )
+        elif self._seed_status == "seed_no_csv":
+            messagebox.showwarning(
+                "Sample Data Missing",
+                "The sample contacts file (data/sample_contacts.csv) was not found.\n\n"
+                "You can load your own data from the Import tab.",
+            )
+        elif self._seed_status in ("seed_empty", "seed_zero"):
+            messagebox.showwarning(
+                "Data Loading Issue",
+                "Auto-seed ran but imported 0 records.\n\n"
+                "Try using Settings → 'Reset & Re-seed Database',\n"
+                "or load data manually from the Import tab.",
+            )
 
     def _activate_initial_tab(self) -> None:
         """Activate whichever tab is initially selected.

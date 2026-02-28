@@ -317,4 +317,17 @@ def get_todays_queue(db: Database) -> list[Prospect]:
     # Sort by the tuple keys
     queue.sort(key=lambda x: (x[0], x[1], x[2]))
 
+    # Diagnostic logging when queue is empty but database has data
+    if not queue:
+        pop_counts = db.get_population_counts()
+        total = sum(pop_counts.values())
+        if total > 0:
+            logger.warning(
+                "Today's queue is EMPTY even though database has %d prospects. "
+                "Population breakdown: %s. Only 'engaged' and 'unengaged' "
+                "populations appear in the queue.",
+                total,
+                {p.value: c for p, c in pop_counts.items()},
+            )
+
     return [item[3] for item in queue]
