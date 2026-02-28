@@ -1,7 +1,7 @@
 """Main application window."""
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Any, Optional
 
 from src.core.logging import get_logger
@@ -367,6 +367,30 @@ class IronLungApp:
                 self._notebook.select(i)
                 return
         logger.warning(f"Tab not found: {tab_name}")
+
+    def run_trello_sync(self, parent: Optional[tk.Widget] = None) -> bool:
+        """Run Trello-to-pipeline sync. Callable from any tab.
+
+        Returns True if sync completed successfully, False otherwise.
+        """
+        from src.gui.service_guard import check_service
+
+        if not check_service("trello", parent=parent):
+            return False
+
+        try:
+            from src.integrations.trello_sync import TrelloPipelineSync
+
+            sync = TrelloPipelineSync(self.db)
+            result = sync.sync()
+            self.refresh_data_tabs()
+            messagebox.showinfo("Trello Sync Complete", result.summary, parent=parent)
+            logger.info(f"Trello sync: {result.created} created, {result.updated} updated")
+            return True
+        except Exception as e:
+            logger.error(f"Trello sync failed: {e}")
+            messagebox.showerror("Trello Sync Error", f"Sync failed: {e}", parent=parent)
+            return False
 
     def refresh_data_tabs(self) -> None:
         """Refresh all tabs that display prospect data.

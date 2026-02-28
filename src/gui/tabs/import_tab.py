@@ -51,7 +51,7 @@ class ImportTab(TabBase):
         scrollbar.pack(side="right", fill="y")
 
         # File selection section
-        file_frame = ttk.LabelFrame(scrollable_frame, text="File Selection", padding=10)
+        file_frame = ttk.LabelFrame(scrollable_frame, text="Load Data", padding=10)
         file_frame.pack(fill=tk.X, padx=10, pady=5)
 
         select_btn = ttk.Button(file_frame, text="Select File", command=self.select_file)
@@ -59,6 +59,13 @@ class ImportTab(TabBase):
 
         self._file_label = ttk.Label(file_frame, text="No file selected")
         self._file_label.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        ttk.Separator(file_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        trello_btn = ttk.Button(
+            file_frame, text="Sync from Trello", command=self._sync_from_trello
+        )
+        trello_btn.pack(side=tk.LEFT, padx=5)
 
         # Preset selection
         preset_frame = ttk.Frame(scrollable_frame)
@@ -112,6 +119,11 @@ class ImportTab(TabBase):
         history_scroll = ttk.Scrollbar(history_frame, command=self._history_text.yview)
         history_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self._history_text.config(yscrollcommand=history_scroll.set)
+
+    def _sync_from_trello(self) -> None:
+        """Run Trello-to-pipeline sync."""
+        if self.app:
+            self.app.run_trello_sync(parent=self.frame)
 
     def refresh(self) -> None:
         """Reload import tab state."""
