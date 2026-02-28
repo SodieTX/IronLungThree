@@ -234,9 +234,12 @@ class BrokenTab(TabBase):
         tree.delete(*tree.get_children())
 
         for row in rows:
-            pid = row["prospect_id"] if "prospect_id" in row.keys() else row.get("id", 0)
+            row_keys = row.keys()
+            pid = row["prospect_id"] if "prospect_id" in row_keys else (
+                row["id"] if "id" in row_keys else 0
+            )
             name = f"{row['first_name']} {row['last_name']}"
-            company = row.get("company_name", "") or ""
+            company = (row["company_name"] or "") if "company_name" in row_keys else ""
             missing = get_missing_fn(pid) if callable(get_missing_fn) else ""
             tree.insert("", tk.END, values=(pid, name, company, missing))
 
