@@ -211,7 +211,7 @@ def calculate_confidence(
     # Verification freshness (15 points)
     max_score += 15
 
-    def _is_fresh_verified(m) -> bool:
+    def _is_fresh_verified(m) -> bool:  # type: ignore[no-untyped-def]
         if not (m.is_verified and m.verified_date):
             return False
         vdate = m.verified_date
@@ -220,7 +220,9 @@ def calculate_confidence(
                 vdate = date.fromisoformat(vdate[:10])
             except (ValueError, TypeError):
                 return False
-        return (date.today() - vdate).days < 90
+        if not isinstance(vdate, date):
+            return False
+        return bool((date.today() - vdate).days < 90)
 
     fresh_verified = any(_is_fresh_verified(m) for m in contact_methods)
     if fresh_verified:

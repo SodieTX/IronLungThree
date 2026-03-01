@@ -3,7 +3,7 @@
 import tkinter as tk
 from datetime import date, datetime
 from tkinter import messagebox, ttk
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
@@ -938,7 +938,9 @@ class IronLungApp:
                 self._notebook.hide(i)
             # Hide status bar to reduce visual noise
             if self._status_label and self._status_label.winfo_manager():
-                self._status_label.master.pack_forget()
+                master = self._status_label.master
+                if hasattr(master, "pack_forget"):
+                    master.pack_forget()  # type: ignore[union-attr]
             self._show_toast("🎯 Focus Mode — Escape to exit", duration_ms=2000)
             logger.info("Focus mode UI entered")
         except Exception as e:
@@ -960,18 +962,21 @@ class IronLungApp:
                 "Troubled",
                 "Settings",
             ]
+            tabs = self._notebook.tabs()
             for i, name in enumerate(tab_names):
                 try:
-                    self._notebook.add(
-                        self._notebook.tabs()[i] if i < len(self._notebook.tabs()) else "",
-                        text=name,
-                    )
+                    if i < len(tabs):
+                        tab_id = tabs[i]
+                        child = self._notebook.nametowidget(tab_id)
+                        self._notebook.add(child, text=name)
                 except Exception:
                     pass
             # Restore status bar
             if self._status_label:
                 try:
-                    self._status_label.master.pack(fill=tk.X, side=tk.BOTTOM)
+                    master = self._status_label.master
+                    if hasattr(master, "pack"):
+                        master.pack(fill=tk.X, side=tk.BOTTOM)  # type: ignore[union-attr]
                 except Exception:
                     pass
             self._show_toast("Focus mode off", duration_ms=1500)
@@ -1005,17 +1010,27 @@ class IronLungApp:
             "Troubled",
             "Settings",
         ]
+
+        def _make_tab_action(tab_name: str) -> Callable[[], None]:
+            def _action() -> None:
+                self.switch_to_tab(tab_name)
+
+            return _action
+
         for name in tab_names:
             self._palette.register(
                 PaletteItem(
                     label=name,
                     category="tab",
-                    action=lambda n=name: self.switch_to_tab(n),
+                    action=_make_tab_action(name),
                 )
             )
 
         # Actions
-        actions = [
+        def _trello_sync_action() -> None:
+            self.run_trello_sync()
+
+        actions: list[tuple[str, str, Callable[[], None], list[str]]] = [
             (
                 "Send Email",
                 "action",
@@ -1046,7 +1061,12 @@ class IronLungApp:
                 lambda: self._shortcut_focus_mode(),
                 ["focus", "tunnel", "distraction"],
             ),
-            ("Trello Sync", "action", lambda: self.run_trello_sync(), ["trello", "sync", "import"]),
+            (
+                "Trello Sync",
+                "action",
+                _trello_sync_action,
+                ["trello", "sync", "import"],
+            ),
         ]
         for label, cat, action, kws in actions:
             self._palette.register(
@@ -1178,6 +1198,12 @@ class IronLungApp:
         try:
             from src.db.models import Population
 
+            def _make_prospect_action(pid: Optional[int]) -> Callable[[], None]:
+                def _action() -> None:
+                    self.set_current_prospect(pid)
+
+                return _action
+
             for pop in [Population.ENGAGED, Population.UNENGAGED]:
                 prospects = self.db.get_prospects(population=pop, limit=100)
                 for p in prospects:
@@ -1188,7 +1214,7 @@ class IronLungApp:
                         PaletteItem(
                             label=label,
                             category="prospect",
-                            action=lambda pid=p.id: self.set_current_prospect(pid),
+                            action=_make_prospect_action(p.id),
                             keywords=[
                                 p.first_name.lower(),
                                 p.last_name.lower(),

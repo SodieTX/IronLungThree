@@ -482,10 +482,12 @@ class TodayTab(TabBase):
         try:
             from src.gui.dialogs.eod_dialog import EODSummaryDialog
 
-            self.frame.after(
-                1500,
-                lambda: EODSummaryDialog(self.frame, self.db).show(),
-            )
+            frame = self.frame
+            if frame is not None:
+                frame.after(
+                    1500,
+                    lambda: EODSummaryDialog(frame, self.db).show(),
+                )
         except Exception as e:
             logger.warning(f"Failed to trigger EOD from queue empty: {e}")
 
