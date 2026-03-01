@@ -282,14 +282,25 @@ class TodayTab(TabBase):
             self._update_queue_label()
 
     def show_morning_brief(self) -> None:
-        """Display morning brief dialog."""
+        """Display morning brief dialog with compassionate welcome."""
         if not self.frame:
             return
-
         try:
             from src.content.morning_brief import generate_morning_brief
 
             brief = generate_morning_brief(self.db)
+
+            # Prepend compassionate welcome
+            app = getattr(self, "app", None)
+            if app and hasattr(app, "_compassion") and app._compassion:
+                try:
+                    welcome = app._compassion.get_welcome_message(
+                        missed_followups=brief.overdue_count,
+                    )
+                    brief.full_text = f"{welcome}\n\n{brief.full_text}"
+                except Exception:
+                    pass
+
             dialog = MorningBriefDialog(self.frame, brief.full_text, on_ready=self.start_processing)
             dialog.show()
         except Exception as e:
@@ -435,21 +446,54 @@ class TodayTab(TabBase):
             f"{prospect.first_name} {prospect.last_name}"
         )
 
-    def _show_queue_complete(self) -> None:
-        """Show queue complete message with end-of-day summary."""
+    def _clear_card_display(self) -> None:
+        """Clear the current card and action frame."""
         if self._card:
             self._card.destroy()
             self._card = None
-
         if self._card_frame:
-            # Show "queue complete" message in the card area
-            tk.Label(
-                self._card_frame,
-                text="Queue complete for today!",
-                font=("Segoe UI", 16, "bold"),
-                bg=COLORS["bg"],
-                fg=COLORS["accent"],
-            ).pack(expand=True, pady=40)
+            for child in self._card_frame.winfo_children():
+                child.destroy()
+
+    def _on_queue_empty(self) -> None:
+        """Called when no more cards remain in today's queue."""
+        if not self.frame:
+            return
+
+        # Get compassionate message
+        message = "Queue complete for today!"
+        try:
+            app = getattr(self, "app", None)
+            if app and hasattr(app, "_compassion") and app._compassion:
+                message = app._compassion.get_queue_empty_message()
+        except Exception:
+            pass
+
+        self._clear_card_display()
+        tk.Label(
+            self._card_frame,
+            text=message,
+            font=("Segoe UI", 16, "bold"),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["accent"],
+        ).pack(expand=True, pady=40)
+
+        # Trigger EOD summary after brief delay
+        try:
+            from src.gui.dialogs.eod_dialog import EODSummaryDialog
+
+            frame = self.frame
+            if frame is not None:
+                frame.after(
+                    1500,
+                    lambda: EODSummaryDialog(frame, self.db).show(),
+                )
+        except Exception as e:
+            logger.warning(f"Failed to trigger EOD from queue empty: {e}")
+
+    def _show_queue_complete(self) -> None:
+        """Show queue complete message with end-of-day summary."""
+        self._on_queue_empty()
 
         if self._status_label:
             # Generate EOD summary
@@ -470,22 +514,6 @@ class TodayTab(TabBase):
             self._status_label.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
 
         self._update_queue_label()
-
-        # Trigger EOD summary dialog after a brief delay
-        try:
-            if self.app and hasattr(self.app, "_show_eod_summary"):
-                if self.frame:
-                    self.frame.after(1500, self.app._show_eod_summary)
-            elif self.frame is not None:
-                from src.gui.dialogs.eod_dialog import EODSummaryDialog
-
-                frame = self.frame  # capture for lambda
-                self.frame.after(
-                    1500,
-                    lambda: EODSummaryDialog(frame, self.db).show(),
-                )
-        except Exception as e:
-            logger.warning(f"Failed to trigger EOD from queue empty: {e}")
 
     def _update_queue_label(self) -> None:
         """Update the queue position label."""
