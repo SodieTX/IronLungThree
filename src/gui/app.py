@@ -36,6 +36,15 @@ class IronLungApp:
         self._pending_disposition: Optional[str] = None
         self._undo_stack: list[dict] = []
 
+        # Soul Layer — ADHD components
+        self._dopamine: Any = None
+        self._session: Any = None
+        self._audio: Any = None
+        self._focus: Any = None
+        self._palette: Any = None
+        self._compassion: Any = None
+        self._dashboard_svc: Any = None
+
     def run(self) -> None:
         """Start the application."""
         self._create_window()
@@ -44,6 +53,7 @@ class IronLungApp:
         self._create_status_bar()
         self._bind_shortcuts()
         self._init_anne()
+        self._init_soul()
         logger.info("IronLung 3 GUI launched")
         if self.root:
             # Schedule initial tab activation after the event loop starts.
@@ -194,6 +204,90 @@ class IronLungApp:
         except Exception as e:
             logger.warning(f"Failed to initialize Anne: {e}")
 
+    def _init_soul(self) -> None:
+        """Initialize all ADHD Soul Layer components.
+
+        Called once during startup, after window and tabs are created.
+        Each component is wrapped in try/except so one failure
+        doesn't block the rest.
+        """
+        from pathlib import Path
+
+        data_dir = Path.home() / ".ironlung3"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # 1. Dopamine — micro-wins, streaks, achievements
+        try:
+            from src.gui.adhd.dopamine import DopamineEngine
+
+            self._dopamine = DopamineEngine(data_dir=data_dir)
+            self._dopamine.on_celebration(self._on_streak_celebration)
+            self._dopamine.on_achievement(self._on_achievement_unlock)
+            logger.info("Soul: DopamineEngine initialized")
+        except Exception as e:
+            logger.warning(f"Soul: DopamineEngine failed: {e}")
+
+        # 2. Session — time tracking, energy, undo
+        try:
+            from src.gui.adhd.session import SessionManager
+
+            self._session = SessionManager(data_dir=data_dir)
+            self._session.start_session()
+            # Start periodic time-blindness check
+            if self.root:
+                self._schedule_time_check()
+            logger.info("Soul: SessionManager initialized")
+        except Exception as e:
+            logger.warning(f"Soul: SessionManager failed: {e}")
+
+        # 3. Audio — sound feedback
+        try:
+            from src.gui.adhd.audio import AudioManager
+
+            self._audio = AudioManager()
+            logger.info("Soul: AudioManager initialized")
+        except Exception as e:
+            logger.warning(f"Soul: AudioManager failed: {e}")
+
+        # 4. Focus — distraction-free mode
+        try:
+            from src.gui.adhd.focus import FocusManager
+
+            self._focus = FocusManager(auto_trigger_streak=5)
+            self._focus.on_enter(self._enter_focus_ui)
+            self._focus.on_exit(self._exit_focus_ui)
+            logger.info("Soul: FocusManager initialized")
+        except Exception as e:
+            logger.warning(f"Soul: FocusManager failed: {e}")
+
+        # 5. Command Palette — fuzzy search
+        try:
+            from src.gui.adhd.command_palette import CommandPalette
+
+            self._palette = CommandPalette()
+            self._register_palette_items()
+            logger.info("Soul: CommandPalette initialized")
+        except Exception as e:
+            logger.warning(f"Soul: CommandPalette failed: {e}")
+
+        # 6. Compassion — no guilt messages
+        try:
+            from src.gui.adhd.compassion import CompassionEngine
+
+            self._compassion = CompassionEngine()
+            logger.info("Soul: CompassionEngine initialized")
+        except Exception as e:
+            logger.warning(f"Soul: CompassionEngine failed: {e}")
+
+        # 7. Dashboard — glanceable stats
+        try:
+            from src.gui.adhd.dashboard import DashboardService
+
+            self._dashboard_svc = DashboardService(self.db)
+            logger.info("Soul: DashboardService initialized")
+        except Exception as e:
+            logger.warning(f"Soul: DashboardService failed: {e}")
+
     def set_current_prospect(self, prospect_id: Optional[int]) -> None:
         """Update Anne's conversation context with the current prospect.
 
@@ -303,6 +397,7 @@ class IronLungApp:
             # Advance to next card after successful processing
             if results["executed"] and self._today_tab:
                 self._today_tab.next_card()
+                self._record_dopamine_win("card_processed")
 
         except Exception as e:
             logger.error(f"Dictation processing failed: {e}")
@@ -431,6 +526,14 @@ class IronLungApp:
         if self._today_tab and self._today_tab._card:
             self._today_tab._card.enter_call_mode()
 
+        self._record_dopamine_win("call_completed")
+        if self._audio:
+            try:
+                from src.gui.adhd.audio import Sound
+                self._audio.play_sound(Sound.CARD_DONE)
+            except Exception:
+                pass
+
         if dialed:
             if self._dictation_bar:
                 self._dictation_bar.show_response(
@@ -498,6 +601,14 @@ class IronLungApp:
 
             if self._dictation_bar:
                 self._dictation_bar.show_response(f"✉️ Email sent to {email_addr}.")
+
+            self._record_dopamine_win("email_sent")
+            if self._audio:
+                try:
+                    from src.gui.adhd.audio import Sound
+                    self._audio.play_sound(Sound.EMAIL_SENT)
+                except Exception:
+                    pass
 
             # Advance card
             if self._today_tab:
@@ -569,6 +680,14 @@ class IronLungApp:
                     self._anne.execute_actions(actions)
                 if self._dictation_bar:
                     self._dictation_bar.show_response("🎉 Deal closed! Congratulations!")
+                if self._dopamine:
+                    self._dopamine.check_achievement("first_close")
+                if self._audio:
+                    try:
+                        from src.gui.adhd.audio import Sound
+                        self._audio.play_sound(Sound.DEAL_CLOSED)
+                    except Exception:
+                        pass
                 if self._today_tab:
                     self._today_tab.next_card()
             else:
@@ -670,6 +789,377 @@ class IronLungApp:
             if self._dictation_bar:
                 self._dictation_bar.show_response("Undo failed — no snapshot available.")
 
+    # ==================================================================
+    # DOPAMINE WIRING
+    # ==================================================================
+
+    def _record_dopamine_win(self, win_type_str: str) -> None:
+        """Record a micro-win and check for auto-focus trigger.
+
+        Args:
+            win_type_str: One of 'card_processed', 'email_sent',
+                          'call_completed', 'demo_scheduled', 'follow_up_set'
+        """
+        if not self._dopamine:
+            return
+        try:
+            from src.gui.adhd.dopamine import WinType
+
+            win_type = WinType(win_type_str)
+            milestone = self._dopamine.record_win(win_type)
+
+            # Check if streak should auto-trigger focus mode
+            if self._focus:
+                self._focus.check_auto_trigger(self._dopamine.get_streak())
+
+        except Exception as e:
+            logger.debug(f"Dopamine win recording failed: {e}")
+
+    def _on_streak_celebration(self, celebration_type: str, value: int) -> None:
+        """Handle streak milestone celebration."""
+        # Play streak sound
+        if self._audio:
+            try:
+                from src.gui.adhd.audio import Sound
+                self._audio.play_sound(Sound.STREAK)
+            except Exception:
+                pass
+
+        # Show brief visual toast
+        if self.root:
+            try:
+                self._show_toast(f"🔥 {value} card streak!", duration_ms=2000)
+            except Exception:
+                pass
+
+    def _on_achievement_unlock(self, achievement) -> None:
+        """Handle achievement unlock."""
+        if self._audio:
+            try:
+                from src.gui.adhd.audio import Sound
+                self._audio.play_sound(Sound.DEAL_CLOSED)
+            except Exception:
+                pass
+
+        if self.root:
+            try:
+                self._show_toast(
+                    f"🏆 Achievement: {achievement.description}",
+                    duration_ms=3000,
+                )
+            except Exception:
+                pass
+
+    def _show_toast(self, message: str, duration_ms: int = 2000) -> None:
+        """Show a brief non-modal toast notification.
+
+        Appears at top-center, auto-dismisses.
+        """
+        if not self.root:
+            return
+        from src.gui.theme import COLORS
+
+        toast = tk.Toplevel(self.root)
+        toast.overrideredirect(True)
+        toast.attributes("-topmost", True)
+        toast.configure(bg=COLORS["accent"])
+
+        tk.Label(
+            toast,
+            text=message,
+            font=("Segoe UI", 12, "bold"),
+            bg=COLORS["accent"],
+            fg="#ffffff",
+            padx=24,
+            pady=12,
+        ).pack()
+
+        toast.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - toast.winfo_width()) // 2
+        y = self.root.winfo_rooty() + 10
+        toast.geometry(f"+{x}+{y}")
+
+        toast.after(duration_ms, toast.destroy)
+
+    # ==================================================================
+    # SESSION WIRING
+    # ==================================================================
+
+    def _schedule_time_check(self) -> None:
+        """Schedule periodic time-blindness warning checks."""
+        if not self.root or not self._session:
+            return
+
+        def _check():
+            if not self._session or not self._session.is_active():
+                return
+            threshold = self._session.check_time_warnings()
+            if threshold is not None:
+                self._show_time_warning(threshold)
+            # Also check for break suggestion
+            if self._compassion:
+                elapsed = self._session.get_elapsed_minutes()
+                suggestion = self._compassion.get_break_suggestion(elapsed)
+                if suggestion and elapsed > 0 and elapsed % 45 < 1:
+                    self._show_toast(suggestion, duration_ms=4000)
+            # Reschedule every 60 seconds
+            if self.root:
+                self.root.after(60_000, _check)
+
+        self.root.after(60_000, _check)
+
+    def _show_time_warning(self, minutes: int) -> None:
+        """Show a gentle time-blindness warning."""
+        hours = minutes / 60
+        if hours >= 2:
+            msg = f"You've been at it for {hours:.0f} hours. Consider a break."
+        else:
+            msg = f"{minutes} minutes in. You're rolling."
+        self._show_toast(msg, duration_ms=3000)
+
+    # ==================================================================
+    # FOCUS MODE WIRING
+    # ==================================================================
+
+    def _enter_focus_ui(self) -> None:
+        """Enter focus mode — hide everything except Today tab + dictation."""
+        if not self._notebook or not self.root:
+            return
+        try:
+            # Switch to Today tab
+            self._notebook.select(0)
+            # Hide all other tabs
+            for i in range(1, self._notebook.index("end")):
+                self._notebook.hide(i)
+            # Hide status bar to reduce visual noise
+            if self._status_label and self._status_label.winfo_manager():
+                self._status_label.master.pack_forget()
+            self._show_toast("🎯 Focus Mode — Escape to exit", duration_ms=2000)
+            logger.info("Focus mode UI entered")
+        except Exception as e:
+            logger.warning(f"Focus mode enter failed: {e}")
+
+    def _exit_focus_ui(self) -> None:
+        """Exit focus mode — restore all tabs."""
+        if not self._notebook or not self.root:
+            return
+        try:
+            # Re-show all tabs
+            tab_names = [
+                "Today", "Import", "Pipeline", "Calendar",
+                "Demos", "Broken", "Troubled", "Settings",
+            ]
+            for i, name in enumerate(tab_names):
+                try:
+                    self._notebook.add(
+                        self._notebook.tabs()[i] if i < len(self._notebook.tabs()) else "",
+                        text=name,
+                    )
+                except Exception:
+                    pass
+            # Restore status bar
+            if self._status_label:
+                try:
+                    self._status_label.master.pack(fill=tk.X, side=tk.BOTTOM)
+                except Exception:
+                    pass
+            self._show_toast("Focus mode off", duration_ms=1500)
+            logger.info("Focus mode UI exited")
+        except Exception as e:
+            logger.warning(f"Focus mode exit failed: {e}")
+
+    def _on_escape(self) -> None:
+        """Handle Escape key — exit focus mode if active."""
+        if self._focus and self._focus.is_focus_mode():
+            self._focus.exit_focus_mode()
+
+    # ==================================================================
+    # COMMAND PALETTE WIRING
+    # ==================================================================
+
+    def _register_palette_items(self) -> None:
+        """Register all searchable items in the command palette."""
+        if not self._palette:
+            return
+        from src.gui.adhd.command_palette import PaletteItem
+
+        # Tab navigation
+        tab_names = [
+            "Today", "Import", "Pipeline", "Calendar",
+            "Demos", "Broken", "Troubled", "Settings",
+        ]
+        for name in tab_names:
+            self._palette.register(PaletteItem(
+                label=name,
+                category="tab",
+                action=lambda n=name: self.switch_to_tab(n),
+            ))
+
+        # Actions
+        actions = [
+            ("Send Email", "action", lambda: self._shortcut_send_email(),
+             ["email", "mail", "compose", "write"]),
+            ("Schedule Demo", "action", lambda: self._shortcut_demo_invite(),
+             ["demo", "meeting", "invite"]),
+            ("Nurture Queue", "action", lambda: self._show_nurture_queue(),
+             ["nurture", "approval", "queue", "batch"]),
+            ("EOD Summary", "action", lambda: self._show_eod_summary(),
+             ["eod", "summary", "end", "day", "stats"]),
+            ("Focus Mode", "action", lambda: self._shortcut_focus_mode(),
+             ["focus", "tunnel", "distraction"]),
+            ("Trello Sync", "action", lambda: self.run_trello_sync(),
+             ["trello", "sync", "import"]),
+        ]
+        for label, cat, action, kws in actions:
+            self._palette.register(PaletteItem(
+                label=label,
+                category=cat,
+                action=action,
+                keywords=kws,
+            ))
+
+        # Prospect search items get registered dynamically on palette open
+        logger.info(f"Palette: {self._palette.item_count()} items registered")
+
+    def _show_command_palette(self) -> None:
+        """Show the command palette overlay (Ctrl+K)."""
+        if not self.root or not self._palette:
+            return
+
+        from src.gui.theme import COLORS, FONTS
+
+        # Register current prospects dynamically
+        self._refresh_palette_prospects()
+
+        overlay = tk.Toplevel(self.root)
+        overlay.overrideredirect(True)
+        overlay.attributes("-topmost", True)
+        overlay.configure(bg=COLORS["bg"], bd=2, relief="solid")
+
+        # Position at top center
+        overlay.update_idletasks()
+        w = 500
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_rooty() + 60
+        overlay.geometry(f"{w}x400+{x}+{y}")
+
+        # Search entry
+        search_var = tk.StringVar()
+        entry = tk.Entry(
+            overlay,
+            textvariable=search_var,
+            font=("Segoe UI", 14),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            insertbackground=COLORS["fg"],
+            relief="flat",
+            bd=0,
+        )
+        entry.pack(fill=tk.X, padx=12, pady=(12, 8))
+        entry.focus_set()
+
+        # Results listbox
+        results_frame = tk.Frame(overlay, bg=COLORS["bg"])
+        results_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+
+        listbox = tk.Listbox(
+            results_frame,
+            font=("Segoe UI", 11),
+            bg=COLORS["bg_alt"],
+            fg=COLORS["fg"],
+            selectbackground=COLORS["accent"],
+            selectforeground="#ffffff",
+            relief="flat",
+            activestyle="none",
+            bd=0,
+        )
+        listbox.pack(fill=tk.BOTH, expand=True)
+
+        current_results: list = []
+
+        def _update_results(*_args):
+            nonlocal current_results
+            query = search_var.get()
+            current_results = self._palette.search(query, limit=15)
+            listbox.delete(0, tk.END)
+            for r in current_results:
+                prefix = {"tab": "📑", "action": "⚡", "prospect": "👤"}.get(
+                    r.item.category, "•"
+                )
+                listbox.insert(tk.END, f"  {prefix}  {r.item.label}")
+            if current_results:
+                listbox.selection_set(0)
+
+        def _execute_selected():
+            sel = listbox.curselection()
+            if sel and current_results:
+                result = current_results[sel[0]]
+                overlay.destroy()
+                self._palette.execute(result)
+
+        def _on_key(event):
+            if event.keysym == "Escape":
+                overlay.destroy()
+            elif event.keysym == "Return":
+                _execute_selected()
+            elif event.keysym == "Down":
+                idx = listbox.curselection()
+                if idx and idx[0] < listbox.size() - 1:
+                    listbox.selection_clear(0, tk.END)
+                    listbox.selection_set(idx[0] + 1)
+                    listbox.see(idx[0] + 1)
+            elif event.keysym == "Up":
+                idx = listbox.curselection()
+                if idx and idx[0] > 0:
+                    listbox.selection_clear(0, tk.END)
+                    listbox.selection_set(idx[0] - 1)
+                    listbox.see(idx[0] - 1)
+
+        search_var.trace_add("write", _update_results)
+        entry.bind("<Key>", _on_key)
+        listbox.bind("<Double-Button-1>", lambda e: _execute_selected())
+
+        # Also close on focus loss
+        overlay.bind("<FocusOut>", lambda e: overlay.after(100, overlay.destroy))
+
+        # Show initial results (recent items)
+        _update_results()
+
+    def _refresh_palette_prospects(self) -> None:
+        """Add current prospects to palette for search."""
+        if not self._palette:
+            return
+        from src.gui.adhd.command_palette import PaletteItem
+
+        # Remove old prospect items
+        self._palette._items = [
+            item for item in self._palette._items
+            if item.category != "prospect"
+        ]
+
+        # Add current prospects (limit to keep palette fast)
+        try:
+            from src.db.models import Population
+
+            for pop in [Population.ENGAGED, Population.UNENGAGED]:
+                prospects = self.db.get_prospects(population=pop, limit=100)
+                for p in prospects:
+                    company = self.db.get_company(p.company_id) if p.company_id else None
+                    company_name = company.name if company else ""
+                    label = f"{p.full_name} at {company_name}".strip()
+                    self._palette.register(PaletteItem(
+                        label=label,
+                        category="prospect",
+                        action=lambda pid=p.id: self.set_current_prospect(pid),
+                        keywords=[
+                            p.first_name.lower(),
+                            p.last_name.lower(),
+                            company_name.lower(),
+                        ],
+                    ))
+        except Exception as e:
+            logger.debug(f"Palette prospect refresh failed: {e}")
+
     def _create_status_bar(self) -> None:
         """Create status bar."""
         if not self.root:
@@ -710,6 +1200,7 @@ class IronLungApp:
         self.root.bind("<Control-w>", lambda e: self.close())
         self.root.bind("<Control-e>", lambda e: self._show_eod_summary())
         self.root.bind("<Control-n>", lambda e: self._show_nurture_queue())
+        self.root.bind("<Escape>", lambda e: self._on_escape())
         logger.info("Keyboard shortcuts bound")
 
     def _is_today_active(self) -> bool:
@@ -761,7 +1252,15 @@ class IronLungApp:
             from src.gui.dialogs.demo_invite import DemoInviteDialog
 
             dialog = DemoInviteDialog(self.root, prospect_id, db=self.db)
-            dialog.show()
+            result = dialog.show()
+            if result:
+                self._record_dopamine_win("demo_scheduled")
+                if self._audio:
+                    try:
+                        from src.gui.adhd.audio import Sound
+                        self._audio.play_sound(Sound.DEMO_SET)
+                    except Exception:
+                        pass
         except ImportError:
             logger.warning("DemoInviteDialog not available")
 
@@ -777,26 +1276,13 @@ class IronLungApp:
             self._dictation_bar._entry.icursor(tk.END)
 
     def _shortcut_command_palette(self) -> None:
-        """Ctrl+K: open command palette."""
-        if not self.root:
-            return
-        try:
-            from src.gui.dialogs.command_palette import CommandPalette
-
-            palette = CommandPalette(self.root, db=self.db, app=self)
-            palette.show()
-        except ImportError:
-            logger.warning("CommandPalette not available")
+        """Open command palette (Ctrl+K)."""
+        self._show_command_palette()
 
     def _shortcut_focus_mode(self) -> None:
-        """Ctrl+Shift+F: toggle focus mode."""
-        try:
-            from src.gui.adhd.focus import FocusManager
-
-            fm = FocusManager()
-            fm.toggle()
-        except (ImportError, Exception) as e:
-            logger.warning(f"Focus mode unavailable: {e}")
+        """Toggle focus mode (Ctrl+Shift+F)."""
+        if self._focus:
+            self._focus.toggle()
 
     def _focus_search(self) -> None:
         """Focus the Today tab search field (Ctrl+F)."""
@@ -861,49 +1347,82 @@ class IronLungApp:
         self._update_status_bar()
 
     def _update_status_bar(self) -> None:
-        """Update status bar with database statistics and backup info."""
+        """Update status bar with dashboard stats."""
         if not self._status_label:
             return
         try:
-            from src.db.models import Population
+            parts = []
 
+            # Core pipeline counts
             pop_counts = self.db.get_population_counts()
+            from src.db.models import Population
             total = sum(pop_counts.values())
-            unengaged = pop_counts.get(Population.UNENGAGED, 0)
-            engaged = pop_counts.get(Population.ENGAGED, 0)
-            status_text = f"{total} prospects | {unengaged} unengaged | {engaged} engaged"
+            parts.append(f"{total} prospects")
+            parts.append(f"{pop_counts.get(Population.ENGAGED, 0)} engaged")
 
-            # Add backup info
+            # Dashboard stats (if available)
+            if self._dashboard_svc and self._dopamine:
+                try:
+                    data = self._dashboard_svc.get_dashboard_data(
+                        current_streak=self._dopamine.get_streak(),
+                        cards_total=pop_counts.get(Population.UNENGAGED, 0)
+                            + pop_counts.get(Population.ENGAGED, 0),
+                    )
+                    if data.cards_processed > 0:
+                        parts.append(f"📋 {data.cards_processed} cards")
+                    if data.calls_made > 0:
+                        parts.append(f"📞 {data.calls_made} calls")
+                    if data.emails_sent > 0:
+                        parts.append(f"📧 {data.emails_sent} emails")
+                    if data.current_streak >= 3:
+                        parts.append(f"🔥 {data.current_streak} streak")
+                except Exception:
+                    pass
+
+            # Energy level indicator
+            if self._session:
+                try:
+                    energy = self._session.get_energy_level()
+                    energy_icon = {
+                        "high": "⚡", "medium": "🔋", "low": "🌙"
+                    }.get(energy.value, "")
+                    parts.append(energy_icon)
+                except Exception:
+                    pass
+
+            # Backup age
             try:
-                from datetime import datetime
-
                 from src.db.backup import BackupManager
-
-                backups = BackupManager().list_backups()
+                bm = BackupManager()
+                backups = bm.list_backups()
                 if backups:
+                    from datetime import datetime
                     age = datetime.now() - backups[0].timestamp
                     hours = age.total_seconds() / 3600
                     if hours < 1:
-                        backup_str = "Last backup: <1h ago"
+                        parts.append("Backup: <1h")
                     elif hours < 24:
-                        backup_str = f"Last backup: {hours:.0f}h ago"
+                        parts.append(f"Backup: {hours:.0f}h")
                     else:
-                        days = hours / 24
-                        backup_str = f"Last backup: {days:.0f}d ago"
-                else:
-                    backup_str = "No backups"
-                status_text += f" | {backup_str}"
+                        parts.append(f"Backup: {hours/24:.0f}d")
             except Exception:
-                pass  # Don't let backup check break the status bar
+                pass
 
-            self._status_label.config(text=status_text)
+            self._status_label.config(text=" | ".join(parts))
         except Exception as e:
-            logger.warning(f"Failed to update status bar: {e}")
+            logger.warning(f"Status bar update failed: {e}")
             self._status_label.config(text="Ready")
 
     def close(self) -> None:
         """Close application gracefully. Shows EOD summary if cards were worked today."""
         logger.info("Closing IronLung 3...")
+
+        # End session tracking
+        if self._session:
+            try:
+                self._session.end_session()
+            except Exception:
+                pass
 
         # Show EOD summary if any cards were processed today
         try:

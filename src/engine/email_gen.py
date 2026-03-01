@@ -209,10 +209,23 @@ class EmailGenerator(ClaudeClientMixin):
         return "\n".join(parts)
 
     def _get_style_guidance(self) -> str:
-        """Generate style guidance from Jeff's example emails."""
+        """Generate style guidance from Jeff's email examples.
+
+        Uses the centralized StyleLearner for consistent voice.
+        """
+        try:
+            from src.ai.style_learner import get_style_prompt
+
+            prompt = get_style_prompt()
+            if prompt and "professional" not in prompt[:50].lower():
+                # Has real examples loaded
+                return prompt
+        except Exception as e:
+            logger.debug(f"StyleLearner not available, using fallback: {e}")
+
+        # Fallback to self-loaded examples
         if not self._style_examples:
             return ""
-
         examples_text = "\n---\n".join(self._style_examples[:3])
         return (
             f"Here are example emails that show the writer's voice "
