@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 
 def check_service(
     service_key: str,
-    parent: Optional[tk.Widget] = None,
+    parent: Optional[tk.Misc] = None,
     silent: bool = False,
 ) -> bool:
     """Check if a service is available before attempting to use it.

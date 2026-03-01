@@ -9,7 +9,7 @@ Phase 4.10: Manual mode toggle for offline
 
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable
+from typing import Callable, Optional
 
 from src.core.logging import get_logger
 
@@ -43,6 +43,7 @@ class DictationBar(tk.Frame):
         self._placeholder = placeholder
         self._manual_mode = False
         self._has_placeholder = True
+        self._manual_frame: Optional[tk.Frame] = None
 
         self._create_widgets()
         self._bind_keys()
@@ -209,7 +210,7 @@ class DictationBar(tk.Frame):
     def _build_manual_controls(self) -> None:
         """Build manual mode dropdown controls."""
         # Don't rebuild if already present
-        if hasattr(self, "_manual_frame") and self._manual_frame is not None:
+        if self._manual_frame is not None:
             return
 
         self._manual_frame = tk.Frame(self)
@@ -259,7 +260,7 @@ class DictationBar(tk.Frame):
 
     def _hide_manual_controls(self) -> None:
         """Remove manual mode controls."""
-        if hasattr(self, "_manual_frame") and self._manual_frame is not None:
+        if self._manual_frame is not None:
             self._manual_frame.destroy()
             self._manual_frame = None
 

@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
-from src.db.models import Activity, ActivityType
+from src.db.models import Activity, ActivityOutcome, ActivityType
 
 logger = get_logger(__name__)
 
@@ -333,10 +333,10 @@ class IronLungApp:
             "skip": ActivityType.SKIP,
         }
 
-        outcome_map = {
-            "left_voicemail": "left_vm",
-            "no_answer": "no_answer",
-            "spoke_with": "spoke_with",
+        outcome_map: dict[str, ActivityOutcome] = {
+            "left_voicemail": ActivityOutcome.LEFT_VM,
+            "no_answer": ActivityOutcome.NO_ANSWER,
+            "spoke_with": ActivityOutcome.SPOKE_WITH,
         }
 
         if action == "skip":
@@ -592,9 +592,6 @@ class IronLungApp:
         results: dict,
     ) -> None:
         """Push an action set onto the undo stack."""
-        if not hasattr(self, "_undo_stack"):
-            self._undo_stack: list[dict] = []
-
         # Capture the state BEFORE the action so we can restore it
         # For simplicity, we store the prospect snapshot
         prospect = self.db.get_prospect(prospect_id)
@@ -683,7 +680,7 @@ class IronLungApp:
             return False
         try:
             current = self._notebook.index(self._notebook.select())
-            return current == 0  # Today is first tab
+            return bool(current == 0)  # Today is first tab
         except Exception:
             return False
 
@@ -756,9 +753,10 @@ class IronLungApp:
     def _shortcut_focus_mode(self) -> None:
         """Ctrl+Shift+F: toggle focus mode."""
         try:
-            from src.gui.adhd.focus import toggle_focus_mode
+            from src.gui.adhd.focus import FocusManager
 
-            toggle_focus_mode(self.root)
+            fm = FocusManager()
+            fm.toggle()
         except (ImportError, Exception) as e:
             logger.warning(f"Focus mode unavailable: {e}")
 
