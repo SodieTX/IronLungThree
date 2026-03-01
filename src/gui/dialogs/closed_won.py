@@ -29,7 +29,7 @@ DEFAULT_COMMISSION_RATE = Decimal("0.06")
 class ClosedWonDialog:
     """Deal capture dialog for closed-won prospects."""
 
-    def __init__(self, parent: tk.Widget, prospect_id: int, db: Optional[Database] = None):
+    def __init__(self, parent: tk.Misc, prospect_id: int, db: Optional[Database] = None):
         self.parent = parent
         self.prospect_id = prospect_id
         self.db = db

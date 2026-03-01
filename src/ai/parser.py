@@ -343,6 +343,43 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
     )
 
 
+def parse_multi(input_text: str, context: Optional[ParserContext] = None) -> list[ParseResult]:
+    """Parse input for multiple intents.
+
+    Splits on common delimiters (, and then/and) and parses each segment.
+    Falls back to single parse if no delimiters found.
+
+    Returns:
+        List of ParseResult objects, one per detected intent.
+    """
+    text = input_text.strip()
+    if not text:
+        return [ParseResult(action="empty", parameters={}, confidence=0.0, raw_input=text)]
+
+    # Don't split confirmation/denial/navigation — those are atomic
+    single = parse(text, context)
+    if single.action in ("confirm", "deny", "skip", "undo", "defer", "empty"):
+        return [single]
+
+    # Split on delimiters
+    import re
+
+    segments = re.split(r"[,;]\s*|\s+(?:and then|then|and)\s+", text)
+    segments = [s.strip() for s in segments if s.strip()]
+
+    if len(segments) <= 1:
+        return [single]
+
+    results = []
+    for segment in segments:
+        result = parse(segment, context)
+        if result.action != "empty":
+            results.append(result)
+
+    # If multi-parse found nothing useful, fall back to single parse
+    return results if results else [single]
+
+
 def parse_relative_date(text: str) -> Optional[date]:
     """Parse relative date from text.
 

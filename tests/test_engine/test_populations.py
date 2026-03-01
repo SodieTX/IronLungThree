@@ -289,9 +289,7 @@ class TestTransitionProspect:
 
     def test_transition_to_broken_creates_research_task(self, db, unengaged_prospect_id):
         """Transitioning to BROKEN creates research_queue entry so Broken tab can display it."""
-        transition_prospect(
-            db, unengaged_prospect_id, Population.BROKEN, reason="Data degraded"
-        )
+        transition_prospect(db, unengaged_prospect_id, Population.BROKEN, reason="Data degraded")
 
         tasks = db.get_research_tasks(limit=100)
         prospect_tasks = [t for t in tasks if t.prospect_id == unengaged_prospect_id]

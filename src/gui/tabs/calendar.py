@@ -155,7 +155,7 @@ class CalendarTab(TabBase):
             return
 
         monday = self._current_date - timedelta(days=self._current_date.weekday())
-        
+
         try:
             conn = self.db._get_connection()
         except Exception as e:
@@ -281,7 +281,7 @@ class CalendarTab(TabBase):
             return
 
         day_iso = self._current_date.isoformat()
-        
+
         try:
             conn = self.db._get_connection()
         except Exception as e:

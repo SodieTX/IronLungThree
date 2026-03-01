@@ -97,6 +97,46 @@ class ConversationContext:
     mode: str = "processing"
 
 
+def _extract_follow_up_date(text: str) -> Optional[date]:
+    """Extract a follow-up date from natural language text.
+
+    Handles patterns like:
+    - "lv, follow up thursday"
+    - "left voicemail try again next week"
+    - "no answer, call back tuesday"
+    - "spoke with, follow up 3/15"
+
+    Returns None if no date found.
+    """
+    # Common follow-up signal phrases
+    import re
+
+    from src.ai.parser import parse_relative_date
+
+    follow_up_patterns = [
+        r"(?:follow[- ]?up|call back|try again|check back|reach out)[\s,]*(.+)",
+        r"(?:fu|f/u)[\s,]*(.+)",
+    ]
+    text_lower = text.lower()
+    for pattern in follow_up_patterns:
+        match = re.search(pattern, text_lower)
+        if match:
+            date_text = match.group(1).strip()
+            result = parse_relative_date(date_text)
+            if result:
+                return result
+
+    # Also check the whole text for a date after a comma
+    parts = text_lower.split(",")
+    if len(parts) > 1:
+        for part in parts[1:]:
+            result = parse_relative_date(part.strip())
+            if result:
+                return result
+
+    return None
+
+
 class Anne(ClaudeClientMixin):
     """Anne - The conversational AI assistant."""
 
@@ -178,29 +218,59 @@ class Anne(ClaudeClientMixin):
 
         # Handle sales vocab
         if parsed.action == "voicemail":
-            return AnneResponse(
-                message="Left voicemail. I'll log it and set follow-up. Next card?",
-                suggested_actions=[
+            actions: list[dict] = [
+                {
+                    "action": "log_activity",
+                    "type": "voicemail",
+                    "outcome": "left_vm",
+                }
+            ]
+            message = "Left voicemail. I'll log it."
+
+            # Multi-intent: check if there's a follow-up date in the raw input
+            follow_up_date = _extract_follow_up_date(user_input)
+            if follow_up_date:
+                actions.append(
                     {
-                        "action": "log_activity",
-                        "type": "voicemail",
-                        "outcome": "left_vm",
+                        "action": "set_follow_up",
+                        "date": str(follow_up_date),
                     }
-                ],
+                )
+                message += f" Follow-up set for {follow_up_date}."
+            else:
+                message += " Set follow-up. Next card?"
+
+            return AnneResponse(
+                message=message,
+                suggested_actions=actions,
             )
 
         if parsed.action == "call":
             outcome = parsed.parameters.get("outcome", "no_answer")
             outcome_label = outcome.replace("_", " ")
-            return AnneResponse(
-                message=f"Call logged: {outcome_label}.",
-                suggested_actions=[
+            actions = [
+                {
+                    "action": "log_activity",
+                    "type": "call",
+                    "outcome": outcome,
+                }
+            ]
+            message = f"Call logged: {outcome_label}."
+
+            # Multi-intent: check for follow-up date
+            follow_up_date = _extract_follow_up_date(user_input)
+            if follow_up_date:
+                actions.append(
                     {
-                        "action": "log_activity",
-                        "type": "call",
-                        "outcome": outcome,
+                        "action": "set_follow_up",
+                        "date": str(follow_up_date),
                     }
-                ],
+                )
+                message += f" Follow-up set for {follow_up_date}."
+
+            return AnneResponse(
+                message=message,
+                suggested_actions=actions,
             )
 
         # Handle email action
@@ -318,6 +388,24 @@ class Anne(ClaudeClientMixin):
                 ],
             )
 
+        # Handle deep dive request
+        if parsed.action == "deep_dive" or any(
+            phrase in user_input.lower()
+            for phrase in (
+                "show me more",
+                "what do we have",
+                "tell me more",
+                "deep dive",
+                "full history",
+                "more info",
+                "details",
+            )
+        ):
+            return AnneResponse(
+                message="Expanding card — full history and intel below.",
+                suggested_actions=[{"action": "deep_dive"}],
+            )
+
         # If we have AI and it's a conversational note, use Anne's brain
         if self.is_available() and context.current_prospect_id:
             try:
@@ -376,6 +464,14 @@ class Anne(ClaudeClientMixin):
 
                 elif action_type == "flag_suspect":
                     self._execute_flag_suspect(action)
+                    results["executed"].append(action_type)
+
+                elif action_type == "send_email":
+                    self._execute_send_email(action)
+                    results["executed"].append(action_type)
+
+                elif action_type == "deep_dive":
+                    # Handled by GUI layer — app.py switches card view
                     results["executed"].append(action_type)
 
                 else:
@@ -840,3 +936,64 @@ class Anne(ClaudeClientMixin):
                 method.is_suspect = True
                 self.db.update_contact_method(method)
                 break
+
+    def _execute_send_email(self, action: dict) -> None:
+        """Send an email via Outlook and log the activity.
+
+        This is the executor — it's called when the action has already
+        been confirmed. The actual Outlook call and activity logging
+        can also be done by app.py's _handle_send_email for more
+        GUI integration, but this ensures the action works from
+        nightly/autonomous contexts too.
+        """
+        prospect_id = action.get("prospect_id")
+        draft = action.get("draft", "")
+        if not prospect_id or not draft:
+            return
+
+        # Find recipient email
+        contact_methods = self.db.get_contact_methods(prospect_id)
+        email_addr = next(
+            (m.value for m in contact_methods if m.type.value == "email"),
+            None,
+        )
+        if not email_addr:
+            logger.warning(f"No email for prospect {prospect_id}, cannot send")
+            return
+
+        # Try to send via Outlook
+        sent = False
+        try:
+            from src.integrations.outlook import OutlookClient
+
+            outlook = OutlookClient()
+            if outlook.is_configured():
+                prospect = self.db.get_prospect(prospect_id)
+                subject = action.get(
+                    "subject",
+                    f"Following up — {prospect.first_name if prospect else 'Hello'}",
+                )
+                outlook.send_email(
+                    to=email_addr,
+                    subject=subject,
+                    body=draft,
+                    html=False,
+                )
+                sent = True
+        except Exception as e:
+            logger.warning(f"Outlook send failed: {e}")
+
+        # Log activity regardless (draft if not sent, sent if sent)
+        activity = Activity(
+            prospect_id=prospect_id,
+            activity_type=(ActivityType.EMAIL_SENT if sent else ActivityType.NOTE),
+            email_subject=action.get("subject", "Email draft"),
+            email_body=draft[:500],
+            notes=(
+                f"Email sent to {email_addr}"
+                if sent
+                else f"Email drafted (not sent): {draft[:100]}"
+            ),
+            created_by="anne",
+        )
+        self.db.create_activity(activity)

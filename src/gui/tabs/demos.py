@@ -238,10 +238,7 @@ class DemosTab(TabBase):
         if self._empty_label:
             if not demo_prospects:
                 self._empty_label.config(
-                    text=(
-                        "No demos scheduled yet. "
-                        "Click 'Create Invite' to schedule one."
-                    )
+                    text=("No demos scheduled yet. " "Click 'Create Invite' to schedule one.")
                 )
                 if not self._empty_label.winfo_ismapped():
                     self._empty_label.pack(fill=tk.X, padx=8, pady=(6, 0))
@@ -406,8 +403,7 @@ class DemoInviteDialog:
         if not self._prospects:
             messagebox.showinfo(
                 "No Engaged Prospects",
-                "There are no ENGAGED prospects available.\n\n"
-                "Move a prospect to ENGAGED first.",
+                "There are no ENGAGED prospects available.\n\n" "Move a prospect to ENGAGED first.",
                 parent=self.parent.winfo_toplevel(),
             )
             if self._dialog:
@@ -546,7 +542,9 @@ class DemoInviteDialog:
             messagebox.showinfo("Demo Scheduled", "\n".join(lines), parent=parent)
         except Exception as e:
             parent = self._dialog if self._dialog else self.parent.winfo_toplevel()
-            messagebox.showerror("Demo Invite Failed", f"Could not create invite:\n{e}", parent=parent)
+            messagebox.showerror(
+                "Demo Invite Failed", f"Could not create invite:\n{e}", parent=parent
+            )
             return
 
         logger.info(

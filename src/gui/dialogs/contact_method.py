@@ -67,12 +67,12 @@ class ContactMethodDialog:
         )
 
         # Primary / verified
-        ttk.Checkbutton(
-            main, text="Set as primary", variable=self._primary_var
-        ).grid(row=3, column=1, sticky="w", padx=4, pady=4)
-        ttk.Checkbutton(
-            main, text="Verified", variable=self._verified_var
-        ).grid(row=4, column=1, sticky="w", padx=4, pady=4)
+        ttk.Checkbutton(main, text="Set as primary", variable=self._primary_var).grid(
+            row=3, column=1, sticky="w", padx=4, pady=4
+        )
+        ttk.Checkbutton(main, text="Verified", variable=self._verified_var).grid(
+            row=4, column=1, sticky="w", padx=4, pady=4
+        )
 
         # Buttons
         btn_frame = ttk.Frame(main)
@@ -108,26 +108,32 @@ class ContactMethodDialog:
 
         if method_type == "email":
             if "@" not in value or "." not in value:
-                messagebox.showwarning("Validation", "Enter a valid email address.", parent=self._dialog)
+                messagebox.showwarning(
+                    "Validation", "Enter a valid email address.", parent=self._dialog
+                )
                 return
             value = value.lower()
             existing = {m.value.lower() for m in self.existing_methods if m.type.value == "email"}
             if value in existing:
-                messagebox.showwarning("Duplicate", "That email already exists.", parent=self._dialog)
+                messagebox.showwarning(
+                    "Duplicate", "That email already exists.", parent=self._dialog
+                )
                 return
             method_enum = ContactMethodType.EMAIL
         elif method_type == "phone":
             digits = normalize_phone(value)
             if len(digits) < 7:
-                messagebox.showwarning("Validation", "Enter a valid phone number.", parent=self._dialog)
+                messagebox.showwarning(
+                    "Validation", "Enter a valid phone number.", parent=self._dialog
+                )
                 return
             existing = {
-                normalize_phone(m.value)
-                for m in self.existing_methods
-                if m.type.value == "phone"
+                normalize_phone(m.value) for m in self.existing_methods if m.type.value == "phone"
             }
             if digits in existing:
-                messagebox.showwarning("Duplicate", "That phone already exists.", parent=self._dialog)
+                messagebox.showwarning(
+                    "Duplicate", "That phone already exists.", parent=self._dialog
+                )
                 return
             value = digits
             method_enum = ContactMethodType.PHONE
