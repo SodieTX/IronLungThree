@@ -114,7 +114,17 @@ def populated_db(db, company_id):
     )
     p3_id = db.create_prospect(p3)
 
+    # Set prospect created_at to February 2026 so monthly summary queries find them
+    conn = db._get_connection()
+    conn.execute(
+        "UPDATE prospects SET created_at = ? WHERE id IN (?, ?, ?)",
+        (datetime(2026, 2, 1), p1_id, p2_id, p3_id),
+    )
+    conn.commit()
+
     # Add activities in February 2026
+    feb_date = datetime(2026, 2, 10)
+
     # Calls
     for i in range(5):
         db.create_activity(
@@ -160,6 +170,13 @@ def populated_db(db, company_id):
             notes="Became engaged",
         )
     )
+
+    # Set all activity created_at to February 2026
+    conn.execute(
+        "UPDATE activities SET created_at = ?",
+        (feb_date,),
+    )
+    conn.commit()
 
     return db
 
