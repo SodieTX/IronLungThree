@@ -260,8 +260,10 @@ class BrokenTab(TabBase):
 
         for row in rows:
             row_keys = row.keys()
-            pid = row["prospect_id"] if "prospect_id" in row_keys else (
-                row["id"] if "id" in row_keys else 0
+            pid = (
+                row["prospect_id"]
+                if "prospect_id" in row_keys
+                else (row["id"] if "id" in row_keys else 0)
             )
             name = f"{row['first_name']} {row['last_name']}"
             company = (row["company_name"] or "") if "company_name" in row_keys else ""
@@ -422,7 +424,9 @@ class BrokenTab(TabBase):
             return
         if len(selected) > 1:
             messagebox.showinfo(
-                "Info", "Select a single record to view findings.", parent=self.frame.winfo_toplevel()
+                "Info",
+                "Select a single record to view findings.",
+                parent=self.frame.winfo_toplevel(),
             )
             return
 
@@ -516,10 +520,16 @@ class BrokenTab(TabBase):
         """Apply research findings to contact methods."""
         existing = self.db.get_contact_methods(prospect_id)
         existing_emails = {m.value.lower() for m in existing if m.type == ContactMethodType.EMAIL}
-        existing_phones = {normalize_phone(m.value) for m in existing if m.type == ContactMethodType.PHONE}
+        existing_phones = {
+            normalize_phone(m.value) for m in existing if m.type == ContactMethodType.PHONE
+        }
 
-        has_primary_email = any(m.type == ContactMethodType.EMAIL and m.is_primary for m in existing)
-        has_primary_phone = any(m.type == ContactMethodType.PHONE and m.is_primary for m in existing)
+        has_primary_email = any(
+            m.type == ContactMethodType.EMAIL and m.is_primary for m in existing
+        )
+        has_primary_phone = any(
+            m.type == ContactMethodType.PHONE and m.is_primary for m in existing
+        )
 
         added = 0
         for finding in findings:

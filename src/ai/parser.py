@@ -343,9 +343,7 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
     )
 
 
-def parse_multi(
-    input_text: str, context: Optional[ParserContext] = None
-) -> list[ParseResult]:
+def parse_multi(input_text: str, context: Optional[ParserContext] = None) -> list[ParseResult]:
     """Parse input for multiple intents.
 
     Splits on common delimiters (, and then/and) and parses each segment.

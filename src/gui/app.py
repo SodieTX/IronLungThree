@@ -229,9 +229,7 @@ class IronLungApp:
             self._dictation_bar.show_response(response.message)
 
             # Track conversation history
-            self._anne_context.recent_messages.append(
-                {"role": "user", "content": text}
-            )
+            self._anne_context.recent_messages.append({"role": "user", "content": text})
             self._anne_context.recent_messages.append(
                 {"role": "assistant", "content": response.message}
             )
@@ -270,9 +268,7 @@ class IronLungApp:
             prospect_id = self._anne_context.current_prospect_id
             if not prospect_id:
                 logger.warning("No current prospect — cannot execute actions")
-                self._dictation_bar.show_response(
-                    "No card is active. Load the queue first."
-                )
+                self._dictation_bar.show_response("No card is active. Load the queue first.")
                 return
 
             # Stamp prospect_id onto every action
@@ -294,17 +290,12 @@ class IronLungApp:
 
             # Special: send_email → goes through Outlook
             if first_action == "send_email":
-                self._handle_send_email(
-                    prospect_id, response.suggested_actions[0]
-                )
+                self._handle_send_email(prospect_id, response.suggested_actions[0])
                 return
 
             # Standard actions: execute via Anne, then advance card
             results = self._anne.execute_actions(response.suggested_actions)
-            logger.info(
-                f"Actions executed: {results['executed']}, "
-                f"failed: {results['failed']}"
-            )
+            logger.info(f"Actions executed: {results['executed']}, " f"failed: {results['failed']}")
 
             # Push onto undo stack
             self._push_undo(prospect_id, response.suggested_actions, results)
@@ -323,14 +314,10 @@ class IronLungApp:
         Reads the manual dropdown and date field from the dictation bar
         to determine what action to take.
         """
-        prospect_id = (
-            self._anne_context.current_prospect_id if self._anne_context else None
-        )
+        prospect_id = self._anne_context.current_prospect_id if self._anne_context else None
         if not prospect_id:
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    "No card active. Notes need a prospect."
-                )
+                self._dictation_bar.show_response("No card active. Notes need a prospect.")
             return
 
         bar = self._dictation_bar
@@ -407,18 +394,12 @@ class IronLungApp:
                 from src.engine.cadence import set_follow_up
 
                 fu_dt = datetime.fromisoformat(follow_up_str)
-                set_follow_up(
-                    self.db, prospect_id, fu_dt, reason="Manual follow-up"
-                )
+                set_follow_up(self.db, prospect_id, fu_dt, reason="Manual follow-up")
                 if bar:
-                    bar.show_response(
-                        f"📝 Logged ({action}). Follow-up: {follow_up_str}"
-                    )
+                    bar.show_response(f"📝 Logged ({action}). Follow-up: {follow_up_str}")
             except ValueError:
                 if bar:
-                    bar.show_response(
-                        f"📝 Logged ({action}). ⚠️ Invalid date: {follow_up_str}"
-                    )
+                    bar.show_response(f"📝 Logged ({action}). ⚠️ Invalid date: {follow_up_str}")
         else:
             if bar:
                 bar.show_response(f"📝 Logged: {action}. Notes saved.")
@@ -427,9 +408,7 @@ class IronLungApp:
         if self._today_tab:
             self._today_tab.next_card()
 
-        logger.info(
-            f"Manual action '{action}' for prospect {prospect_id}"
-        )
+        logger.info(f"Manual action '{action}' for prospect {prospect_id}")
 
     def _handle_dial(self, prospect_id: int) -> None:
         """Handle dial action: fire Bria + switch card to call mode."""
@@ -442,9 +421,7 @@ class IronLungApp:
         )
         if not phone:
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    "No phone number on file for this prospect."
-                )
+                self._dictation_bar.show_response("No phone number on file for this prospect.")
             return
 
         dialer = BriaDialer()
@@ -472,9 +449,7 @@ class IronLungApp:
         draft_body = action.get("draft", "")
         if not draft_body:
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    "No email draft to send."
-                )
+                self._dictation_bar.show_response("No email draft to send.")
             return
 
         # Get recipient email
@@ -485,9 +460,7 @@ class IronLungApp:
         )
         if not email_addr:
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    "No email address on file for this prospect."
-                )
+                self._dictation_bar.show_response("No email address on file for this prospect.")
             return
 
         # Try Outlook
@@ -524,9 +497,7 @@ class IronLungApp:
             self.db.create_activity(activity)
 
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    f"✉️ Email sent to {email_addr}."
-                )
+                self._dictation_bar.show_response(f"✉️ Email sent to {email_addr}.")
 
             # Advance card
             if self._today_tab:
@@ -535,9 +506,7 @@ class IronLungApp:
         except Exception as e:
             logger.error(f"Email send failed: {e}")
             if self._dictation_bar:
-                self._dictation_bar.show_response(
-                    f"Email send failed: {e}"
-                )
+                self._dictation_bar.show_response(f"Email send failed: {e}")
 
     def _execute_pending_actions(self) -> None:
         """Execute actions that were waiting for user confirmation."""
@@ -584,9 +553,7 @@ class IronLungApp:
 
         self._pending_disposition = None
 
-    def _show_closed_won_dialog(
-        self, prospect_id: int, actions: list[dict]
-    ) -> None:
+    def _show_closed_won_dialog(self, prospect_id: int, actions: list[dict]) -> None:
         """Show the Closed Won dialog to capture deal details."""
         if not self.root:
             return
@@ -601,9 +568,7 @@ class IronLungApp:
                 if self._anne:
                     self._anne.execute_actions(actions)
                 if self._dictation_bar:
-                    self._dictation_bar.show_response(
-                        "🎉 Deal closed! Congratulations!"
-                    )
+                    self._dictation_bar.show_response("🎉 Deal closed! Congratulations!")
                 if self._today_tab:
                     self._today_tab.next_card()
             else:
@@ -665,9 +630,7 @@ class IronLungApp:
                 )
             # Re-show the same card (go back one)
             if self._today_tab:
-                self._today_tab._queue_index = max(
-                    0, self._today_tab._queue_index - 1
-                )
+                self._today_tab._queue_index = max(0, self._today_tab._queue_index - 1)
                 self._today_tab._show_current_card()
                 self._today_tab._update_queue_label()
         else:
@@ -756,9 +719,7 @@ class IronLungApp:
         """Ctrl+M: open demo invite dialog."""
         if not self._is_today_active() or not self._today_tab:
             return
-        prospect_id = (
-            self._anne_context.current_prospect_id if self._anne_context else None
-        )
+        prospect_id = self._anne_context.current_prospect_id if self._anne_context else None
         if not prospect_id or not self.root:
             return
         try:

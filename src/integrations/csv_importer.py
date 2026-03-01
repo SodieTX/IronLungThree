@@ -155,8 +155,7 @@ class CSVImporter:
         # Validate file extension
         if suffix not in (".csv", ".xlsx"):
             raise ImportError_(
-                f"Unsupported file type: {suffix}. "
-                "Supported formats: .csv, .xlsx"
+                f"Unsupported file type: {suffix}. " "Supported formats: .csv, .xlsx"
             )
 
         # Prevent DoS via oversized files
@@ -248,8 +247,7 @@ class CSVImporter:
             headers, all_rows, _ = self._parse_csv(path)
         else:
             raise ImportError_(
-                f"Unsupported file type: {suffix}. "
-                "Supported formats: .csv, .xlsx"
+                f"Unsupported file type: {suffix}. " "Supported formats: .csv, .xlsx"
             )
 
         # If preset specified and no mapping, build mapping from preset

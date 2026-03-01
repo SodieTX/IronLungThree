@@ -213,14 +213,12 @@ class DictationBar(tk.Frame):
             return
 
         self._manual_frame = tk.Frame(self)
-        self._manual_frame.pack(
-            fill=tk.X, padx=8, pady=(2, 0), before=self._input_frame
-        )
+        self._manual_frame.pack(fill=tk.X, padx=8, pady=(2, 0), before=self._input_frame)
 
         # Population dropdown
-        ttk.Label(
-            self._manual_frame, text="Action:", foreground="gray"
-        ).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Label(self._manual_frame, text="Action:", foreground="gray").pack(
+            side=tk.LEFT, padx=(0, 4)
+        )
 
         self._manual_action_var = tk.StringVar(value="note")
         action_combo = ttk.Combobox(
@@ -240,9 +238,9 @@ class DictationBar(tk.Frame):
         action_combo.pack(side=tk.LEFT, padx=(0, 8))
 
         # Follow-up date entry
-        ttk.Label(
-            self._manual_frame, text="Follow-up:", foreground="gray"
-        ).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Label(self._manual_frame, text="Follow-up:", foreground="gray").pack(
+            side=tk.LEFT, padx=(0, 4)
+        )
 
         self._manual_date_var = tk.StringVar(value="")
         date_entry = ttk.Entry(

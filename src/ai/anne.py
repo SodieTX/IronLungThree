@@ -986,9 +986,7 @@ class Anne(ClaudeClientMixin):
         # Log activity regardless (draft if not sent, sent if sent)
         activity = Activity(
             prospect_id=prospect_id,
-            activity_type=(
-                ActivityType.EMAIL_SENT if sent else ActivityType.NOTE
-            ),
+            activity_type=(ActivityType.EMAIL_SENT if sent else ActivityType.NOTE),
             email_subject=action.get("subject", "Email draft"),
             email_body=draft[:500],
             notes=(

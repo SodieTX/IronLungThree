@@ -374,15 +374,9 @@ class TodayTab(TabBase):
                             "Check the Pipeline tab for your full list."
                         )
                     elif total > 0:
-                        msg = (
-                            "No cards due today.\n"
-                            "Check the Pipeline tab for your full list."
-                        )
+                        msg = "No cards due today.\n" "Check the Pipeline tab for your full list."
                     else:
-                        msg = (
-                            "No cards queued.\n"
-                            "Click 'Today's Brief' to load today's queue."
-                        )
+                        msg = "No cards queued.\n" "Click 'Today's Brief' to load today's queue."
                 except Exception:
                     msg = "No cards in queue."
                 self._status_label.config(text=msg)
@@ -396,32 +390,18 @@ class TodayTab(TabBase):
         prospect = self._queue[self._queue_index]
 
         # Load full data for the card
-        company = (
-            self.db.get_company(prospect.company_id)
-            if prospect.company_id
-            else None
-        )
+        company = self.db.get_company(prospect.company_id) if prospect.company_id else None
         if company is None:
             company = Company(name="Unknown", name_normalized="unknown")
 
-        activities = (
-            self.db.get_activities(prospect.id, limit=20)
-            if prospect.id
-            else []
-        )
-        intel = (
-            self.db.get_intel_nuggets(prospect.id) if prospect.id else []
-        )
-        contact_methods = (
-            self.db.get_contact_methods(prospect.id) if prospect.id else []
-        )
+        activities = self.db.get_activities(prospect.id, limit=20) if prospect.id else []
+        intel = self.db.get_intel_nuggets(prospect.id) if prospect.id else []
+        contact_methods = self.db.get_contact_methods(prospect.id) if prospect.id else []
 
         # Count other contacts at same company
         company_contacts = 0
         if prospect.company_id:
-            others = self.db.get_prospects(
-                company_id=prospect.company_id, limit=100
-            )
+            others = self.db.get_prospects(company_id=prospect.company_id, limit=100)
             company_contacts = max(0, len(others) - 1)
 
         # Create and configure the card
@@ -736,9 +716,7 @@ class TodayTab(TabBase):
         # Don't increment index — the next card is now at current index
         self._update_queue_label()
         self._show_current_card()
-        logger.info(
-            f"Deferred prospect {prospect.id} to end of queue"
-        )
+        logger.info(f"Deferred prospect {prospect.id} to end of queue")
 
     def _quick_search(self) -> None:
         """Quick search for a prospect by name."""
