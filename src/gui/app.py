@@ -617,6 +617,42 @@ class IronLungApp:
             return
 
         entry = self._undo_stack.pop()
+
+        # Special case: DNC reversal within grace period
+        actions = entry.get("actions", [])
+        was_dnc = any(
+            a.get("action") == "population_change" and a.get("population") == "dead_dnc"
+            for a in actions
+        )
+        if was_dnc:
+            try:
+                from src.db.models import Population
+                from src.engine.populations import can_reverse_dnc, reverse_dnc
+
+                if can_reverse_dnc(self.db, entry["prospect_id"]):
+                    snapshot = entry.get("prospect_snapshot")
+                    restore_pop = (
+                        Population(snapshot.population.value)
+                        if snapshot and snapshot.population
+                        else Population.UNENGAGED
+                    )
+                    reverse_dnc(
+                        self.db,
+                        entry["prospect_id"],
+                        restore_to=restore_pop,
+                        reason="Undo by user",
+                    )
+                    self._update_status_bar()
+                    if self._dictation_bar:
+                        self._dictation_bar.show_response("DNC reversed within grace period.")
+                    if self._today_tab:
+                        self._today_tab._queue_index = max(0, self._today_tab._queue_index - 1)
+                        self._today_tab._show_current_card()
+                        self._today_tab._update_queue_label()
+                    return
+            except Exception as e:
+                logger.warning(f"DNC reversal failed: {e}")
+
         snapshot = entry.get("prospect_snapshot")
         if snapshot:
             self.db.update_prospect(snapshot)
@@ -672,6 +708,8 @@ class IronLungApp:
         bind_shortcuts(self.root, handlers)
         self.root.bind("<Control-q>", lambda e: self.close())
         self.root.bind("<Control-w>", lambda e: self.close())
+        self.root.bind("<Control-e>", lambda e: self._show_eod_summary())
+        self.root.bind("<Control-n>", lambda e: self._show_nurture_queue())
         logger.info("Keyboard shortcuts bound")
 
     def _is_today_active(self) -> bool:
@@ -864,13 +902,54 @@ class IronLungApp:
             self._status_label.config(text="Ready")
 
     def close(self) -> None:
-        """Close application gracefully."""
+        """Close application gracefully. Shows EOD summary if cards were worked today."""
         logger.info("Closing IronLung 3...")
+
+        # Show EOD summary if any cards were processed today
+        try:
+            from src.content.eod_summary import generate_eod_summary
+
+            summary = generate_eod_summary(self.db)
+            if summary.cards_processed > 0 and self.root:
+                from src.gui.dialogs.eod_dialog import EODSummaryDialog
+
+                dialog = EODSummaryDialog(self.root, self.db)
+                dialog.show()
+                # Wait for dialog to close before destroying app
+                if dialog._dialog:
+                    self.root.wait_window(dialog._dialog)
+        except Exception as e:
+            logger.warning(f"EOD summary failed (non-fatal): {e}")
+
         self.db.close()
         if self.root:
             self.root.destroy()
             self.root = None
         logger.info("IronLung 3 closed")
+
+    def _show_eod_summary(self) -> None:
+        """Manually trigger EOD summary (Ctrl+E)."""
+        if not self.root:
+            return
+        try:
+            from src.gui.dialogs.eod_dialog import EODSummaryDialog
+
+            dialog = EODSummaryDialog(self.root, self.db)
+            dialog.show()
+        except Exception as e:
+            logger.warning(f"Failed to show EOD summary: {e}")
+
+    def _show_nurture_queue(self) -> None:
+        """Open the nurture email approval queue."""
+        if not self.root:
+            return
+        try:
+            from src.gui.dialogs.nurture_queue import NurtureQueueDialog
+
+            dialog = NurtureQueueDialog(self.root, self.db)
+            dialog.show()
+        except Exception as e:
+            logger.warning(f"Failed to open nurture queue: {e}")
 
     def switch_to_tab(self, tab_name: str) -> None:
         """Switch to a tab by name.

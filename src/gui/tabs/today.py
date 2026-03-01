@@ -441,6 +441,16 @@ class TodayTab(TabBase):
             self._card.destroy()
             self._card = None
 
+        if self._card_frame:
+            # Show "queue complete" message in the card area
+            tk.Label(
+                self._card_frame,
+                text="Queue complete for today!",
+                font=("Segoe UI", 16, "bold"),
+                bg=COLORS["bg"],
+                fg=COLORS["accent"],
+            ).pack(expand=True, pady=40)
+
         if self._status_label:
             # Generate EOD summary
             try:
@@ -460,6 +470,22 @@ class TodayTab(TabBase):
             self._status_label.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
 
         self._update_queue_label()
+
+        # Trigger EOD summary dialog after a brief delay
+        try:
+            if self.app and hasattr(self.app, "_show_eod_summary"):
+                if self.frame:
+                    self.frame.after(1500, self.app._show_eod_summary)
+            elif self.frame is not None:
+                from src.gui.dialogs.eod_dialog import EODSummaryDialog
+
+                frame = self.frame  # capture for lambda
+                self.frame.after(
+                    1500,
+                    lambda: EODSummaryDialog(frame, self.db).show(),
+                )
+        except Exception as e:
+            logger.warning(f"Failed to trigger EOD from queue empty: {e}")
 
     def _update_queue_label(self) -> None:
         """Update the queue position label."""
