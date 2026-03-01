@@ -530,6 +530,7 @@ class IronLungApp:
         if self._audio:
             try:
                 from src.gui.adhd.audio import Sound
+
                 self._audio.play_sound(Sound.CARD_DONE)
             except Exception:
                 pass
@@ -606,6 +607,7 @@ class IronLungApp:
             if self._audio:
                 try:
                     from src.gui.adhd.audio import Sound
+
                     self._audio.play_sound(Sound.EMAIL_SENT)
                 except Exception:
                     pass
@@ -685,6 +687,7 @@ class IronLungApp:
                 if self._audio:
                     try:
                         from src.gui.adhd.audio import Sound
+
                         self._audio.play_sound(Sound.DEAL_CLOSED)
                     except Exception:
                         pass
@@ -821,6 +824,7 @@ class IronLungApp:
         if self._audio:
             try:
                 from src.gui.adhd.audio import Sound
+
                 self._audio.play_sound(Sound.STREAK)
             except Exception:
                 pass
@@ -837,6 +841,7 @@ class IronLungApp:
         if self._audio:
             try:
                 from src.gui.adhd.audio import Sound
+
                 self._audio.play_sound(Sound.DEAL_CLOSED)
             except Exception:
                 pass
@@ -946,8 +951,14 @@ class IronLungApp:
         try:
             # Re-show all tabs
             tab_names = [
-                "Today", "Import", "Pipeline", "Calendar",
-                "Demos", "Broken", "Troubled", "Settings",
+                "Today",
+                "Import",
+                "Pipeline",
+                "Calendar",
+                "Demos",
+                "Broken",
+                "Troubled",
+                "Settings",
             ]
             for i, name in enumerate(tab_names):
                 try:
@@ -985,38 +996,67 @@ class IronLungApp:
 
         # Tab navigation
         tab_names = [
-            "Today", "Import", "Pipeline", "Calendar",
-            "Demos", "Broken", "Troubled", "Settings",
+            "Today",
+            "Import",
+            "Pipeline",
+            "Calendar",
+            "Demos",
+            "Broken",
+            "Troubled",
+            "Settings",
         ]
         for name in tab_names:
-            self._palette.register(PaletteItem(
-                label=name,
-                category="tab",
-                action=lambda n=name: self.switch_to_tab(n),
-            ))
+            self._palette.register(
+                PaletteItem(
+                    label=name,
+                    category="tab",
+                    action=lambda n=name: self.switch_to_tab(n),
+                )
+            )
 
         # Actions
         actions = [
-            ("Send Email", "action", lambda: self._shortcut_send_email(),
-             ["email", "mail", "compose", "write"]),
-            ("Schedule Demo", "action", lambda: self._shortcut_demo_invite(),
-             ["demo", "meeting", "invite"]),
-            ("Nurture Queue", "action", lambda: self._show_nurture_queue(),
-             ["nurture", "approval", "queue", "batch"]),
-            ("EOD Summary", "action", lambda: self._show_eod_summary(),
-             ["eod", "summary", "end", "day", "stats"]),
-            ("Focus Mode", "action", lambda: self._shortcut_focus_mode(),
-             ["focus", "tunnel", "distraction"]),
-            ("Trello Sync", "action", lambda: self.run_trello_sync(),
-             ["trello", "sync", "import"]),
+            (
+                "Send Email",
+                "action",
+                lambda: self._shortcut_send_email(),
+                ["email", "mail", "compose", "write"],
+            ),
+            (
+                "Schedule Demo",
+                "action",
+                lambda: self._shortcut_demo_invite(),
+                ["demo", "meeting", "invite"],
+            ),
+            (
+                "Nurture Queue",
+                "action",
+                lambda: self._show_nurture_queue(),
+                ["nurture", "approval", "queue", "batch"],
+            ),
+            (
+                "EOD Summary",
+                "action",
+                lambda: self._show_eod_summary(),
+                ["eod", "summary", "end", "day", "stats"],
+            ),
+            (
+                "Focus Mode",
+                "action",
+                lambda: self._shortcut_focus_mode(),
+                ["focus", "tunnel", "distraction"],
+            ),
+            ("Trello Sync", "action", lambda: self.run_trello_sync(), ["trello", "sync", "import"]),
         ]
         for label, cat, action, kws in actions:
-            self._palette.register(PaletteItem(
-                label=label,
-                category=cat,
-                action=action,
-                keywords=kws,
-            ))
+            self._palette.register(
+                PaletteItem(
+                    label=label,
+                    category=cat,
+                    action=action,
+                    keywords=kws,
+                )
+            )
 
         # Prospect search items get registered dynamically on palette open
         logger.info(f"Palette: {self._palette.item_count()} items registered")
@@ -1083,9 +1123,7 @@ class IronLungApp:
             current_results = self._palette.search(query, limit=15)
             listbox.delete(0, tk.END)
             for r in current_results:
-                prefix = {"tab": "📑", "action": "⚡", "prospect": "👤"}.get(
-                    r.item.category, "•"
-                )
+                prefix = {"tab": "📑", "action": "⚡", "prospect": "👤"}.get(r.item.category, "•")
                 listbox.insert(tk.END, f"  {prefix}  {r.item.label}")
             if current_results:
                 listbox.selection_set(0)
@@ -1133,8 +1171,7 @@ class IronLungApp:
 
         # Remove old prospect items
         self._palette._items = [
-            item for item in self._palette._items
-            if item.category != "prospect"
+            item for item in self._palette._items if item.category != "prospect"
         ]
 
         # Add current prospects (limit to keep palette fast)
@@ -1147,16 +1184,18 @@ class IronLungApp:
                     company = self.db.get_company(p.company_id) if p.company_id else None
                     company_name = company.name if company else ""
                     label = f"{p.full_name} at {company_name}".strip()
-                    self._palette.register(PaletteItem(
-                        label=label,
-                        category="prospect",
-                        action=lambda pid=p.id: self.set_current_prospect(pid),
-                        keywords=[
-                            p.first_name.lower(),
-                            p.last_name.lower(),
-                            company_name.lower(),
-                        ],
-                    ))
+                    self._palette.register(
+                        PaletteItem(
+                            label=label,
+                            category="prospect",
+                            action=lambda pid=p.id: self.set_current_prospect(pid),
+                            keywords=[
+                                p.first_name.lower(),
+                                p.last_name.lower(),
+                                company_name.lower(),
+                            ],
+                        )
+                    )
         except Exception as e:
             logger.debug(f"Palette prospect refresh failed: {e}")
 
@@ -1258,6 +1297,7 @@ class IronLungApp:
                 if self._audio:
                     try:
                         from src.gui.adhd.audio import Sound
+
                         self._audio.play_sound(Sound.DEMO_SET)
                     except Exception:
                         pass
@@ -1356,6 +1396,7 @@ class IronLungApp:
             # Core pipeline counts
             pop_counts = self.db.get_population_counts()
             from src.db.models import Population
+
             total = sum(pop_counts.values())
             parts.append(f"{total} prospects")
             parts.append(f"{pop_counts.get(Population.ENGAGED, 0)} engaged")
@@ -1366,7 +1407,7 @@ class IronLungApp:
                     data = self._dashboard_svc.get_dashboard_data(
                         current_streak=self._dopamine.get_streak(),
                         cards_total=pop_counts.get(Population.UNENGAGED, 0)
-                            + pop_counts.get(Population.ENGAGED, 0),
+                        + pop_counts.get(Population.ENGAGED, 0),
                     )
                     if data.cards_processed > 0:
                         parts.append(f"📋 {data.cards_processed} cards")
@@ -1383,9 +1424,7 @@ class IronLungApp:
             if self._session:
                 try:
                     energy = self._session.get_energy_level()
-                    energy_icon = {
-                        "high": "⚡", "medium": "🔋", "low": "🌙"
-                    }.get(energy.value, "")
+                    energy_icon = {"high": "⚡", "medium": "🔋", "low": "🌙"}.get(energy.value, "")
                     parts.append(energy_icon)
                 except Exception:
                     pass
@@ -1393,10 +1432,12 @@ class IronLungApp:
             # Backup age
             try:
                 from src.db.backup import BackupManager
+
                 bm = BackupManager()
                 backups = bm.list_backups()
                 if backups:
                     from datetime import datetime
+
                     age = datetime.now() - backups[0].timestamp
                     hours = age.total_seconds() / 3600
                     if hours < 1:

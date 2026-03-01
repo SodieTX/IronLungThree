@@ -210,6 +210,7 @@ def calculate_confidence(
 
     # Verification freshness (15 points)
     max_score += 15
+
     def _is_fresh_verified(m) -> bool:
         if not (m.is_verified and m.verified_date):
             return False

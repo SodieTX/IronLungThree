@@ -301,9 +301,7 @@ class TodayTab(TabBase):
                 except Exception:
                     pass
 
-            dialog = MorningBriefDialog(
-                self.frame, brief.full_text, on_ready=self.start_processing
-            )
+            dialog = MorningBriefDialog(self.frame, brief.full_text, on_ready=self.start_processing)
             dialog.show()
         except Exception as e:
             logger.error(f"Failed to generate morning brief: {e}")
@@ -483,6 +481,7 @@ class TodayTab(TabBase):
         # Trigger EOD summary after brief delay
         try:
             from src.gui.dialogs.eod_dialog import EODSummaryDialog
+
             self.frame.after(
                 1500,
                 lambda: EODSummaryDialog(self.frame, self.db).show(),
