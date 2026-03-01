@@ -78,6 +78,10 @@ class TodayTab(TabBase):
         self._card_frame = tk.Frame(self.frame, bg=COLORS["bg"])
         self._card_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=8)
 
+        # Action button bar (below the card)
+        self._action_frame = tk.Frame(self._card_frame, bg=COLORS["bg"])
+        # Starts hidden — built dynamically when a card is shown
+
         # Empty state message
         self._status_label = tk.Label(
             self._card_frame,
@@ -87,29 +91,6 @@ class TodayTab(TabBase):
             fg=COLORS["muted"],
         )
         self._status_label.pack(expand=True)
-
-        # Bottom action bar
-        self._action_frame = tk.Frame(self.frame, bg=COLORS["bg"])
-        self._action_frame.pack(fill=tk.X, padx=16, pady=(0, 8))
-
-        # Notes input
-        notes_row = ttk.Frame(self._action_frame)
-        notes_row.pack(fill=tk.X, pady=(0, 6))
-        ttk.Label(notes_row, text="Notes:").pack(side=tk.LEFT, padx=(0, 4))
-        self._notes_text = tk.Text(notes_row, height=2, width=60, font=FONTS["small"])
-        self._notes_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        # Action buttons
-        btn_row = ttk.Frame(self._action_frame)
-        btn_row.pack(fill=tk.X)
-
-        ttk.Button(btn_row, text="Quick Action", command=self._quick_action).pack(
-            side=tk.LEFT, padx=4
-        )
-        ttk.Button(btn_row, text="Deep Dive", command=self._toggle_deep).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_row, text="Edit", command=self._edit_prospect).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_row, text="Skip", command=self._skip_card).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_row, text="Next", command=self.next_card).pack(side=tk.RIGHT, padx=4)
 
         # Check if we should show onboarding instead
         self._check_empty_state()
@@ -336,7 +317,16 @@ class TodayTab(TabBase):
         self._show_current_card()
 
     def _show_current_card(self) -> None:
-        """Display the current card from the queue."""
+        """Display the current card from the queue.
+
+        This is the core card renderer. It:
+        1. Clears any existing card
+        2. Checks for empty/complete states
+        3. Loads full prospect data (company, activities, intel, contacts)
+        4. Creates a ProspectCard and wires its callbacks
+        5. Updates Anne's context so dictation knows which prospect is active
+        6. Builds the action button bar below the card
+        """
         if not self._card_frame:
             return
 
@@ -344,12 +334,25 @@ class TodayTab(TabBase):
         if self._card:
             self._card.destroy()
             self._card = None
+
+        # Clear action frame contents
+        if self._action_frame:
+            for child in self._action_frame.winfo_children():
+                child.destroy()
+
         if self._status_label:
             self._status_label.pack_forget()
 
+        # --- Check for empty / end-of-queue states ---
         if not self._queue or self._queue_index >= len(self._queue):
+            # Clear anne context — no active prospect
+            if self.app:
+                self.app.set_current_prospect(None)
+
+            if self._action_frame:
+                self._action_frame.pack_forget()
+
             if self._status_label:
-                # Give a helpful message based on what's in the database
                 try:
                     from src.db.models import Population
 
@@ -371,32 +374,61 @@ class TodayTab(TabBase):
                             "Check the Pipeline tab for your full list."
                         )
                     elif total > 0:
-                        msg = "No cards due today.\n" "Check the Pipeline tab for your full list."
+                        msg = (
+                            "No cards due today.\n"
+                            "Check the Pipeline tab for your full list."
+                        )
                     else:
-                        msg = "No cards queued.\n" "Click 'Today's Brief' to load today's queue."
+                        msg = (
+                            "No cards queued.\n"
+                            "Click 'Today's Brief' to load today's queue."
+                        )
                 except Exception:
                     msg = "No cards in queue."
                 self._status_label.config(text=msg)
                 self._status_label.pack(expand=True)
+
+            # Also check empty state (onboarding)
+            self._check_empty_state()
             return
 
+        # --- We have a card to show ---
         prospect = self._queue[self._queue_index]
 
         # Load full data for the card
-        company = self.db.get_company(prospect.company_id) if prospect.company_id else None
+        company = (
+            self.db.get_company(prospect.company_id)
+            if prospect.company_id
+            else None
+        )
         if company is None:
             company = Company(name="Unknown", name_normalized="unknown")
-        activities = self.db.get_activities(prospect.id, limit=20) if prospect.id else []
-        intel = self.db.get_intel_nuggets(prospect.id) if prospect.id else []
-        contact_methods = self.db.get_contact_methods(prospect.id) if prospect.id else []
+
+        activities = (
+            self.db.get_activities(prospect.id, limit=20)
+            if prospect.id
+            else []
+        )
+        intel = (
+            self.db.get_intel_nuggets(prospect.id) if prospect.id else []
+        )
+        contact_methods = (
+            self.db.get_contact_methods(prospect.id) if prospect.id else []
+        )
 
         # Count other contacts at same company
         company_contacts = 0
         if prospect.company_id:
-            others = self.db.get_prospects(company_id=prospect.company_id, limit=100)
+            others = self.db.get_prospects(
+                company_id=prospect.company_id, limit=100
+            )
             company_contacts = max(0, len(others) - 1)
 
-        self._card = ProspectCard(self._card_frame)
+        # Create and configure the card
+        self._card = ProspectCard(
+            self._card_frame,
+            on_dial=self._on_card_dial,
+        )
         self._card.set_prospect(
             prospect=prospect,
             company=company,
@@ -407,9 +439,21 @@ class TodayTab(TabBase):
         )
         self._card.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
+        # *** CRITICAL: Update Anne's context ***
+        if self.app and prospect.id:
+            self.app.set_current_prospect(prospect.id)
+
         # Clear notes field
         if self._notes_text:
             self._notes_text.delete("1.0", tk.END)
+
+        # Build action buttons
+        self._build_action_bar(prospect, contact_methods)
+
+        logger.debug(
+            f"Showing card {self._queue_index + 1}/{len(self._queue)}: "
+            f"{prospect.first_name} {prospect.last_name}"
+        )
 
     def _show_queue_complete(self) -> None:
         """Show queue complete message with end-of-day summary."""
@@ -516,6 +560,185 @@ class TodayTab(TabBase):
             )
             self.db.create_activity(activity)
         self.next_card()
+
+    def _build_action_bar(
+        self,
+        prospect: Prospect,
+        contact_methods: list,
+    ) -> None:
+        """Build the action button bar below the current card.
+
+        Provides one-click actions so Jeff doesn't have to type everything.
+        Buttons: Skip | Call | Email | Park | Deep Dive | Quick Action
+        """
+        if not self._action_frame:
+            # Create the action frame if it doesn't exist yet
+            self._action_frame = tk.Frame(self._card_frame, bg=COLORS["bg"])
+
+        # Clear any existing buttons
+        for child in self._action_frame.winfo_children():
+            child.destroy()
+
+        # Ensure it's visible
+        self._action_frame.pack(fill=tk.X, padx=16, pady=(0, 8))
+
+        # --- Button definitions ---
+        btn_style = {
+            "font": ("Segoe UI", 10),
+            "bg": COLORS["bg_alt"],
+            "fg": COLORS["fg"],
+            "activebackground": COLORS["bg"],
+            "activeforeground": COLORS["fg"],
+            "relief": "flat",
+            "cursor": "hand2",
+            "padx": 12,
+            "pady": 6,
+        }
+
+        # Skip
+        tk.Button(
+            self._action_frame,
+            text="⏭ Skip",
+            command=self._skip_card,
+            **btn_style,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Call (only if phone exists)
+        has_phone = any(m.type.value == "phone" for m in contact_methods)
+        if has_phone:
+            call_btn = tk.Button(
+                self._action_frame,
+                text="📞 Call",
+                command=lambda: self._on_card_dial(prospect),
+                bg=COLORS["accent"],
+                fg="#ffffff",
+                activebackground="#0052a3",
+                activeforeground="#ffffff",
+                font=("Segoe UI", 10, "bold"),
+                relief="flat",
+                cursor="hand2",
+                padx=12,
+                pady=6,
+            )
+            call_btn.pack(side=tk.LEFT, padx=2)
+
+        # Email (only if email exists)
+        has_email = any(m.type.value == "email" for m in contact_methods)
+        if has_email:
+            tk.Button(
+                self._action_frame,
+                text="✉️ Email",
+                command=self._trigger_email,
+                **btn_style,
+            ).pack(side=tk.LEFT, padx=2)
+
+        # Park
+        tk.Button(
+            self._action_frame,
+            text="🅿️ Park",
+            command=self._trigger_park,
+            **btn_style,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Deep Dive toggle
+        tk.Button(
+            self._action_frame,
+            text="🔍 Deep Dive",
+            command=self._toggle_deep,
+            **btn_style,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Quick Action (edit, move, etc.)
+        tk.Button(
+            self._action_frame,
+            text="⚡ Actions",
+            command=self._quick_action,
+            **btn_style,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Right side: queue position indicator
+        pos_text = f"{self._queue_index + 1} of {len(self._queue)}"
+        tk.Label(
+            self._action_frame,
+            text=pos_text,
+            font=("Segoe UI", 9),
+            bg=COLORS["bg"],
+            fg=COLORS["muted"],
+        ).pack(side=tk.RIGHT, padx=8)
+
+    def _on_card_dial(self, prospect: Optional[Prospect] = None) -> None:
+        """Handle dial button or phone label click on card.
+
+        Fires Bria dialer and switches card to call mode.
+        """
+        if prospect is None and self._queue and self._queue_index < len(self._queue):
+            prospect = self._queue[self._queue_index]
+        if not prospect or not prospect.id:
+            return
+
+        from src.integrations.bria import BriaDialer
+
+        contact_methods = self.db.get_contact_methods(prospect.id)
+        phone = next(
+            (m.value for m in contact_methods if m.type.value == "phone"),
+            None,
+        )
+        if not phone:
+            messagebox.showinfo("No Phone", "No phone number on file.")
+            return
+
+        dialer = BriaDialer()
+        dialed = dialer.dial(phone)
+
+        # Switch to call mode on the card
+        if self._card:
+            self._card.enter_call_mode()
+
+        if not dialed:
+            messagebox.showinfo(
+                "Copied",
+                f"{phone} copied to clipboard.\n(Bria not detected)",
+            )
+
+    def _trigger_email(self) -> None:
+        """Trigger email composition via dictation bar."""
+        if self.app and hasattr(self.app, "_dictation_bar") and self.app._dictation_bar:
+            bar = self.app._dictation_bar
+            bar.focus_input()
+            bar._entry.delete(0, tk.END)
+            bar._entry.insert(0, "send him an email")
+            bar._has_placeholder = False
+            bar._entry.configure(foreground="black")
+            bar._entry.icursor(tk.END)
+
+    def _trigger_park(self) -> None:
+        """Trigger park via dictation bar."""
+        if self.app and hasattr(self.app, "_dictation_bar") and self.app._dictation_bar:
+            bar = self.app._dictation_bar
+            bar.focus_input()
+            bar._entry.delete(0, tk.END)
+            bar._entry.insert(0, "park him until ")
+            bar._has_placeholder = False
+            bar._entry.configure(foreground="black")
+            bar._entry.icursor(tk.END)
+
+    def _defer_card(self) -> None:
+        """Defer current card to the end of the queue."""
+        if not self._queue or self._queue_index >= len(self._queue):
+            return
+
+        prospect = self._queue[self._queue_index]
+
+        # Move the prospect to the end of the queue
+        self._queue.pop(self._queue_index)
+        self._queue.append(prospect)
+
+        # Don't increment index — the next card is now at current index
+        self._update_queue_label()
+        self._show_current_card()
+        logger.info(
+            f"Deferred prospect {prospect.id} to end of queue"
+        )
 
     def _quick_search(self) -> None:
         """Quick search for a prospect by name."""

@@ -1,11 +1,13 @@
 """Main application window."""
 
 import tkinter as tk
+from datetime import date, datetime
 from tkinter import messagebox, ttk
 from typing import Any, Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
+from src.db.models import Activity, ActivityType
 
 logger = get_logger(__name__)
 
@@ -30,6 +32,9 @@ class IronLungApp:
         self._dictation_bar: Any = None
         self._anne: Any = None
         self._anne_context: Any = None
+        self._pending_actions: list[dict] = []
+        self._pending_disposition: Optional[str] = None
+        self._undo_stack: list[dict] = []
 
     def run(self) -> None:
         """Start the application."""
@@ -189,32 +194,485 @@ class IronLungApp:
         except Exception as e:
             logger.warning(f"Failed to initialize Anne: {e}")
 
+    def set_current_prospect(self, prospect_id: Optional[int]) -> None:
+        """Update Anne's conversation context with the current prospect.
+
+        Called by TodayTab whenever a new card is displayed, so the
+        dictation bar → Anne → execute pipeline always knows which
+        prospect we're talking about.
+        """
+        if self._anne_context:
+            self._anne_context.current_prospect_id = prospect_id
+            logger.debug(f"Anne context updated: prospect_id={prospect_id}")
+
     def _on_dictation_submit(self, text: str) -> None:
-        """Handle dictation bar input."""
+        """Handle dictation bar input.
+
+        This is the central nervous system of card processing:
+        1. User types/dictates into the bar
+        2. Anne parses intent and returns response + suggested actions
+        3. Non-confirmation actions auto-execute against current prospect
+        4. Navigation actions (skip/defer) advance the card
+        5. Special actions (dial, send_email) trigger integrations
+        6. Card advances after successful processing
+        """
         if not self._anne or not self._dictation_bar:
+            return
+
+        # --- Manual mode: bypass Anne entirely ---
+        if self._dictation_bar.is_manual_mode:
+            self._handle_manual_input(text)
             return
 
         try:
             response = self._anne.respond(text, self._anne_context)
             self._dictation_bar.show_response(response.message)
 
-            # Track conversation
-            self._anne_context.recent_messages.append({"role": "user", "content": text})
+            # Track conversation history
+            self._anne_context.recent_messages.append(
+                {"role": "user", "content": text}
+            )
             self._anne_context.recent_messages.append(
                 {"role": "assistant", "content": response.message}
             )
 
-            # Auto-execute non-confirmation actions
-            if response.suggested_actions and not response.requires_confirmation:
-                prospect_id = self._anne_context.current_prospect_id
-                if prospect_id:
-                    for action in response.suggested_actions:
-                        action["prospect_id"] = prospect_id
-                    self._anne.execute_actions(response.suggested_actions)
+            if not response.suggested_actions:
+                return
+
+            # --- Handle navigation actions (no prospect_id needed) ---
+            first_action = response.suggested_actions[0].get("action", "")
+
+            if first_action == "skip":
+                if self._today_tab:
+                    self._today_tab._skip_card()
+                return
+
+            if first_action == "defer":
+                if self._today_tab:
+                    self._today_tab._defer_card()
+                return
+
+            if first_action == "undo":
+                self._handle_undo()
+                return
+
+            if first_action == "execute_pending":
+                # User confirmed a pending action — execute what we stored
+                self._execute_pending_actions()
+                return
+
+            if first_action == "deep_dive":
+                if self._today_tab and self._today_tab._card:
+                    self._today_tab._toggle_deep()
+                return
+
+            # --- Actions that require a prospect ---
+            prospect_id = self._anne_context.current_prospect_id
+            if not prospect_id:
+                logger.warning("No current prospect — cannot execute actions")
+                self._dictation_bar.show_response(
+                    "No card is active. Load the queue first."
+                )
+                return
+
+            # Stamp prospect_id onto every action
+            for action in response.suggested_actions:
+                action["prospect_id"] = prospect_id
+
+            # --- Confirmation-required actions: store, don't execute ---
+            if response.requires_confirmation:
+                self._pending_actions = response.suggested_actions
+                self._pending_disposition = response.disposition
+                return
+
+            # --- Auto-execute non-confirmation actions ---
+
+            # Special: dial → fire Bria + enter call mode
+            if first_action == "dial":
+                self._handle_dial(prospect_id)
+                return
+
+            # Special: send_email → goes through Outlook
+            if first_action == "send_email":
+                self._handle_send_email(
+                    prospect_id, response.suggested_actions[0]
+                )
+                return
+
+            # Standard actions: execute via Anne, then advance card
+            results = self._anne.execute_actions(response.suggested_actions)
+            logger.info(
+                f"Actions executed: {results['executed']}, "
+                f"failed: {results['failed']}"
+            )
+
+            # Push onto undo stack
+            self._push_undo(prospect_id, response.suggested_actions, results)
+
+            # Advance to next card after successful processing
+            if results["executed"] and self._today_tab:
+                self._today_tab.next_card()
 
         except Exception as e:
             logger.error(f"Dictation processing failed: {e}")
             self._dictation_bar.show_response(f"Error: {e}")
+
+    def _handle_manual_input(self, text: str) -> None:
+        """Handle input when Anne is offline (manual mode).
+
+        Reads the manual dropdown and date field from the dictation bar
+        to determine what action to take.
+        """
+        prospect_id = (
+            self._anne_context.current_prospect_id if self._anne_context else None
+        )
+        if not prospect_id:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    "No card active. Notes need a prospect."
+                )
+            return
+
+        bar = self._dictation_bar
+        action = bar.manual_action if bar else "note"
+        follow_up_str = bar.manual_follow_up_date if bar else ""
+
+        # Map manual action to activity type
+        activity_type_map = {
+            "note": ActivityType.NOTE,
+            "left_voicemail": ActivityType.CALL,
+            "no_answer": ActivityType.CALL,
+            "spoke_with": ActivityType.CALL,
+            "skip": ActivityType.SKIP,
+        }
+
+        outcome_map = {
+            "left_voicemail": "left_vm",
+            "no_answer": "no_answer",
+            "spoke_with": "spoke_with",
+        }
+
+        if action == "skip":
+            if self._today_tab:
+                self._today_tab._skip_card()
+            return
+
+        if action == "park":
+            # Park requires a month — use follow_up_str or default to next month
+            from src.engine.populations import transition_prospect
+            from src.db.models import Population
+
+            prospect = self.db.get_prospect(prospect_id)
+            if prospect:
+                park_month = follow_up_str or None
+                if park_month:
+                    prospect.parked_month = park_month
+                    self.db.update_prospect(prospect)
+                transition_prospect(
+                    self.db,
+                    prospect_id,
+                    Population.PARKED,
+                    reason=f"Manual: parked (month={park_month})",
+                )
+            if bar:
+                bar.show_response(f"📦 Parked. Notes: {text[:60]}")
+            if self._today_tab:
+                self._today_tab.next_card()
+            return
+
+        # Log the activity
+        act_type = activity_type_map.get(action, ActivityType.NOTE)
+        outcome = outcome_map.get(action)
+
+        activity = Activity(
+            prospect_id=prospect_id,
+            activity_type=act_type,
+            outcome=outcome,
+            notes=text,
+            created_by="user_manual",
+        )
+        self.db.create_activity(activity)
+
+        # Update attempt count and last_contact_date for call types
+        if action in ("left_voicemail", "no_answer", "spoke_with"):
+            prospect = self.db.get_prospect(prospect_id)
+            if prospect:
+                prospect.attempt_count = (prospect.attempt_count or 0) + 1
+                prospect.last_contact_date = date.today()
+                self.db.update_prospect(prospect)
+
+        # Set follow-up if provided
+        if follow_up_str:
+            try:
+                from src.engine.cadence import set_follow_up
+
+                fu_dt = datetime.fromisoformat(follow_up_str)
+                set_follow_up(
+                    self.db, prospect_id, fu_dt, reason="Manual follow-up"
+                )
+                if bar:
+                    bar.show_response(
+                        f"📝 Logged ({action}). Follow-up: {follow_up_str}"
+                    )
+            except ValueError:
+                if bar:
+                    bar.show_response(
+                        f"📝 Logged ({action}). ⚠️ Invalid date: {follow_up_str}"
+                    )
+        else:
+            if bar:
+                bar.show_response(f"📝 Logged: {action}. Notes saved.")
+
+        # Advance card
+        if self._today_tab:
+            self._today_tab.next_card()
+
+        logger.info(
+            f"Manual action '{action}' for prospect {prospect_id}"
+        )
+
+    def _handle_dial(self, prospect_id: int) -> None:
+        """Handle dial action: fire Bria + switch card to call mode."""
+        from src.integrations.bria import BriaDialer
+
+        contact_methods = self.db.get_contact_methods(prospect_id)
+        phone = next(
+            (m.value for m in contact_methods if m.type.value == "phone"),
+            None,
+        )
+        if not phone:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    "No phone number on file for this prospect."
+                )
+            return
+
+        dialer = BriaDialer()
+        dialed = dialer.dial(phone)
+
+        # Switch card to call mode
+        if self._today_tab and self._today_tab._card:
+            self._today_tab._card.enter_call_mode()
+
+        if dialed:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    f"📞 Dialing {phone}...\n"
+                    "Card switched to call mode. Dictate notes as you talk."
+                )
+        else:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    f"📋 {phone} copied to clipboard (Bria not available).\n"
+                    "Card switched to call mode."
+                )
+
+    def _handle_send_email(self, prospect_id: int, action: dict) -> None:
+        """Handle email send via Outlook."""
+        draft_body = action.get("draft", "")
+        if not draft_body:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    "No email draft to send."
+                )
+            return
+
+        # Get recipient email
+        contact_methods = self.db.get_contact_methods(prospect_id)
+        email_addr = next(
+            (m.value for m in contact_methods if m.type.value == "email"),
+            None,
+        )
+        if not email_addr:
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    "No email address on file for this prospect."
+                )
+            return
+
+        # Try Outlook
+        try:
+            from src.integrations.outlook import OutlookClient
+
+            outlook = OutlookClient()
+            if not outlook.is_configured():
+                if self._dictation_bar:
+                    self._dictation_bar.show_response(
+                        "Outlook not configured. Go to Settings to add credentials."
+                    )
+                return
+
+            prospect = self.db.get_prospect(prospect_id)
+            subject = f"Following up — {prospect.first_name if prospect else 'Hello'}"
+
+            outlook.send_email(
+                to=email_addr,
+                subject=subject,
+                body=draft_body,
+                html=False,
+            )
+
+            # Log the email as an activity
+            activity = Activity(
+                prospect_id=prospect_id,
+                activity_type=ActivityType.EMAIL_SENT,
+                email_subject=subject,
+                email_body=draft_body[:500],
+                notes=f"Email sent to {email_addr}",
+                created_by="anne",
+            )
+            self.db.create_activity(activity)
+
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    f"✉️ Email sent to {email_addr}."
+                )
+
+            # Advance card
+            if self._today_tab:
+                self._today_tab.next_card()
+
+        except Exception as e:
+            logger.error(f"Email send failed: {e}")
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    f"Email send failed: {e}"
+                )
+
+    def _execute_pending_actions(self) -> None:
+        """Execute actions that were waiting for user confirmation."""
+        if not hasattr(self, "_pending_actions") or not self._pending_actions:
+            if self._dictation_bar:
+                self._dictation_bar.show_response("Nothing pending to execute.")
+            return
+
+        actions = self._pending_actions
+        self._pending_actions = []
+
+        prospect_id = self._anne_context.current_prospect_id if self._anne_context else None
+
+        # Check for special actions that need custom handling
+        first_action = actions[0].get("action", "") if actions else ""
+
+        if first_action == "send_email" and prospect_id:
+            self._handle_send_email(prospect_id, actions[0])
+            return
+
+        if first_action == "dial" and prospect_id:
+            self._handle_dial(prospect_id)
+            return
+
+        # Check for WON disposition — show ClosedWonDialog
+        disposition = getattr(self, "_pending_disposition", None)
+        if disposition == "WON" and prospect_id:
+            self._show_closed_won_dialog(prospect_id, actions)
+            return
+
+        # Standard execution
+        if self._anne:
+            results = self._anne.execute_actions(actions)
+            if prospect_id:
+                self._push_undo(prospect_id, actions, results)
+
+            executed = ", ".join(results["executed"]) if results["executed"] else "none"
+            if self._dictation_bar:
+                self._dictation_bar.show_response(f"Done. ({executed})")
+
+            # Advance card after confirmed action
+            if results["executed"] and self._today_tab:
+                self._today_tab.next_card()
+
+        self._pending_disposition = None
+
+    def _show_closed_won_dialog(
+        self, prospect_id: int, actions: list[dict]
+    ) -> None:
+        """Show the Closed Won dialog to capture deal details."""
+        if not self.root:
+            return
+        try:
+            from src.gui.dialogs.closed_won import ClosedWonDialog
+
+            dialog = ClosedWonDialog(self.root, prospect_id, db=self.db)
+            result = dialog.show()
+            if result:
+                # Dialog handled the DB updates (deal_value, close_date, etc.)
+                # Now also execute the population change
+                if self._anne:
+                    self._anne.execute_actions(actions)
+                if self._dictation_bar:
+                    self._dictation_bar.show_response(
+                        "🎉 Deal closed! Congratulations!"
+                    )
+                if self._today_tab:
+                    self._today_tab.next_card()
+            else:
+                if self._dictation_bar:
+                    self._dictation_bar.show_response("Closed Won cancelled.")
+        except ImportError:
+            logger.warning("ClosedWonDialog not available, executing directly")
+            if self._anne:
+                self._anne.execute_actions(actions)
+            if self._today_tab:
+                self._today_tab.next_card()
+
+    # ------------------------------------------------------------------
+    # UNDO STACK
+    # ------------------------------------------------------------------
+
+    def _push_undo(
+        self,
+        prospect_id: int,
+        actions: list[dict],
+        results: dict,
+    ) -> None:
+        """Push an action set onto the undo stack."""
+        if not hasattr(self, "_undo_stack"):
+            self._undo_stack: list[dict] = []
+
+        # Capture the state BEFORE the action so we can restore it
+        # For simplicity, we store the prospect snapshot
+        prospect = self.db.get_prospect(prospect_id)
+        if prospect:
+            self._undo_stack.append(
+                {
+                    "prospect_id": prospect_id,
+                    "actions": actions,
+                    "results": results,
+                    "prospect_snapshot": prospect,
+                    "timestamp": datetime.now(),
+                }
+            )
+            # Keep stack manageable
+            if len(self._undo_stack) > 20:
+                self._undo_stack.pop(0)
+
+    def _handle_undo(self) -> None:
+        """Undo the last action by restoring prospect state."""
+        if not hasattr(self, "_undo_stack") or not self._undo_stack:
+            if self._dictation_bar:
+                self._dictation_bar.show_response("Nothing to undo.")
+            return
+
+        entry = self._undo_stack.pop()
+        snapshot = entry.get("prospect_snapshot")
+        if snapshot:
+            self.db.update_prospect(snapshot)
+            if self._dictation_bar:
+                self._dictation_bar.show_response(
+                    f"↩️ Undone. Restored {snapshot.first_name} {snapshot.last_name} "
+                    f"to previous state."
+                )
+            # Re-show the same card (go back one)
+            if self._today_tab:
+                self._today_tab._queue_index = max(
+                    0, self._today_tab._queue_index - 1
+                )
+                self._today_tab._show_current_card()
+                self._today_tab._update_queue_label()
+        else:
+            if self._dictation_bar:
+                self._dictation_bar.show_response("Undo failed — no snapshot available.")
 
     def _create_status_bar(self) -> None:
         """Create status bar."""
@@ -228,18 +686,120 @@ class IronLungApp:
         logger.info("Status bar created")
 
     def _bind_shortcuts(self) -> None:
-        """Bind keyboard shortcuts."""
+        """Bind keyboard shortcuts.
+
+        Wires all shortcuts defined in shortcuts.py to actual handlers.
+        Each handler checks whether the Today tab is active before
+        performing card-specific actions.
+        """
         if not self.root:
             return
+
         from src.gui.shortcuts import bind_shortcuts
 
         handlers = {
             "quick_lookup": self._focus_search,
+            "skip": self._shortcut_skip,
+            "defer": self._shortcut_defer,
+            "undo": lambda: self._handle_undo(),
+            "confirm": self._shortcut_confirm,
+            "cancel": self._shortcut_cancel,
+            "demo_invite": self._shortcut_demo_invite,
+            "send_email": self._shortcut_send_email,
+            "command_palette": self._shortcut_command_palette,
+            "focus_mode": self._shortcut_focus_mode,
         }
         bind_shortcuts(self.root, handlers)
         self.root.bind("<Control-q>", lambda e: self.close())
         self.root.bind("<Control-w>", lambda e: self.close())
         logger.info("Keyboard shortcuts bound")
+
+    def _is_today_active(self) -> bool:
+        """Check if Today tab is currently selected."""
+        if not self._notebook:
+            return False
+        try:
+            current = self._notebook.index(self._notebook.select())
+            return current == 0  # Today is first tab
+        except Exception:
+            return False
+
+    def _shortcut_skip(self) -> None:
+        """Tab key: skip current card."""
+        if self._is_today_active() and self._today_tab:
+            self._today_tab._skip_card()
+
+    def _shortcut_defer(self) -> None:
+        """Ctrl+D: defer current card to end of queue."""
+        if self._is_today_active() and self._today_tab:
+            self._today_tab._defer_card()
+
+    def _shortcut_confirm(self) -> None:
+        """Enter key: confirm pending action (when not in text entry)."""
+        # Only fire if focus is NOT in the dictation bar entry
+        if not self.root:
+            return
+        focused = self.root.focus_get()
+        if focused and isinstance(focused, (tk.Entry, tk.Text)):
+            return  # Let the widget handle Enter naturally
+        self._execute_pending_actions()
+
+    def _shortcut_cancel(self) -> None:
+        """Escape key: cancel pending action."""
+        if hasattr(self, "_pending_actions"):
+            self._pending_actions = []
+        if self._dictation_bar:
+            self._dictation_bar.clear_response()
+            self._dictation_bar.show_response("Cancelled.")
+
+    def _shortcut_demo_invite(self) -> None:
+        """Ctrl+M: open demo invite dialog."""
+        if not self._is_today_active() or not self._today_tab:
+            return
+        prospect_id = (
+            self._anne_context.current_prospect_id if self._anne_context else None
+        )
+        if not prospect_id or not self.root:
+            return
+        try:
+            from src.gui.dialogs.demo_invite import DemoInviteDialog
+
+            dialog = DemoInviteDialog(self.root, prospect_id, db=self.db)
+            dialog.show()
+        except ImportError:
+            logger.warning("DemoInviteDialog not available")
+
+    def _shortcut_send_email(self) -> None:
+        """Ctrl+E: trigger email composition for current card."""
+        if self._dictation_bar and self._is_today_active():
+            self._dictation_bar.focus_input()
+            # Pre-fill with email command
+            self._dictation_bar._entry.delete(0, tk.END)
+            self._dictation_bar._entry.insert(0, "send him an email")
+            self._dictation_bar._has_placeholder = False
+            self._dictation_bar._entry.configure(foreground="black")
+            self._dictation_bar._entry.icursor(tk.END)
+
+    def _shortcut_command_palette(self) -> None:
+        """Ctrl+K: open command palette."""
+        if not self.root:
+            return
+        try:
+            from src.gui.dialogs.command_palette import CommandPalette
+
+            palette = CommandPalette(self.root, db=self.db, app=self)
+            palette.show()
+        except ImportError:
+            logger.warning("CommandPalette not available")
+
+    def _shortcut_focus_mode(self) -> None:
+        """Ctrl+Shift+F: toggle focus mode."""
+        try:
+            from src.gui.adhd.focus import toggle_focus_mode
+
+            toggle_focus_mode(self.root)
+        except (ImportError, Exception) as e:
+            logger.warning(f"Focus mode unavailable: {e}")
 
     def _focus_search(self) -> None:
         """Focus the Today tab search field (Ctrl+F)."""

@@ -187,12 +187,97 @@ class DictationBar(tk.Frame):
         self._response_frame.pack_forget()
 
     def set_manual_mode(self, enabled: bool) -> None:
-        """Enable manual mode (for offline)."""
+        """Enable/disable manual mode (for offline/no-AI).
+
+        In manual mode:
+        - Shows [MANUAL] indicator
+        - Adds a population dropdown and follow-up date entry
+        - Submit saves directly to DB without AI parsing
+        """
         self._manual_mode = enabled
         if enabled:
             self._mode_label.configure(text="[MANUAL]", foreground="orange")
+            self._placeholder = "Type notes (no AI)..."
+            self._show_placeholder()
+            self._build_manual_controls()
         else:
             self._mode_label.configure(text="", foreground="gray")
+            self._placeholder = "Speak or type..."
+            self._show_placeholder()
+            self._hide_manual_controls()
+
+    def _build_manual_controls(self) -> None:
+        """Build manual mode dropdown controls."""
+        # Don't rebuild if already present
+        if hasattr(self, "_manual_frame") and self._manual_frame is not None:
+            return
+
+        self._manual_frame = tk.Frame(self)
+        self._manual_frame.pack(
+            fill=tk.X, padx=8, pady=(2, 0), before=self._input_frame
+        )
+
+        # Population dropdown
+        ttk.Label(
+            self._manual_frame, text="Action:", foreground="gray"
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        self._manual_action_var = tk.StringVar(value="note")
+        action_combo = ttk.Combobox(
+            self._manual_frame,
+            textvariable=self._manual_action_var,
+            values=[
+                "note",
+                "left_voicemail",
+                "no_answer",
+                "spoke_with",
+                "skip",
+                "park",
+            ],
+            state="readonly",
+            width=14,
+        )
+        action_combo.pack(side=tk.LEFT, padx=(0, 8))
+
+        # Follow-up date entry
+        ttk.Label(
+            self._manual_frame, text="Follow-up:", foreground="gray"
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        self._manual_date_var = tk.StringVar(value="")
+        date_entry = ttk.Entry(
+            self._manual_frame,
+            textvariable=self._manual_date_var,
+            width=12,
+        )
+        date_entry.pack(side=tk.LEFT, padx=(0, 4))
+
+        ttk.Label(
+            self._manual_frame,
+            text="(YYYY-MM-DD)",
+            foreground="gray",
+            font=("TkDefaultFont", 8),
+        ).pack(side=tk.LEFT)
+
+    def _hide_manual_controls(self) -> None:
+        """Remove manual mode controls."""
+        if hasattr(self, "_manual_frame") and self._manual_frame is not None:
+            self._manual_frame.destroy()
+            self._manual_frame = None
+
+    @property
+    def manual_action(self) -> str:
+        """Get the selected manual action."""
+        if hasattr(self, "_manual_action_var"):
+            return self._manual_action_var.get()
+        return "note"
+
+    @property
+    def manual_follow_up_date(self) -> str:
+        """Get the manual follow-up date string."""
+        if hasattr(self, "_manual_date_var"):
+            return self._manual_date_var.get().strip()
+        return ""
 
     def focus_input(self) -> None:
         """Focus the input entry."""

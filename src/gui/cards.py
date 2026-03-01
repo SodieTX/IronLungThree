@@ -11,7 +11,7 @@ Three interaction modes:
 import tkinter as tk
 from datetime import date
 from tkinter import ttk
-from typing import Optional
+from typing import Callable, Optional
 
 from src.core.logging import get_logger
 from src.db.models import (
@@ -30,7 +30,11 @@ logger = get_logger(__name__)
 class ProspectCard(tk.Frame):
     """Prospect card widget with glance, call, and deep dive views."""
 
-    def __init__(self, parent: tk.Widget):
+    def __init__(
+        self,
+        parent: tk.Widget,
+        on_dial: Optional[callable] = None,
+    ):
         super().__init__(parent, bg=COLORS["bg_alt"], bd=1, relief="solid")
         self._prospect: Optional[Prospect] = None
         self._company: Optional[Company] = None
@@ -40,6 +44,7 @@ class ProspectCard(tk.Frame):
         self._company_contacts: int = 0
         self._view_mode = "glance"
         self._widgets: list[tk.Widget] = []
+        self._on_dial = on_dial  # Callback when phone is clicked
 
     def set_prospect(
         self,
@@ -132,12 +137,12 @@ class ProspectCard(tk.Frame):
         comp_lbl.pack(fill=tk.X, padx=12, pady=2)
         self._widgets.append(comp_lbl)
 
-        # Phone number
+        # Phone number (CLICKABLE → Bria dial)
         phone = self._get_primary_phone()
         if phone:
             phone_lbl = tk.Label(
                 self,
-                text=f"Phone: {phone}",
+                text=f"☎ {phone}",
                 font=FONTS["default"],
                 bg=COLORS["bg_alt"],
                 fg=COLORS["accent"],
@@ -146,6 +151,31 @@ class ProspectCard(tk.Frame):
             )
             phone_lbl.pack(fill=tk.X, padx=12, pady=2)
             self._widgets.append(phone_lbl)
+
+            # Wire click-to-dial
+            def _on_phone_click(event: object = None) -> None:
+                if self._on_dial and self._prospect:
+                    self._on_dial(self._prospect)
+                elif self._prospect:
+                    # Fallback: copy to clipboard
+                    try:
+                        self.clipboard_clear()
+                        self.clipboard_append(phone)
+                        logger.info(f"Phone copied to clipboard: {phone}")
+                    except Exception:
+                        pass
+
+            phone_lbl.bind("<Button-1>", _on_phone_click)
+
+            # Visual hover feedback
+            def _on_enter(event: object = None) -> None:
+                phone_lbl.configure(font=("Segoe UI", 11, "underline"))
+
+            def _on_leave(event: object = None) -> None:
+                phone_lbl.configure(font=FONTS["default"])
+
+            phone_lbl.bind("<Enter>", _on_enter)
+            phone_lbl.bind("<Leave>", _on_leave)
 
         # Separator
         sep = ttk.Separator(self, orient="horizontal")
