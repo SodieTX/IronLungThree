@@ -97,9 +97,10 @@ _MONTH_NAMES = {
 _DEAD_SIGNALS = [
     "out of business",
     "shut down",
-    "closed",
+    "closed down",
+    "closed shop",
     "bankrupt",
-    "no longer",
+    "no longer operating",
     "dissolved",
     "defunct",
 ]
@@ -268,7 +269,7 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
             for month_name, month_num in _MONTH_NAMES.items():
                 if month_name in text_lower:
                     year = date.today().year
-                    if month_num < date.today().month:
+                    if month_num <= date.today().month:
                         year += 1
                     parked_month = f"{year}-{month_num:02d}"
                     break
@@ -322,7 +323,7 @@ def parse(input_text: str, context: Optional[ParserContext] = None) -> ParseResu
     for month_name, month_num in _MONTH_NAMES.items():
         if re.search(rf"\b(?:in|til|till|until)\s+{month_name}\b", text_lower):
             year = date.today().year
-            if month_num < date.today().month:
+            if month_num <= date.today().month:
                 year += 1
             return ParseResult(
                 action="park",

@@ -15,7 +15,7 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from src.core.logging import get_logger
 from src.db.database import Database
@@ -160,7 +160,7 @@ def generate_morning_brief(db: Database) -> MorningBrief:
 
     # Overnight changes (system activities from last 24 hours)
     overnight_lines = []
-    yesterday = datetime(today.year, today.month, today.day, 0, 0, 0).strftime("%Y-%m-%d %H:%M:%S")
+    yesterday = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     system_activities = conn.execute(
         """SELECT a.*, p.first_name, p.last_name
            FROM activities a

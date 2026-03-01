@@ -536,18 +536,18 @@ class PipelineTab(TabBase):
             # Handle empty or None values
             if value is None or value == "":
                 # Empty values sort last
-                return (1, "")
+                return (1, 0, "")
 
             # Try numeric sort for ID and Score
             if col in ["ID", "Score"]:
                 try:
-                    return (0, int(value))
+                    return (0, int(value), "")
                 except (ValueError, TypeError):
-                    # If conversion fails, treat as string
-                    return (0, str(value))
+                    # Non-numeric values sort after all numeric values
+                    return (0, float("inf"), str(value))
 
             # Text columns sort alphabetically
-            return (0, str(value).lower())
+            return (0, 0, str(value).lower())
 
         items.sort(key=sort_key)
 

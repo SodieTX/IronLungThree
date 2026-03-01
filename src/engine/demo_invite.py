@@ -136,6 +136,7 @@ def create_demo_invite(
     if outlook is not None:
         calendar_event_id, teams_link = _create_calendar_event(
             outlook=outlook,
+            db=db,
             prospect=prospect,
             company=company,
             demo_datetime=demo_datetime,
@@ -190,6 +191,7 @@ def create_demo_invite(
 
 def _create_calendar_event(
     outlook: object,
+    db: Database,
     prospect: Prospect,
     company: Company,
     demo_datetime: datetime,
@@ -200,6 +202,7 @@ def _create_calendar_event(
 
     Args:
         outlook: OutlookClient instance
+        db: Database instance
         prospect: Prospect record
         company: Company record
         demo_datetime: Demo start time
@@ -212,11 +215,15 @@ def _create_calendar_event(
 
     # Get prospect email for attendees
     attendees: list[str] = []
-    try:
-        contact_methods = getattr(outlook, "_db", None)
-        # Try to get email from DB through outlook if available
-    except Exception:
-        pass
+    if prospect.id is not None:
+        try:
+            contact_methods = db.get_contact_methods(prospect.id)
+            for cm in contact_methods:
+                if cm.type.value == "email" and cm.value:
+                    attendees.append(cm.value)
+                    break
+        except Exception:
+            pass
 
     try:
         event_id = outlook.create_event(  # type: ignore[attr-defined]

@@ -1432,12 +1432,12 @@ class Database:
         """Add tag to prospect. Returns True if added (False if already exists)."""
         conn = self._get_connection()
         try:
-            conn.execute(
+            cursor = conn.execute(
                 "INSERT OR IGNORE INTO prospect_tags (prospect_id, tag_name) VALUES (?, ?)",
                 (prospect_id, tag_name),
             )
             conn.commit()
-            return True
+            return cursor.rowcount > 0
         except sqlite3.Error:
             return False
 

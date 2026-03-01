@@ -702,9 +702,9 @@ class Copilot(ClaudeClientMixin):
                     return f"{year}-{month_num:02d}"
                 except ValueError:
                     pass
-            # Default year: if month is in the past, assume next year
+            # Default year: if month is current or past, assume next year
             year = today.year
-            if month_num < today.month:
+            if month_num <= today.month:
                 year += 1
             return f"{year}-{month_num:02d}"
 

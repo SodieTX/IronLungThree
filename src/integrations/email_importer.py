@@ -169,21 +169,23 @@ class EmailCSVImporter:
             raise ImportError_(f"File not found: {path}")
 
         # Try UTF-8 first, then latin-1
-        content_lines = None
+        import io
+
+        content = None
         for encoding in ("utf-8", "latin-1"):
             try:
-                content_lines = path.read_text(encoding=encoding).splitlines()
+                content = path.read_text(encoding=encoding)
                 break
             except UnicodeDecodeError:
                 continue
 
-        if content_lines is None:
+        if content is None:
             raise ImportError_(f"Cannot decode file: {path}")
 
-        if not content_lines:
+        if not content.strip():
             return []
 
-        reader = csv.DictReader(content_lines)
+        reader = csv.DictReader(io.StringIO(content))
         rows: list[dict] = []
 
         # Map common Outlook CSV column names to our normalized keys
