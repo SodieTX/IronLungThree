@@ -11,6 +11,7 @@ Usage:
         transition_prospect(prospect_id, Population.ENGAGED, "Showed interest")
 """
 
+from datetime import datetime
 from typing import Optional, Set, Tuple
 
 from src.core.exceptions import DNCViolationError, PipelineError
@@ -162,7 +163,8 @@ def transition_prospect(
 
     # Set metadata for terminal states
     if to_population == Population.DEAD_DNC:
-        from datetime import date as date_type, datetime as datetime_type
+        from datetime import date as date_type
+        from datetime import datetime as datetime_type
 
         from src.db.models import DeadReason
 
@@ -325,21 +327,17 @@ def get_available_transitions(population: Population) -> list[Population]:
 _DNC_GRACE_HOURS = 24
 
 
-def _set_dnc_timestamp(db: Database, prospect_id: int, timestamp: "datetime") -> None:
+def _set_dnc_timestamp(db: Database, prospect_id: int, timestamp: datetime) -> None:
     """Store the exact moment a prospect was moved to DNC.
 
     Uses system_metadata with a prospect-specific key.
     """
-    from datetime import datetime
-
     key = f"dnc_timestamp_{prospect_id}"
     db.upsert_system_metadata(key, timestamp.isoformat())
 
 
-def _get_dnc_timestamp(db: Database, prospect_id: int) -> "Optional[datetime]":
+def _get_dnc_timestamp(db: Database, prospect_id: int) -> Optional[datetime]:
     """Retrieve the DNC timestamp for a prospect."""
-    from datetime import datetime
-
     key = f"dnc_timestamp_{prospect_id}"
     value = db.get_system_metadata(key)
     if value is None:
@@ -368,13 +366,13 @@ def can_reverse_dnc(db: Database, prospect_id: int) -> bool:
     Returns:
         True if within the 24-hour grace window
     """
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     ts = _get_dnc_timestamp(db, prospect_id)
     if ts is None:
         return False
     elapsed = datetime.now() - ts
-    return elapsed < timedelta(hours=_DNC_GRACE_HOURS)
+    return bool(elapsed < timedelta(hours=_DNC_GRACE_HOURS))
 
 
 def reverse_dnc(
@@ -399,8 +397,6 @@ def reverse_dnc(
     Raises:
         PipelineError: If grace period has expired
     """
-    from datetime import datetime
-
     from src.db.models import Activity, ActivityType
 
     if not can_reverse_dnc(db, prospect_id):

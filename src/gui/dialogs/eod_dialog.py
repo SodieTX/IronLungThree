@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional
 
-from src.content.eod_summary import EODSummary, generate_eod_summary
+from src.content.eod_summary import generate_eod_summary
 from src.core.logging import get_logger
 from src.db.database import Database
 from src.gui.theme import COLORS, FONTS
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class EODSummaryDialog:
     """End-of-day summary popup."""
 
-    def __init__(self, parent: tk.Widget, db: Database):
+    def __init__(self, parent: tk.Misc, db: Database):
         self.parent = parent
         self.db = db
         self._dialog: Optional[tk.Toplevel] = None
@@ -36,7 +36,7 @@ class EODSummaryDialog:
         self._dialog.title("End of Day — IronLung 3")
         self._dialog.geometry("520x600")
         self._dialog.configure(bg=COLORS["bg"])
-        self._dialog.transient(self.parent)
+        self._dialog.transient(self.parent.winfo_toplevel())
         self._dialog.grab_set()
 
         # Center on parent
@@ -140,8 +140,13 @@ class EODSummaryDialog:
         ttk.Button(
             self._dialog,
             text="Done",
-            command=self._dialog.destroy,
+            command=self._close,
         ).pack(pady=(8, 16))
 
-        self._dialog.bind("<Escape>", lambda e: self._dialog.destroy())
-        self._dialog.bind("<Return>", lambda e: self._dialog.destroy())
+        self._dialog.bind("<Escape>", lambda e: self._close())
+        self._dialog.bind("<Return>", lambda e: self._close())
+
+    def _close(self) -> None:
+        """Close the dialog."""
+        if self._dialog is not None:
+            self._dialog.destroy()

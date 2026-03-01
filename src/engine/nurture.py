@@ -174,8 +174,7 @@ class NurtureEngine:
     def _ensure_nurture_table(self) -> None:
         """Create the nurture_queue table if it doesn't exist."""
         conn = self.db._get_connection()
-        conn.executescript(
-            """
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS nurture_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 prospect_id INTEGER NOT NULL,
@@ -198,8 +197,7 @@ class NurtureEngine:
                 ON nurture_queue(prospect_id);
             CREATE INDEX IF NOT EXISTS idx_nurture_status
                 ON nurture_queue(status);
-            """
-        )
+            """)
 
     def generate_nurture_batch(self, limit: int = 30) -> list[NurtureEmail]:
         """Generate nurture emails for batch approval.
@@ -279,11 +277,9 @@ class NurtureEngine:
             Emails awaiting approval
         """
         conn = self.db._get_connection()
-        rows = conn.execute(
-            """SELECT * FROM nurture_queue
+        rows = conn.execute("""SELECT * FROM nurture_queue
                WHERE status = 'pending'
-               ORDER BY queued_at ASC"""
-        ).fetchall()
+               ORDER BY queued_at ASC""").fetchall()
         return [self._row_to_nurture_email(row) for row in rows]
 
     def approve_email(self, email_id: int) -> bool:

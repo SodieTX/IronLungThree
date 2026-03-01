@@ -102,33 +102,25 @@ def extract_intel_from_notes(
     # Pain points
     for kw in _PAIN_KEYWORDS:
         if kw in notes_lower:
-            nuggets_to_create.append(
-                (IntelCategory.PAIN_POINT, f"Mentioned '{kw}': {notes[:200]}")
-            )
+            nuggets_to_create.append((IntelCategory.PAIN_POINT, f"Mentioned '{kw}': {notes[:200]}"))
             break
 
     # Competitors
     for kw in _COMPETITOR_KEYWORDS:
         if kw in notes_lower:
-            nuggets_to_create.append(
-                (IntelCategory.COMPETITOR, f"Competitor intel: {notes[:200]}")
-            )
+            nuggets_to_create.append((IntelCategory.COMPETITOR, f"Competitor intel: {notes[:200]}"))
             break
 
     # Timeline
     for kw in _TIMELINE_KEYWORDS:
         if kw in notes_lower:
-            nuggets_to_create.append(
-                (IntelCategory.DECISION_TIMELINE, f"Timeline: {notes[:200]}")
-            )
+            nuggets_to_create.append((IntelCategory.DECISION_TIMELINE, f"Timeline: {notes[:200]}"))
             break
 
     # Budget signals (mapped to KEY_FACT — closest available category)
     for kw in _BUDGET_KEYWORDS:
         if kw in notes_lower:
-            nuggets_to_create.append(
-                (IntelCategory.KEY_FACT, f"Budget signal: {notes[:200]}")
-            )
+            nuggets_to_create.append((IntelCategory.KEY_FACT, f"Budget signal: {notes[:200]}"))
             break
 
     # Decision process (mapped to DECISION_TIMELINE — closest available category)
@@ -144,9 +136,7 @@ def extract_intel_from_notes(
     existing = db.get_intel_nuggets(prospect_id)
 
     for category, content in nuggets_to_create:
-        is_duplicate = any(
-            n.category == category and n.content == content for n in existing
-        )
+        is_duplicate = any(n.category == category and n.content == content for n in existing)
         if not is_duplicate:
             nugget = IntelNugget(
                 prospect_id=prospect_id,

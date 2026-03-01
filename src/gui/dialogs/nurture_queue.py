@@ -5,7 +5,7 @@ Approve, reject, or edit before sending.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, ttk
 from typing import Optional
 
 from src.core.logging import get_logger
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class NurtureQueueDialog:
     """Nurture email review and approval dialog."""
 
-    def __init__(self, parent: tk.Widget, db: Database):
+    def __init__(self, parent: tk.Misc, db: Database):
         self.parent = parent
         self.db = db
         self._engine = NurtureEngine(db)
@@ -40,7 +40,7 @@ class NurtureQueueDialog:
         self._dialog.title("Nurture Email Queue — IronLung 3")
         self._dialog.geometry("700x650")
         self._dialog.configure(bg=COLORS["bg"])
-        self._dialog.transient(self.parent)
+        self._dialog.transient(self.parent.winfo_toplevel())
         self._dialog.grab_set()
 
         # Center on parent
@@ -52,7 +52,7 @@ class NurtureQueueDialog:
         self._build_ui()
         self._show_current_email()
 
-        self._dialog.bind("<Escape>", lambda e: self._dialog.destroy())
+        self._dialog.bind("<Escape>", lambda e: self._close())
 
     def _build_ui(self) -> None:
         """Build the dialog UI."""
@@ -172,19 +172,15 @@ class NurtureQueueDialog:
         ttk.Button(
             btn_frame,
             text="Close",
-            command=self._dialog.destroy,
+            command=self._close,
         ).pack(side=tk.RIGHT)
 
         # Navigation
         nav_frame = tk.Frame(self._dialog, bg=COLORS["bg"])
         nav_frame.pack(fill=tk.X, padx=16, pady=(0, 12))
 
-        ttk.Button(nav_frame, text="Prev", command=self._prev_email).pack(
-            side=tk.LEFT, padx=(0, 8)
-        )
-        ttk.Button(nav_frame, text="Next", command=self._next_email).pack(
-            side=tk.LEFT
-        )
+        ttk.Button(nav_frame, text="Prev", command=self._prev_email).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(nav_frame, text="Next", command=self._next_email).pack(side=tk.LEFT)
 
     def _show_current_email(self) -> None:
         """Display the current email in the review pane."""
@@ -205,9 +201,7 @@ class NurtureQueueDialog:
             )
 
         if self._info_label:
-            self._info_label.config(
-                text=f"{email.prospect_name} — {email.company_name}"
-            )
+            self._info_label.config(text=f"{email.prospect_name} — {email.company_name}")
 
         if self._seq_label:
             seq_display = email.sequence.value.replace("_", " ").title()
@@ -253,13 +247,19 @@ class NurtureQueueDialog:
             except Exception as e:
                 logger.warning(f"Failed to save nurture email edits: {e}")
 
+    def _close(self) -> None:
+        """Close the dialog."""
+        if self._dialog is not None:
+            self._dialog.destroy()
+
     def _on_approve(self) -> None:
         """Approve the current email."""
         if not self._pending:
             return
         email = self._pending[self._current_index]
         self._save_edits(email)
-        self._engine.approve_email(email.id)
+        if email.id is not None:
+            self._engine.approve_email(email.id)
         self._pending.pop(self._current_index)
         if self._current_index >= len(self._pending):
             self._current_index = max(0, len(self._pending) - 1)
@@ -279,7 +279,8 @@ class NurtureQueueDialog:
         if not confirm:
             return
         for email in self._pending:
-            self._engine.approve_email(email.id)
+            if email.id is not None:
+                self._engine.approve_email(email.id)
         self._pending.clear()
         self._current_index = 0
         self._show_current_email()
@@ -289,7 +290,8 @@ class NurtureQueueDialog:
         if not self._pending:
             return
         email = self._pending[self._current_index]
-        self._engine.reject_email(email.id, reason="Rejected during review")
+        if email.id is not None:
+            self._engine.reject_email(email.id, reason="Rejected during review")
         self._pending.pop(self._current_index)
         if self._current_index >= len(self._pending):
             self._current_index = max(0, len(self._pending) - 1)

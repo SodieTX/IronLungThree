@@ -621,8 +621,7 @@ class IronLungApp:
         # Special case: DNC reversal within grace period
         actions = entry.get("actions", [])
         was_dnc = any(
-            a.get("action") == "population_change"
-            and a.get("population") == "dead_dnc"
+            a.get("action") == "population_change" and a.get("population") == "dead_dnc"
             for a in actions
         )
         if was_dnc:
@@ -645,13 +644,9 @@ class IronLungApp:
                     )
                     self._update_status_bar()
                     if self._dictation_bar:
-                        self._dictation_bar.show_response(
-                            "DNC reversed within grace period."
-                        )
+                        self._dictation_bar.show_response("DNC reversed within grace period.")
                     if self._today_tab:
-                        self._today_tab._queue_index = max(
-                            0, self._today_tab._queue_index - 1
-                        )
+                        self._today_tab._queue_index = max(0, self._today_tab._queue_index - 1)
                         self._today_tab._show_current_card()
                         self._today_tab._update_queue_label()
                     return

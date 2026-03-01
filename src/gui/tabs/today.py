@@ -476,15 +476,14 @@ class TodayTab(TabBase):
             if self.app and hasattr(self.app, "_show_eod_summary"):
                 if self.frame:
                     self.frame.after(1500, self.app._show_eod_summary)
-            else:
-                # Reach through to dialog directly
+            elif self.frame is not None:
                 from src.gui.dialogs.eod_dialog import EODSummaryDialog
 
-                if self.frame:
-                    self.frame.after(
-                        1500,
-                        lambda: EODSummaryDialog(self.frame, self.db).show(),
-                    )
+                frame = self.frame  # capture for lambda
+                self.frame.after(
+                    1500,
+                    lambda: EODSummaryDialog(frame, self.db).show(),
+                )
         except Exception as e:
             logger.warning(f"Failed to trigger EOD from queue empty: {e}")
 
