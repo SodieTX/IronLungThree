@@ -162,12 +162,14 @@ def transition_prospect(
 
     # Set metadata for terminal states
     if to_population == Population.DEAD_DNC:
-        from datetime import date as date_type
+        from datetime import date as date_type, datetime as datetime_type
 
         from src.db.models import DeadReason
 
         prospect.dead_reason = DeadReason.DNC
         prospect.dead_date = date_type.today()
+        # Store precise timestamp for grace period reversal
+        _set_dnc_timestamp(db, prospect_id, datetime_type.now())
 
     if to_population == Population.PARKED and prospect.parked_month is None:
         # Default to next month if not set
@@ -314,3 +316,137 @@ def get_available_transitions(population: Population) -> list[Population]:
         List of populations this can transition to
     """
     return [to_pop for (from_pop, to_pop) in VALID_TRANSITIONS if from_pop == population]
+
+
+# =============================================================================
+# DNC GRACE PERIOD (24-hour reversal window)
+# =============================================================================
+
+_DNC_GRACE_HOURS = 24
+
+
+def _set_dnc_timestamp(db: Database, prospect_id: int, timestamp: "datetime") -> None:
+    """Store the exact moment a prospect was moved to DNC.
+
+    Uses system_metadata with a prospect-specific key.
+    """
+    from datetime import datetime
+
+    key = f"dnc_timestamp_{prospect_id}"
+    db.upsert_system_metadata(key, timestamp.isoformat())
+
+
+def _get_dnc_timestamp(db: Database, prospect_id: int) -> "Optional[datetime]":
+    """Retrieve the DNC timestamp for a prospect."""
+    from datetime import datetime
+
+    key = f"dnc_timestamp_{prospect_id}"
+    value = db.get_system_metadata(key)
+    if value is None:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _clear_dnc_timestamp(db: Database, prospect_id: int) -> None:
+    """Remove the DNC timestamp after grace period use or expiry."""
+    key = f"dnc_timestamp_{prospect_id}"
+    conn = db._get_connection()
+    conn.execute("DELETE FROM system_metadata WHERE key = ?", (key,))
+    conn.commit()
+
+
+def can_reverse_dnc(db: Database, prospect_id: int) -> bool:
+    """Check if a DNC decision can still be reversed (within grace period).
+
+    Args:
+        db: Database instance
+        prospect_id: Prospect to check
+
+    Returns:
+        True if within the 24-hour grace window
+    """
+    from datetime import datetime, timedelta
+
+    ts = _get_dnc_timestamp(db, prospect_id)
+    if ts is None:
+        return False
+    elapsed = datetime.now() - ts
+    return elapsed < timedelta(hours=_DNC_GRACE_HOURS)
+
+
+def reverse_dnc(
+    db: Database,
+    prospect_id: int,
+    restore_to: Population = Population.UNENGAGED,
+    reason: Optional[str] = None,
+) -> bool:
+    """Reverse a DNC decision within the grace period.
+
+    This is the ONLY way out of DNC, and only within 24 hours.
+
+    Args:
+        db: Database instance
+        prospect_id: Prospect to reverse
+        restore_to: Population to restore to (default UNENGAGED)
+        reason: Why the reversal happened
+
+    Returns:
+        True if reversed successfully
+
+    Raises:
+        PipelineError: If grace period has expired
+    """
+    from datetime import datetime
+
+    from src.db.models import Activity, ActivityType
+
+    if not can_reverse_dnc(db, prospect_id):
+        raise PipelineError(
+            f"Cannot reverse DNC for prospect {prospect_id}: "
+            "grace period expired or no timestamp found"
+        )
+
+    prospect = db.get_prospect(prospect_id)
+    if prospect is None:
+        raise PipelineError(f"Prospect {prospect_id} not found")
+
+    if prospect.population != Population.DEAD_DNC:
+        raise PipelineError(
+            f"Prospect {prospect_id} is not DNC (current: {prospect.population.value})"
+        )
+
+    # Perform the reversal — bypass normal transition rules
+    prospect.population = restore_to
+    prospect.dead_reason = None
+    prospect.dead_date = None
+    prospect.engagement_stage = None
+
+    db.update_prospect(prospect)
+    _clear_dnc_timestamp(db, prospect_id)
+
+    # Log the reversal
+    activity = Activity(
+        prospect_id=prospect_id,
+        activity_type=ActivityType.STATUS_CHANGE,
+        notes=(
+            f"DNC REVERSED within grace period -> {restore_to.value}. "
+            f"Reason: {reason or 'No reason given'}"
+        ),
+        created_by="user",
+    )
+    db.create_activity(activity)
+
+    logger.info(
+        f"DNC reversed for prospect {prospect_id}",
+        extra={
+            "context": {
+                "prospect_id": prospect_id,
+                "restored_to": restore_to.value,
+                "reason": reason,
+            }
+        },
+    )
+    return True

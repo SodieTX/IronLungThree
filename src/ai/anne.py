@@ -240,6 +240,21 @@ class Anne(ClaudeClientMixin):
             else:
                 message += " Set follow-up. Next card?"
 
+            # Real-time intel extraction from voicemail notes
+            try:
+                from src.engine.intel_extract import extract_intel_from_notes
+
+                if context.current_prospect_id and user_input:
+                    extracted = extract_intel_from_notes(
+                        self.db, context.current_prospect_id, user_input, source="voicemail_notes"
+                    )
+                    if extracted > 0:
+                        message += (
+                            f" ({extracted} intel nugget{'s' if extracted > 1 else ''} captured)"
+                        )
+            except Exception as e:
+                logger.warning(f"Real-time intel extraction failed: {e}")
+
             return AnneResponse(
                 message=message,
                 suggested_actions=actions,
@@ -267,6 +282,21 @@ class Anne(ClaudeClientMixin):
                     }
                 )
                 message += f" Follow-up set for {follow_up_date}."
+
+            # Real-time intel extraction from call notes
+            try:
+                from src.engine.intel_extract import extract_intel_from_notes
+
+                if context.current_prospect_id and user_input:
+                    extracted = extract_intel_from_notes(
+                        self.db, context.current_prospect_id, user_input, source="call_notes"
+                    )
+                    if extracted > 0:
+                        message += (
+                            f" ({extracted} intel nugget{'s' if extracted > 1 else ''} captured)"
+                        )
+            except Exception as e:
+                logger.warning(f"Real-time intel extraction failed: {e}")
 
             return AnneResponse(
                 message=message,
@@ -413,6 +443,17 @@ class Anne(ClaudeClientMixin):
             except Exception as e:
                 logger.warning(f"AI response failed: {e}")
 
+        # Real-time intel extraction from dictation
+        try:
+            from src.engine.intel_extract import extract_intel_from_notes
+
+            if context.current_prospect_id and user_input:
+                extract_intel_from_notes(
+                    self.db, context.current_prospect_id, user_input, source="dictation"
+                )
+        except Exception:
+            pass  # Silent — don't disrupt the flow
+
         # Default: log as note
         return AnneResponse(
             message="Noted.",
@@ -555,6 +596,57 @@ class Anne(ClaudeClientMixin):
                 logger.warning(f"Failed to store intel nugget: {e}")
 
         return nuggets
+
+    def get_proactive_questions(self, prospect_id: Optional[int] = None) -> list[str]:
+        """Generate contextual questions for the current prospect.
+
+        Returns empty list on any failure — never disrupts the grind.
+        """
+        if not prospect_id:
+            return []
+        try:
+            prospect = self.db.get_prospect(prospect_id)
+            if prospect is None:
+                return []
+
+            questions = []
+            # Check for missing intel
+            try:
+                from src.engine.intel_gaps import IntelGapsService
+
+                svc = IntelGapsService(self.db)
+                gaps = svc.get_intel_gaps(populations=[prospect.population])
+                prospect_gaps = [g for g in gaps if g.prospect_id == prospect_id]
+                for gap in prospect_gaps[:2]:
+                    if gap.gap_type == "missing_domain":
+                        questions.append(f"Ask about {gap.company_name}'s website")
+                    elif gap.gap_type == "missing_title":
+                        questions.append("Confirm their current title/role")
+                    elif gap.gap_type == "missing_intel":
+                        questions.append("What's their biggest operational challenge?")
+            except Exception:
+                pass  # Intel gaps service may not be available
+
+            # Check for stale follow-up
+            if prospect.follow_up_date:
+                try:
+                    from datetime import date as date_cls
+
+                    fu_str = str(prospect.follow_up_date)[:10]
+                    fu_date = date_cls.fromisoformat(fu_str)
+                    days_overdue = (date_cls.today() - fu_date).days
+                    if days_overdue > 7:
+                        questions.append(
+                            f"Follow-up is {days_overdue} days overdue — re-engage gently"
+                        )
+                except (ValueError, TypeError):
+                    pass
+
+            return questions
+
+        except Exception as e:
+            logger.warning(f"Proactive interrogation failed: {e}")
+            return []
 
     # =========================================================================
     # PRIVATE: Context Building
