@@ -499,9 +499,9 @@ class BrokenTab(TabBase):
     def _get_findings(self, prospect_id: int) -> list[dict[str, str]]:
         """Get parsed research findings for a prospect."""
         task = self._task_lookup.get(prospect_id)
-        if not task:
+        if not task or not isinstance(task, dict):
             return []
-        findings_raw = task["findings"] if "findings" in task.keys() else None
+        findings_raw = task.get("findings")
         if not findings_raw:
             return []
         try:

@@ -509,7 +509,8 @@ class DemoInviteDialog:
             from src.integrations.outlook import OutlookClient
 
             outlook = None
-            if check_service("outlook", parent=self._dialog, silent=True):
+            svc_parent: Optional[tk.Misc] = self._dialog
+            if check_service("outlook", parent=svc_parent, silent=True):
                 outlook = OutlookClient()
 
             invite = create_demo_invite(
