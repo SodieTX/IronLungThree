@@ -9,9 +9,10 @@ Three-section workbench:
 import json
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Optional
+from typing import Any, Optional
 
 from src.core.logging import get_logger
+from src.core.phone import normalize_phone
 from src.db.database import Database
 from src.db.models import (
     Activity,
@@ -24,7 +25,6 @@ from src.db.models import (
 from src.engine.populations import transition_prospect
 from src.gui.tabs import TabBase
 from src.gui.theme import COLORS, FONTS
-from src.core.phone import normalize_phone
 
 logger = get_logger(__name__)
 
@@ -38,7 +38,7 @@ class BrokenTab(TabBase):
         self._progress_tree: Optional[ttk.Treeview] = None
         self._manual_tree: Optional[ttk.Treeview] = None
         self._header_label: Optional[tk.Label] = None
-        self._task_lookup: dict[int, object] = {}
+        self._task_lookup: dict[int, Any] = {}
         self._create_ui()
 
     def _create_ui(self) -> None:

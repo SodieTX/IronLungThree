@@ -33,7 +33,7 @@ class ProspectCard(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        on_dial: Optional[callable] = None,
+        on_dial: Optional[Callable] = None,
     ):
         super().__init__(parent, bg=COLORS["bg_alt"], bd=1, relief="solid")
         self._prospect: Optional[Prospect] = None

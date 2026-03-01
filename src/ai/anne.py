@@ -108,10 +108,10 @@ def _extract_follow_up_date(text: str) -> Optional[date]:
 
     Returns None if no date found.
     """
-    from src.ai.parser import parse_relative_date
-
     # Common follow-up signal phrases
     import re
+
+    from src.ai.parser import parse_relative_date
 
     follow_up_patterns = [
         r"(?:follow[- ]?up|call back|try again|check back|reach out)[\s,]*(.+)",

@@ -6,7 +6,7 @@ Cards display one at a time. User disposes each card, then next.
 
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Optional
+from typing import Any, Optional
 
 from src.core.logging import get_logger
 from src.db.database import Database
@@ -563,7 +563,7 @@ class TodayTab(TabBase):
         self._action_frame.pack(fill=tk.X, padx=16, pady=(0, 8))
 
         # --- Button definitions ---
-        btn_style = {
+        btn_style: dict[str, Any] = {
             "font": ("Segoe UI", 10),
             "bg": COLORS["bg_alt"],
             "fg": COLORS["fg"],

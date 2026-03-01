@@ -346,8 +346,8 @@ class IronLungApp:
 
         if action == "park":
             # Park requires a month — use follow_up_str or default to next month
-            from src.engine.populations import transition_prospect
             from src.db.models import Population
+            from src.engine.populations import transition_prospect
 
             prospect = self.db.get_prospect(prospect_id)
             if prospect:
